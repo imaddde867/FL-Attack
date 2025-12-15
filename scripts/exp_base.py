@@ -254,21 +254,27 @@ def get_ablation_configs() -> List[ExperimentConfig]:
 
 
 def get_quick_validation_config() -> ExperimentConfig:
-    """Quick validation to ensure everything works before long runs."""
+    """Quick validation to ensure everything works before long runs.
+    
+    Uses Adam (faster than LBFGS) with fewer iterations for quick feedback.
+    """
     return ExperimentConfig(
         name="validation_quick",
-        description="Quick validation run - sanity check (should get PSNR > 25)",
+        description="Quick validation run - sanity check (should get PSNR > 20)",
         num_rounds=1,
         capture_round=0,
         batch_size=1,
         client_momentum=0.0,
         attack_source="gradients",
-        attack_optimizer="lbfgs",
-        attack_iterations=1000,
+        attack_optimizer="adam",   # Adam is much faster for validation
+        attack_iterations=500,      # Fewer iterations for quick check
         attack_restarts=1,
-        attack_lr=1.0,
-        tv_weight=1e-5,
-        early_stop=False,
+        attack_lr=0.1,              # Lower LR for Adam
+        tv_weight=1e-4,
+        lr_schedule="cosine",
+        early_stop=True,
+        patience=200,
+        match_metric="both",
         priority=-1,  # First
     )
 

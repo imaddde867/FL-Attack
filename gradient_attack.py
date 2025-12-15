@@ -189,8 +189,10 @@ class GradientInversionAttack:
                 print(f"Early stopping at iter {iteration} (best loss {best_loss:.4f})")
                 break
 
-            if iteration % 500 == 0:
-                print(f"Iteration {iteration}: Loss = {cur_loss:.4f}")
+            # More frequent logging for better feedback
+            log_freq = 100 if num_iterations <= 1000 else 250 if num_iterations <= 3000 else 500
+            if iteration % log_freq == 0:
+                print(f"Iter {iteration}/{num_iterations}: Loss = {cur_loss:.4f} (best: {best_loss:.4f})")
 
         return best_image, inferred_label
 
@@ -385,8 +387,10 @@ class GradientInversionAttack:
                 print(f"Early stopping at iter {iteration} (best loss {best_loss:.4f})")
                 break
 
-            if iteration % 500 == 0:
-                print(f"Iteration {iteration}: Loss = {cur:.4f}")
+            # More frequent logging for better feedback
+            log_freq = 100 if num_iterations <= 1000 else 250 if num_iterations <= 3000 else 500
+            if iteration % log_freq == 0:
+                print(f"Iter {iteration}/{num_iterations}: Loss = {cur:.4f} (best: {best_loss:.4f})")
 
         return best_image, best_labels
 
