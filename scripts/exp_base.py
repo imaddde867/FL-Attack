@@ -110,11 +110,13 @@ def get_showcase_config() -> ExperimentConfig:
     
     KEY SETTINGS FOR BEST VISUAL QUALITY:
     - num_rounds=1, capture_round=0: Attack untrained model (gradients leak most)
-    - LBFGS optimizer: Superior convergence for this optimization problem
-    - Low TV weight (1e-5): Avoid over-smoothing that causes blur
-    - Many iterations (8000): Allow full convergence
-    - No early stopping: Let it run to completion
-    - Multiple restarts: Best of 5 random initializations
+    - Adam optimizer with high LR: Fast and effective for gradient inversion
+    - Low TV weight (1e-6): Avoid over-smoothing that causes blur
+    - Many iterations (5000): Allow full convergence
+    - Multiple restarts: Best of 3 random initializations
+    
+    Note: LBFGS is theoretically better but extremely slow on MPS.
+    Adam with proper tuning achieves similar quality much faster.
     """
     return ExperimentConfig(
         name="showcase_best",
@@ -126,18 +128,18 @@ def get_showcase_config() -> ExperimentConfig:
         batch_size=1,           # Critical: single sample for iDLG
         client_momentum=0.0,    # No momentum = clean gradients
         attack_source="gradients",  # Direct gradients (most information)
-        # Aggressive attack settings for best quality
-        attack_iterations=8000,     # Many iterations for full convergence
-        attack_restarts=5,          # Multiple restarts for robustness
-        attack_optimizer="lbfgs",   # LBFGS is superior for gradient inversion
-        attack_lr=1.0,              # Higher LR works with LBFGS
-        tv_weight=1e-5,             # Very low TV to preserve details
-        lr_schedule="none",         # No LR decay with LBFGS
+        # Attack settings optimized for quality + speed on MPS
+        attack_iterations=5000,     # Enough for convergence
+        attack_restarts=3,          # Multiple restarts for robustness
+        attack_optimizer="adam",    # Adam is fast and works well
+        attack_lr=0.1,              # Good LR for Adam
+        tv_weight=1e-6,             # Very low TV to preserve details
+        lr_schedule="cosine",       # Cosine annealing helps Adam converge
         early_stop=False,           # Run to completion for best quality
         preset="none",              # No clamping preset
-        match_metric="l2",          # Pure L2 works well with LBFGS
+        match_metric="l2",          # Pure L2 works well
         layer_weights="auto",       # Inverse-norm weighting
-        fft_init=False,             # Random init works better with LBFGS
+        fft_init=False,             # Random init
         is_showcase=True,
         priority=0,
     )
@@ -152,7 +154,7 @@ def get_ablation_configs() -> List[ExperimentConfig]:
     2. Impact of momentum on gradient quality
     3. Effect of training rounds (untrained vs trained model)
     
-    All use optimal attack settings (LBFGS, low TV) to isolate FL parameter effects.
+    All use Adam optimizer for speed on MPS.
     """
     configs = []
     
@@ -165,11 +167,13 @@ def get_ablation_configs() -> List[ExperimentConfig]:
         batch_size=1,
         client_momentum=0.0,
         attack_source="gradients",
-        attack_optimizer="lbfgs",
-        attack_iterations=5000,
-        attack_restarts=3,
-        attack_lr=1.0,
-        tv_weight=1e-5,
+        attack_optimizer="adam",
+        attack_iterations=3000,
+        attack_restarts=2,
+        attack_lr=0.1,
+        tv_weight=1e-6,
+        lr_schedule="cosine",
+        match_metric="l2",
         early_stop=False,
         priority=1,
     ))
@@ -183,11 +187,13 @@ def get_ablation_configs() -> List[ExperimentConfig]:
         batch_size=1,
         client_momentum=0.0,
         attack_source="gradients",
-        attack_optimizer="lbfgs",
-        attack_iterations=5000,
-        attack_restarts=3,
-        attack_lr=1.0,
-        tv_weight=1e-5,
+        attack_optimizer="adam",
+        attack_iterations=3000,
+        attack_restarts=2,
+        attack_lr=0.1,
+        tv_weight=1e-6,
+        lr_schedule="cosine",
+        match_metric="l2",
         early_stop=False,
         priority=2,
     ))
@@ -201,14 +207,14 @@ def get_ablation_configs() -> List[ExperimentConfig]:
         batch_size=2,
         client_momentum=0.0,
         attack_source="gradients",
-        attack_optimizer="adam",  # Adam for batch>1
+        attack_optimizer="adam",
         attack_iterations=3000,
         attack_restarts=2,
         attack_lr=0.1,
-        tv_weight=1e-4,
-        match_metric="both",
-        early_stop=True,
-        patience=800,
+        tv_weight=1e-5,
+        lr_schedule="cosine",
+        match_metric="l2",
+        early_stop=False,
         priority=3,
     ))
     
@@ -221,11 +227,13 @@ def get_ablation_configs() -> List[ExperimentConfig]:
         batch_size=1,
         client_momentum=0.9,
         attack_source="gradients",
-        attack_optimizer="lbfgs",
-        attack_iterations=5000,
-        attack_restarts=3,
-        attack_lr=1.0,
-        tv_weight=1e-5,
+        attack_optimizer="adam",
+        attack_iterations=3000,
+        attack_restarts=2,
+        attack_lr=0.1,
+        tv_weight=1e-6,
+        lr_schedule="cosine",
+        match_metric="l2",
         early_stop=False,
         priority=4,
     ))
@@ -243,8 +251,9 @@ def get_ablation_configs() -> List[ExperimentConfig]:
         attack_iterations=2000,
         attack_restarts=2,
         attack_lr=0.1,
-        tv_weight=1e-3,
-        match_metric="both",
+        tv_weight=1e-4,
+        lr_schedule="cosine",
+        match_metric="l2",
         early_stop=True,
         patience=600,
         priority=5,
@@ -266,15 +275,14 @@ def get_quick_validation_config() -> ExperimentConfig:
         batch_size=1,
         client_momentum=0.0,
         attack_source="gradients",
-        attack_optimizer="adam",   # Adam is much faster for validation
-        attack_iterations=500,      # Fewer iterations for quick check
+        attack_optimizer="adam",
+        attack_iterations=1000,
         attack_restarts=1,
-        attack_lr=0.1,              # Lower LR for Adam
-        tv_weight=1e-4,
+        attack_lr=0.1,
+        tv_weight=1e-6,
         lr_schedule="cosine",
-        early_stop=True,
-        patience=200,
-        match_metric="both",
+        early_stop=False,
+        match_metric="l2",
         priority=-1,  # First
     )
 
