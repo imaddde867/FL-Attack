@@ -4,11 +4,11 @@ This project demonstrates how a standard federated learning baseline (no differe
 
 ## Attack/Signal Variants
 
-- One‑step update attack: reconstruct from a single local SGD step by approximating gradients as −Δ/η (server sees model deltas). Activate with `--attack-source one_step_update`.
-- Multi‑restarts + optimizer variants: randomized restarts, Adam or LBFGS, tunable TV weight and clamping to improve recon quality.
-- Batch‑size sensitivity: sweep `--batch-size` in {1, 2, 4, 8} to show sharp quality drop beyond 1.
-- Label leakage toggles: compare with/without iDLG label inference to isolate label leakage contribution (baseline uses iDLG‑style inference).
-- Aggregated signal (future): attempt from FedAvg‑aggregated updates (start with one local step, no momentum; approximate average grad via −Δavg/η).
+- One-step update attack: reconstruct from a single local SGD step by approximating gradients as −Δ/η (server sees model deltas). `--attack-source one_step_update`.
+- Aggregated-update attack: capture FedAvg delta and approximate gradients via −Δavg/η to mimic secure-aggregation vantage (`--attack-source agg_update`).
+- Multi-restarts + optimizer variants: randomized restarts, Adam or LBFGS, tunable TV weight/clamping.
+- Batch-size sensitivity: sweep `--batch-size` and `--attack-batch` (optimizing k dummy samples) to show degradation beyond batch size 1.
+- Label leakage toggles: iDLG (single-sample) vs soft-label optimization (`--label-strategy optimize`).
 
 ## FL/Training Controls
 
@@ -18,46 +18,51 @@ This project demonstrates how a standard federated learning baseline (no differe
 
 ## Measurement & Visualization
 
-- Metrics: MSE and PSNR are saved; SSIM/LPIPS can be added if needed.
-- Visuals: side‑by‑side original vs reconstruction saved per run.
+- Metrics: MSE, PSNR, SSIM, optional LPIPS (`--compute-lpips` adds it to metrics file).
+- Visuals: tiled grid (up to 4 samples) showing original vs reconstruction and predicted labels.
 - Failure modes: explore degradation vs batch size, momentum, epochs, augmentation.
 
 ## Reproducibility & UX
 
-- CLI‑driven runs: device, seeds, attack iterations/LR, TV weight, restarts, capture mode.
-- Artifacts: timestamped results folder with images and metrics.
+- CLI-driven runs: device, seeds, attack iterations/LR, TV weight, restarts, capture mode, attack batch, label strategy.
+- Artifact logging: timestamped results folder with images and metrics (CSV-friendly).
+- Sweep runner: `python scripts/sweep_baseline.py` sweeps batch sizes × momenta × attack sources, writes `sweep_summary.csv`, and auto-plots the requested metric per momentum setting.
 - Config snapshots (future): dump full args/env for exact repro.
-- Experiment sweeps (future): small matrix runner to produce summary plots.
 
 ## Model/Architecture Levers
 
 - Pooling/BN toggles: AvgPool vs MaxPool, with/without BatchNorm/Dropout to test sensitivity.
 - Datasets: CIFAR‑10 (current), consider MNIST (easier) and Tiny‑ImageNet (scale).
 
-## What’s Implemented Now
-
-- CLI for experiments, output dirs, and seeds (`run_experiment.py`).
-- Capture modes: raw `gradients` and `one_step_update` (grads ≈ −Δ/η) (`fl_system.py`, `gradient_attack.py`).
-- Multi‑restarts, Adam/LBFGS, tunable TV/clamp (`gradient_attack.py`).
-- Client optimizer/epochs and augmentation toggles (`fl_system.py`, `run_experiment.py`).
-- Results and metrics saved under `results/<timestamp>/` (`run_experiment.py`).
+- CLI for experiments, output dirs, seeds, attack batch, label strategy (`run_experiment.py`).
+- Capture modes: raw `gradients`, `one_step_update`, and aggregated update (FedAvg delta) with metadata capture for comparisons (`fl_system.py`).
+- Gradient attacker: multi-restarts, Adam/LBFGS, tunable TV/clamp, batch>1 reconstruction with soft-label optimization (`gradient_attack.py`).
+- Metrics: MSE/PSNR/SSIM (+ optional LPIPS), label-match rate, tiled visualizations, timestamped artifacts (`run_experiment.py`).
+- Sweep script for batch size × momentum × attack-source matrices (`scripts/sweep_baseline.py`).
 
 ## Quick Usage
 
 - Baseline (batch size 1, gradients, Adam, TV):
   - `python run_experiment.py --batch-size 1 --attack-iterations 2000 --attack-restarts 3 --tv-weight 0.001 --attack-optimizer adam`
-- One‑step update attack (no momentum, single epoch):
+- One-step update attack (no momentum, single epoch):
   - `python run_experiment.py --attack-source one_step_update --client-momentum 0.0 --local-epochs 1`
+- Aggregated-update attack (FedAvg delta, metadata from client 0):
+  - `python run_experiment.py --attack-source agg_update --capture-client 0 --client-momentum 0.0 --local-epochs 1`
+- Batch>1 reconstruction (optimize labels):
+  - `python run_experiment.py --attack-batch 2 --label-strategy optimize --attack-iterations 4000`
 - Show augmentation impact:
-  - `python run_experiment.py --no-augment --batch-size 1`
+  - `python run_experiment.py --no-augment`
 - Stress with larger batch sizes:
   - `python run_experiment.py --batch-size 4 --attack-iterations 4000 --attack-restarts 5`
+- Sweep + plots (MSE vs batch size for each momentum):
+  - `python scripts/sweep_baseline.py --batch-sizes 1 2 4 --momenta 0.0 0.9 --plot-metric MSE`
 
 ## Outputs
 
-- Saved under `results/<timestamp>/`:
-  - `baseline_attack_result.png` — original vs reconstructed image
-  - `metrics.txt` — MSE, PSNR, label‑match flag
+- Saved under `results/<timestamp>/` (or your `--out-dir`):
+  - `baseline_attack_result.png` — tiled original vs reconstructed samples
+  - `metrics.txt` — MSE, PSNR, SSIM, optional LPIPS, label-match rate (if labels known)
+  - `sweep_summary.csv` (from sweeper) — aggregated metrics per configuration
 
 ## Requirements
 

@@ -121,9 +121,10 @@ class FederatedLearningSystem:
     def train_client(self, client_id, epochs=None, capture=False, capture_mode='gradients'):
         """Train a single client and optionally capture attack source.
 
-        capture_mode: 'gradients' captures per-parameter gradients on first batch.
-                      'one_step_update' captures the model delta after one optimizer step
-                      on the first batch and records the optimizer lr for inversion.
+        capture_mode options:
+            'gradients'        -> store gradients of first batch
+            'one_step_update'  -> store model delta after first optimizer step
+            'metadata'         -> store raw data/label only (used for agg. attacks)
         """
         # Clone global model for local training
         local_model = copy.deepcopy(self.global_model)
@@ -152,8 +153,8 @@ class FederatedLearningSystem:
                         captured_data = {
                             'source': 'gradients',
                             'gradients': [p.grad.clone() for p in local_model.parameters()],
-                            'true_data': data[0:1].clone(),  # First image
-                            'true_label': target[0:1].clone(),
+                            'true_data': data.detach().cpu().clone(),
+                            'true_label': target.detach().cpu().clone(),
                         }
                     elif capture_mode == 'one_step_update':
                         # Snapshot params before step
@@ -166,14 +167,22 @@ class FederatedLearningSystem:
                             'source': 'one_step_update',
                             'first_update': deltas,
                             'opt_lr': self.client_lr,
-                            'true_data': data[0:1].clone(),
-                            'true_label': target[0:1].clone(),
+                            'true_data': data.detach().cpu().clone(),
+                            'true_label': target.detach().cpu().clone(),
                         }
                         # After capturing one-step update, continue training with remaining batches
                         # Skip the usual optimizer.step() below for this batch since it's already applied.
                         continue
                     else:
-                        raise ValueError(f"Unknown capture_mode: {capture_mode}")
+                        # Metadata capture retains the victim batch without gradients
+                        if capture_mode == 'metadata':
+                            captured_data = {
+                                'source': 'metadata',
+                                'true_data': data.detach().cpu().clone(),
+                                'true_label': target.detach().cpu().clone(),
+                            }
+                        else:
+                            raise ValueError(f"Unknown capture_mode: {capture_mode}")
                 
                 optimizer.step()
         
@@ -187,7 +196,7 @@ class FederatedLearningSystem:
         
         return update, captured_data
     
-    def aggregate_updates(self, updates):
+    def aggregate_updates(self, updates, return_update=False):
         """FedAvg aggregation"""
         # Average all updates
         avg_update = OrderedDict()
@@ -201,6 +210,9 @@ class FederatedLearningSystem:
                 avg_update.keys()
             ):
                 param.data += avg_update[key]
+
+        if return_update:
+            return avg_update
     
     def evaluate(self):
         """Evaluate global model on test set"""
@@ -223,6 +235,7 @@ class FederatedLearningSystem:
         """Execute one federated learning round"""
         updates = []
         captured_data = None
+        captured_metadata = None
         
         # Train subset of clients (e.g., 5 out of 10)
         num_participants = max(1, self.num_clients // 2)
@@ -230,16 +243,34 @@ class FederatedLearningSystem:
         
         for client_id in participants:
             capture = (capture_from_client is not None and client_id == capture_from_client)
+            current_mode = capture_mode
+            if capture_mode == 'agg_update':
+                current_mode = 'metadata'
             update, client_data = self.train_client(
-                client_id, epochs=None, capture=capture, capture_mode=capture_mode
+                client_id, epochs=None, capture=capture, capture_mode=current_mode
             )
             updates.append(update)
             
             if client_data is not None:
-                captured_data = client_data
+                if client_data.get('source') == 'metadata':
+                    captured_metadata = client_data
+                else:
+                    captured_data = client_data
         
         # Aggregate updates
-        self.aggregate_updates(updates)
+        return_update = (capture_mode == 'agg_update')
+        avg_update = self.aggregate_updates(updates, return_update=return_update)
+
+        if capture_mode == 'agg_update' and avg_update is not None:
+            captured_data = {
+                'source': 'agg_update',
+                'avg_update': [avg_update[key].clone() for key in avg_update.keys()],
+                'param_names': list(avg_update.keys()),
+                'opt_lr': self.client_lr,
+            }
+            if captured_metadata is not None:
+                captured_data['true_data'] = captured_metadata['true_data']
+                captured_data['true_label'] = captured_metadata['true_label']
         
         # Evaluate
         accuracy = self.evaluate()

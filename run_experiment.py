@@ -1,6 +1,7 @@
 import argparse
 import datetime as _dt
 import os
+from typing import Optional
 
 import torch
 import torch.nn.functional as F
@@ -10,12 +11,59 @@ import numpy as np
 from fl_system import FederatedLearningSystem
 from gradient_attack import GradientInversionAttack
 
+
 def denormalize_cifar10(tensor):
     """Denormalize CIFAR-10 image for visualization"""
     mean = torch.tensor([0.4914, 0.4822, 0.4465]).view(3, 1, 1)
     std = torch.tensor([0.2470, 0.2435, 0.2616]).view(3, 1, 1)
-    # Tensor is (C, H, W)
     return tensor * std + mean
+
+
+def compute_simple_ssim(pred, target, data_range=4.0):
+    dims = list(range(1, pred.ndim))
+    mu_x = pred.mean(dim=dims)
+    mu_y = target.mean(dim=dims)
+    sigma_x = pred.var(dim=dims, unbiased=False)
+    sigma_y = target.var(dim=dims, unbiased=False)
+    sigma_xy = ((pred - mu_x.view(-1, *([1] * (pred.ndim - 1)))) *
+                (target - mu_y.view(-1, *([1] * (target.ndim - 1))))).mean(dim=dims)
+    C1 = (0.01 * data_range) ** 2
+    C2 = (0.03 * data_range) ** 2
+    ssim = ((2 * mu_x * mu_y + C1) * (2 * sigma_xy + C2)) /
+           ((mu_x ** 2 + mu_y ** 2 + C1) * (sigma_x + sigma_y + C2))
+    return ssim.mean().item()
+
+
+def maybe_init_lpips(device, enabled):
+    if not enabled:
+        return None
+    try:
+        import lpips  # type: ignore
+    except ImportError:
+        print("[WARN] LPIPS requested but package is not installed. Skipping LPIPS metric.")
+        return None
+    model = lpips.LPIPS(net='alex').to(device)
+    model.eval()
+    return model
+
+
+def compute_metrics(pred, target, compute_lpips=False, lpips_model=None):
+    metrics = {}
+    mse = F.mse_loss(pred, target).item()
+    metrics['MSE'] = mse
+    max_range = 4.0  # approx range of normalized CIFAR-10 tensors
+    metrics['PSNR'] = 10 * np.log10((max_range ** 2) / max(mse, 1e-12))
+    metrics['SSIM'] = compute_simple_ssim(pred, target, data_range=max_range)
+    if compute_lpips:
+        if lpips_model is None:
+            metrics['LPIPS'] = float('nan')
+        else:
+            with torch.no_grad():
+                pred_lp = torch.clamp(pred / 2.0, -1, 1)
+                target_lp = torch.clamp(target / 2.0, -1, 1)
+                score = lpips_model(pred_lp, target_lp)
+                metrics['LPIPS'] = score.mean().item()
+    return metrics
 
 def run_baseline_experiment(args):
     """
@@ -36,6 +84,7 @@ def run_baseline_experiment(args):
         else:
             device = 'cpu'
     print(f"Using device: {device}")
+    lpips_model = maybe_init_lpips(device, args.compute_lpips)
     
     # Initialize FL system
     # Use batch_size=1 to showcase a successful DLG attack
@@ -73,7 +122,12 @@ def run_baseline_experiment(args):
         
         if round_data is not None:
             captured_data = round_data
-            print(f"  -> Gradients captured from client {capture_client}!")
+            src = round_data.get('source', args.attack_source)
+            if src == 'agg_update':
+                print("  -> Captured aggregated update for this round.")
+            else:
+                victim = capture_client if capture_client is not None else 'unknown'
+                print(f"  -> Captured {src} from client {victim}!")
     
     print("\n" + "="*60)
     print("Phase 2: Gradient Inversion Attack...")
@@ -84,17 +138,31 @@ def run_baseline_experiment(args):
         return
     
     # Perform attack
-    attacker = GradientInversionAttack(fl_system.global_model, device=device)
+    attacker = GradientInversionAttack(
+        fl_system.global_model, device=device, num_classes=fl_system.num_classes
+    )
 
     print("Reconstructing image from captured signal...")
-    if captured_data.get('source') == 'one_step_update' or args.attack_source == 'one_step_update':
+    source = captured_data.get('source', args.attack_source)
+    if source == 'one_step_update':
         grads = attacker.gradients_from_one_step_update(
             captured_data['first_update'], captured_data['opt_lr']
+        )
+    elif source == 'agg_update':
+        grads = attacker.gradients_from_avg_update(
+            captured_data['avg_update'], captured_data['opt_lr']
         )
     else:
         grads = captured_data['gradients']
 
-    reconstructed, inferred_label = attacker.reconstruct_best_of_restarts(
+    label_strategy = args.label_strategy
+    if label_strategy == 'auto':
+        if args.attack_batch == 1 and source != 'agg_update':
+            label_strategy = 'idlg'
+        else:
+            label_strategy = 'optimize'
+
+    reconstructed, inferred_labels = attacker.reconstruct_best_of_restarts(
         grads,
         restarts=args.attack_restarts,
         base_seed=args.seed,
@@ -102,6 +170,8 @@ def run_baseline_experiment(args):
         lr=args.attack_lr,
         tv_weight=args.tv_weight,
         optimizer_type=args.attack_optimizer,
+        batch_size=args.attack_batch,
+        label_strategy=label_strategy,
     )
     
     # Visualize results
@@ -114,45 +184,80 @@ def run_baseline_experiment(args):
 
     out_path = os.path.join(out_dir, 'baseline_attack_result.png')
     print(f"Saving result to '{out_path}'...")
-    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-    
-    # True image
-    # Move to cpu for visualization
-    true_img_tensor = captured_data['true_data'][0].cpu()
-    true_img = denormalize_cifar10(true_img_tensor)
-    axes[0].imshow(true_img.permute(1, 2, 0).clamp(0, 1))
-    axes[0].set_title(f"Original Image\nTrue Label: {captured_data['true_label'].item()}")
-    axes[0].axis('off')
-    
-    # Reconstructed image
-    recon_img_tensor = reconstructed[0].cpu()
-    recon_img = denormalize_cifar10(recon_img_tensor)
-    axes[1].imshow(recon_img.permute(1, 2, 0).clamp(0, 1))
-    axes[1].set_title(f"Reconstructed Image\nInferred Label: {inferred_label.item()}")
-    axes[1].axis('off')
-    
+
+    recon_batch = reconstructed.detach().cpu()
+    raw_true_data = captured_data.get('true_data')
+    true_batch_tensor = None
+    viz_true_batch = None
+    if raw_true_data is not None:
+        true_batch_tensor = raw_true_data[:recon_batch.size(0)]
+        viz_true_batch = true_batch_tensor.detach().cpu()
+    true_labels = captured_data.get('true_label')
+    if true_labels is not None:
+        true_labels = true_labels[:recon_batch.size(0)]
+        true_labels_cpu = true_labels.detach().cpu()
+    else:
+        true_labels_cpu = None
+    num_show = min(recon_batch.size(0), max(1, min(args.attack_batch, 4)))
+    pred_labels_cpu = inferred_labels.detach().cpu()
+
+    if viz_true_batch is not None:
+        fig, axes = plt.subplots(2, num_show, figsize=(num_show * 3, 6))
+    else:
+        fig, axes = plt.subplots(1, num_show, figsize=(num_show * 3, 3))
+
+    axes = np.array(axes).reshape(-1)
+
+    for idx in range(num_show):
+        recon_img = denormalize_cifar10(recon_batch[idx])
+        if viz_true_batch is not None:
+            true_img = denormalize_cifar10(viz_true_batch[idx])
+            axes[idx].imshow(true_img.permute(1, 2, 0).clamp(0, 1))
+            if true_labels_cpu is not None:
+                label_text = true_labels_cpu[idx].item()
+            else:
+                label_text = 'N/A'
+            axes[idx].set_title(f"Original #{idx}\nLabel: {label_text}")
+            axes[idx].axis('off')
+            axes[num_show + idx].imshow(recon_img.permute(1, 2, 0).clamp(0, 1))
+            axes[num_show + idx].set_title(
+                f"Recon #{idx}\nPred: {pred_labels_cpu[idx].item()}"
+            )
+            axes[num_show + idx].axis('off')
+        else:
+            axes[idx].imshow(recon_img.permute(1, 2, 0).clamp(0, 1))
+            axes[idx].set_title(f"Recon #{idx}\nPred: {pred_labels_cpu[idx].item()}")
+            axes[idx].axis('off')
+
     plt.tight_layout()
     plt.savefig(out_path, dpi=150, bbox_inches='tight')
     print("Result saved.")
     
-    # Compute similarity metrics
-    # Calculate MSE on normalized tensors
-    mse = F.mse_loss(reconstructed, captured_data['true_data']).item()
-    
-    # Range of normalized data is approx [-2, 2], so span is 4. MAX^2 = 16.
-    psnr = 10 * np.log10(16 / mse)
-    
-    results_txt = os.path.join(out_dir, 'metrics.txt')
-    label_match = inferred_label.item() == captured_data['true_label'].item()
-    with open(results_txt, 'w') as f:
-        f.write(f"MSE: {mse:.6f}\n")
-        f.write(f"PSNR: {psnr:.4f} dB\n")
-        f.write(f"LabelMatch: {label_match}\n")
-    print(f"\nAttack Results:")
-    print(f"  MSE: {mse:.4f}")
-    print(f"  PSNR: {psnr:.2f} dB")
-    print(f"  Label Match: {label_match}")
-    print(f"  Saved metrics: {results_txt}")
+    metrics_txt = os.path.join(out_dir, 'metrics.txt')
+    print("\nAttack Results:")
+    label_match = None
+    if true_batch_tensor is not None:
+        target_tensor = true_batch_tensor.to(reconstructed.device)
+        metrics = compute_metrics(
+            reconstructed, target_tensor,
+            compute_lpips=args.compute_lpips,
+            lpips_model=lpips_model,
+        )
+        if true_labels is not None:
+            compare_true = true_labels
+            pred_labels = inferred_labels[:compare_true.size(0)]
+            label_match = (pred_labels.cpu() == compare_true.cpu()).float().mean().item()
+            metrics['LabelMatch'] = label_match
+    else:
+        metrics = {'info': 'No ground truth available to compute metrics.'}
+
+    with open(metrics_txt, 'w') as f:
+        for key, value in metrics.items():
+            f.write(f"{key}: {value}\n")
+
+    for key, value in metrics.items():
+        print(f"  {key}: {value}")
+    print(f"  Saved metrics: {metrics_txt}")
 
 def _parse_args():
     p = argparse.ArgumentParser(description="Baseline FL + Gradient Attack R&D Runner")
@@ -174,7 +279,8 @@ def _parse_args():
     # Capture config
     p.add_argument('--capture-client', type=int, default=0)
     p.add_argument('--capture-round', type=int, default=None, help='If None, captures last round')
-    p.add_argument('--attack-source', type=str, default='gradients', choices=['gradients','one_step_update'])
+    p.add_argument('--attack-source', type=str, default='gradients',
+                   choices=['gradients','one_step_update','agg_update'])
 
     # Attack config
     p.add_argument('--attack-iterations', type=int, default=2000)
@@ -182,6 +288,9 @@ def _parse_args():
     p.add_argument('--tv-weight', type=float, default=0.001)
     p.add_argument('--attack-optimizer', type=str, default='adam', choices=['adam','lbfgs'])
     p.add_argument('--attack-restarts', type=int, default=1)
+    p.add_argument('--attack-batch', type=int, default=1)
+    p.add_argument('--label-strategy', type=str, default='auto', choices=['auto','idlg','optimize'])
+    p.add_argument('--compute-lpips', action='store_true')
 
     return p.parse_args()
 
