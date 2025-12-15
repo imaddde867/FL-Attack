@@ -8,24 +8,28 @@ import numpy as np
 import copy
 
 class SimpleCNN(nn.Module):
-    """Lightweight CNN for CIFAR-10"""
-    def __init__(self, num_classes=10):
+    """Lightweight CNN for CelebA (64x64)"""
+    def __init__(self, num_classes=8192):
+        """
+        num_classes: number of identities you want to model.
+                     CelebA has 10,177 identities; you can use a subset.
+        """
         super().__init__()
         self.features = nn.Sequential(
             nn.Conv2d(3, 32, 3, padding=1),
             nn.ReLU(),
-            nn.AvgPool2d(2),  # Use AvgPool2d for gradient inversion compatibility
+            nn.AvgPool2d(2),   # 64 -> 32
             nn.Conv2d(32, 64, 3, padding=1),
             nn.ReLU(),
-            nn.AvgPool2d(2),  # Use AvgPool2d for gradient inversion compatibility
+            nn.AvgPool2d(2),   # 32 -> 16
         )
         self.classifier = nn.Sequential(
-            nn.Linear(64 * 8 * 8, 128),
+            nn.Linear(64 * 16 * 16, 128),  # adapted for 64x64 input
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(128, num_classes)
+            nn.Linear(128, num_classes),
         )
-    
+
     def forward(self, x):
         x = self.features(x)
         x = x.view(x.size(0), -1)
