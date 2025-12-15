@@ -170,9 +170,10 @@ class GradientInversionAttack:
                 cur_loss = step_once().item()
                 optimizer.step()
 
-            # Cosine LR schedule (for Adam)
+            # Cosine LR schedule (for Adam) with warmup
             if lr_schedule and lr_schedule.lower() == 'cosine' and not isinstance(optimizer, torch.optim.LBFGS):
-                _set_lr_cosine(optimizer, base_lr=lr, t=iteration + 1, T=num_iterations)
+                warmup_iters = min(100, num_iterations // 10)
+                _set_lr_cosine(optimizer, base_lr=lr, t=iteration + 1, T=num_iterations, warmup=warmup_iters)
 
             # Clamp to valid image range
             with torch.no_grad():
@@ -454,6 +455,15 @@ def _cosine_loss(a, b, eps=1e-8):
 def gradient_matching_loss(dummy_grads, target_grads,
                            use_layers=None, select_by_name=None, param_names=None,
                            layer_weights=None, metric='l2', l2_weight=1.0, cos_weight=1.0):
+    """
+    Compute gradient matching loss.
+    
+    Metrics:
+    - 'l2': Standard L2 distance (sum of squared differences)
+    - 'cosine': Cosine distance (1 - cosine_similarity)
+    - 'both': Weighted combination of L2 and cosine
+    - 'sim': InvertingGradients-style: 1 - cos_sim (normalized per layer, then summed)
+    """
     L = len(target_grads)
     idxs = _resolve_layer_indices(L, use_layers, select_by_name, param_names)
     ws = _prepare_layer_weights(idxs, layer_weights, target_grads)
@@ -463,12 +473,22 @@ def gradient_matching_loss(dummy_grads, target_grads,
         tg = target_grads[i]
         if metric == 'cosine':
             loss_i = _cosine_loss(dg, tg)
+        elif metric == 'sim':
+            # InvertingGradients style: pairwise cosine per layer
+            loss_i = 1.0 - _pairwise_cosine_similarity(dg, tg)
         elif metric == 'both':
             loss_i = l2_weight * ((dg - tg) ** 2).sum() + cos_weight * _cosine_loss(dg, tg)
         else:
             loss_i = ((dg - tg) ** 2).sum()
         total = w * loss_i if total is None else total + w * loss_i
     return total
+
+
+def _pairwise_cosine_similarity(a, b, eps=1e-8):
+    """Compute cosine similarity between flattened tensors."""
+    a_flat = a.reshape(-1)
+    b_flat = b.reshape(-1)
+    return torch.nn.functional.cosine_similarity(a_flat.unsqueeze(0), b_flat.unsqueeze(0), eps=eps)
 
 
 # ---- Utilities for presets, scheduling, and initialization ----
@@ -489,10 +509,17 @@ def _apply_preset(tv_weight, clamp_min, clamp_max, preset):
     return cfg['tv'], tmin, tmax
 
 
-def _set_lr_cosine(optimizer, base_lr, t, T):
-    lr = base_lr * 0.5 * (1 + math.cos(math.pi * min(t, T) / T))
+def _set_lr_cosine(optimizer, base_lr, t, T, warmup=0):
+    """Cosine annealing with optional warmup."""
+    if t < warmup:
+        # Linear warmup
+        lr = base_lr * (t + 1) / (warmup + 1)
+    else:
+        # Cosine decay after warmup
+        progress = (t - warmup) / max(T - warmup, 1)
+        lr = base_lr * 0.5 * (1 + math.cos(math.pi * min(progress, 1.0)))
     for pg in optimizer.param_groups:
-        pg['lr'] = lr
+        pg['lr'] = max(lr, base_lr * 0.01)  # Keep minimum LR at 1% of base
 
 
 def fourier_init(shape, device=None, decay_power=1.5, std=0.1):

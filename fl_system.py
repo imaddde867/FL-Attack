@@ -1,22 +1,79 @@
 import copy
+import csv
+import os
 from collections import OrderedDict
 
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, Subset
+from PIL import Image
+from torch.utils.data import DataLoader, Dataset, Subset
 import torchvision.transforms as transforms
-from torchvision.datasets import CelebA
 
 from device_utils import resolve_device
-from Differential_privacy import gaussian_sigma_for_dp, aggregate_clipped_noisy
 
-from homomorphic_encryptor import HomomorphicEncryptor  # your HE module
+
+class CelebAAttributeDataset(Dataset):
+    """Minimal CelebA loader using CSV metadata (Male attribute by default)."""
+    SPLIT_MAP = {'train': 0, 'valid': 1, 'test': 2}
+
+    def __init__(self, root='./data', split='train', transform=None, target_attr='Male'):
+        self.root = root
+        self.split = split
+        self.transform = transform
+        self.target_attr = target_attr
+        base_img_dir = os.path.join(root, 'img_align_celeba')
+        nested_dir = os.path.join(base_img_dir, 'img_align_celeba')
+        self.img_dir = nested_dir if os.path.isdir(nested_dir) else base_img_dir
+        self.attr_path = os.path.join(root, 'list_attr_celeba.csv')
+        self.partition_path = os.path.join(root, 'list_eval_partition.csv')
+        if not os.path.isdir(self.img_dir):
+            raise RuntimeError(f"CelebA images not found at '{self.img_dir}'.")
+        for required in (self.attr_path, self.partition_path):
+            if not os.path.exists(required):
+                raise RuntimeError(f"Required CelebA metadata file '{required}' not found.")
+        self.labels = self._load_labels()
+        split_id = self.SPLIT_MAP.get(split, None)
+        if split_id is None:
+            raise ValueError(f"Unsupported split '{split}'. Choose from {list(self.SPLIT_MAP.keys())}.")
+        self.filenames = self._load_split_indices(split_id)
+
+    def _load_labels(self):
+        labels = {}
+        with open(self.attr_path, newline='') as csv_file:
+            reader = csv.DictReader(csv_file)
+            for row in reader:
+                val = row[self.target_attr].strip()
+                labels[row['image_id']] = 1 if val == '1' else 0
+        return labels
+
+    def _load_split_indices(self, split_id):
+        filenames = []
+        with open(self.partition_path, newline='') as csv_file:
+            reader = csv.DictReader(csv_file)
+            for row in reader:
+                if int(row['partition']) == split_id:
+                    fname = row['image_id']
+                    if fname in self.labels:
+                        filenames.append(fname)
+        return filenames
+
+    def __len__(self):
+        return len(self.filenames)
+
+    def __getitem__(self, index):
+        fname = self.filenames[index]
+        img_path = os.path.join(self.img_dir, fname)
+        image = Image.open(img_path).convert('RGB')
+        if self.transform is not None:
+            image = self.transform(image)
+        label = self.labels[fname]
+        return image, label
 
 
 class SimpleCNN(nn.Module):
     """LeNet-style CNN sized for 64x64 CelebA crops."""
-    def __init__(self, num_classes=8192):
+    def __init__(self, num_classes=2):
         super().__init__()
         self.features = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=3, padding=1),
@@ -46,7 +103,7 @@ class FederatedLearningSystem:
     def __init__(
         self,
         num_clients=10,
-        num_classes=8192,
+        num_classes=2,
         batch_size=64,
         data_subset=None,
         device=None,
@@ -54,9 +111,7 @@ class FederatedLearningSystem:
         client_momentum=0.9,
         local_epochs=1,
         augment=True,
-        use_he=False,
-        he_bits=256,
-        he_precision=1_000_000,
+        target_attr='Male',
     ):
         self.num_clients = num_clients
         self.num_classes = num_classes
@@ -67,11 +122,9 @@ class FederatedLearningSystem:
         self.client_momentum = client_momentum
         self.local_epochs = local_epochs
         self.augment = augment
-
-        self.use_he = use_he
-        self.encryptor = None
-        if self.use_he:
-            self.encryptor = HomomorphicEncryptor(bits=he_bits, precision=he_precision)
+        self.target_attr = target_attr
+        self.channel_mean = (0.5, 0.5, 0.5)
+        self.channel_std = (0.5, 0.5, 0.5)
 
         self.global_model = SimpleCNN(num_classes).to(self.device)
 
@@ -106,19 +159,18 @@ class FederatedLearningSystem:
                                  (0.5, 0.5, 0.5)),
         ])
 
-        train_data = CelebA(
-            root="./data",
+        dataset_root = "./data"
+        train_data = CelebAAttributeDataset(
+            root=dataset_root,
             split="train",
-            target_type="identity",
             transform=transform_train,
-            download=True,
+            target_attr=self.target_attr,
         )
-        test_data = CelebA(
-            root="./data",
+        test_data = CelebAAttributeDataset(
+            root=dataset_root,
             split="valid",
-            target_type="identity",
             transform=transform_test,
-            download=True,
+            target_attr=self.target_attr,
         )
 
         if self.data_subset:
@@ -210,48 +262,19 @@ class FederatedLearningSystem:
         return update, captured_data
 
     def aggregate_updates(self, updates, return_update=False):
-        """FedAvg aggregation.
-
-        If use_he is True: homomorphic sum on flattened updates (no DP).
-        Else: central DP via Gaussian mechanism on flattened updates.
-        """
-        param_names = list(updates[0].keys())
-        flat_updates = []
-
-        for upd in updates:
-            flat_updates.append(
-                torch.cat([upd[name].view(-1) for name in param_names]).cpu().numpy()
-            )
-
-        if self.use_he:
-            enc_vectors = []
-            for vec in flat_updates:
-                vals = vec.astype(np.float64).tolist()
-                enc_vec = self.encryptor.encrypt_vector(vals)
-                enc_vectors.append(enc_vec)
-
-            enc_sum = self.encryptor.aggregate_encrypted_vectors(enc_vectors)
-            sum_vals = self.encryptor.decrypt_vector(enc_sum)
-            flat_avg = (np.array(sum_vals, dtype=np.float32) / len(flat_updates))
-        else:
-            clip_norm = 1.0
-            eps, delta = 1.0, 1e-5
-            sigma_sum = gaussian_sigma_for_dp(clip_norm, eps, delta)
-            flat_avg = aggregate_clipped_noisy(
-                flat_updates, clip_norm=clip_norm, sigma_sum=sigma_sum, rng_seed=None
-            )
-
-        flat_tensor = torch.from_numpy(flat_avg).to(self.device)
+        """FedAvg aggregation - simple averaging of client updates."""
+        # Average all updates
         avg_update = OrderedDict()
-        offset = 0
-        for name, param in self.global_model.named_parameters():
-            numel = param.numel()
-            avg_update[name] = flat_tensor[offset:offset + numel].view_as(param)
-            offset += numel
+        for key in updates[0].keys():
+            avg_update[key] = torch.stack([u[key] for u in updates]).mean(0)
 
+        # Apply to global model
         with torch.no_grad():
-            for name, param in self.global_model.named_parameters():
-                param.data += avg_update[name]
+            for (name, param), key in zip(
+                self.global_model.named_parameters(),
+                avg_update.keys()
+            ):
+                param.data += avg_update[key]
 
         if return_update:
             return avg_update

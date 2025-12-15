@@ -350,7 +350,7 @@ def _parse_args():
     p.add_argument('--min-delta', type=float, default=1e-4)
     p.add_argument('--fft-init', action='store_true')
     p.add_argument('--preset', type=str, default=None)
-    p.add_argument('--match-metric', type=str, default='l2', choices=['l2','cosine','both'])
+    p.add_argument('--match-metric', type=str, default='l2', choices=['l2','cosine','both','sim'])
     p.add_argument('--l2-weight', type=float, default=1.0)
     p.add_argument('--cos-weight', type=float, default=1.0)
     p.add_argument('--use-layers', type=int, nargs='+', default=None, help='Indices of layers to match')

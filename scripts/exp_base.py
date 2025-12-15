@@ -106,21 +106,19 @@ class ExperimentConfig:
 
 def get_showcase_config() -> ExperimentConfig:
     """
-    High-quality showcase configuration.
+    Ultra high-quality showcase configuration.
     
     KEY SETTINGS FOR BEST VISUAL QUALITY:
-    - num_rounds=1, capture_round=0: Attack untrained model (gradients leak most)
-    - Adam optimizer with high LR: Fast and effective for gradient inversion
-    - Low TV weight (1e-6): Avoid over-smoothing that causes blur
-    - Many iterations (5000): Allow full convergence
-    - Multiple restarts: Best of 3 random initializations
-    
-    Note: LBFGS is theoretically better but extremely slow on MPS.
-    Adam with proper tuning achieves similar quality much faster.
+    - num_rounds=1, capture_round=0: Attack untrained model (maximum leakage)
+    - L2 loss with auto layer weights: Proven to work well
+    - Moderate LR (0.1) with cosine annealing + warmup
+    - Many restarts (15): Find global minimum across initializations
+    - Very long iterations (10000): Full convergence to minimum
+    - Tiny TV (1e-6): Just enough smoothing to avoid noise
     """
     return ExperimentConfig(
         name="showcase_best",
-        description="High-quality baseline attack - optimal settings for visual results",
+        description="Ultra high-quality baseline attack - maximum vulnerability demo",
         # CRITICAL: Attack untrained model for maximum gradient leakage
         num_rounds=1,
         capture_round=0,
@@ -128,18 +126,18 @@ def get_showcase_config() -> ExperimentConfig:
         batch_size=1,           # Critical: single sample for iDLG
         client_momentum=0.0,    # No momentum = clean gradients
         attack_source="gradients",  # Direct gradients (most information)
-        # Attack settings optimized for quality + speed on MPS
-        attack_iterations=5000,     # Enough for convergence
-        attack_restarts=3,          # Multiple restarts for robustness
-        attack_optimizer="adam",    # Adam is fast and works well
-        attack_lr=0.1,              # Good LR for Adam
-        tv_weight=1e-6,             # Very low TV to preserve details
-        lr_schedule="cosine",       # Cosine annealing helps Adam converge
-        early_stop=False,           # Run to completion for best quality
-        preset="none",              # No clamping preset
-        match_metric="l2",          # Pure L2 works well
-        layer_weights="auto",       # Inverse-norm weighting
-        fft_init=False,             # Random init
+        # Ultra-aggressive attack settings
+        attack_iterations=10000,    # Very long run for full convergence
+        attack_restarts=15,         # Many restarts to find global minimum
+        attack_optimizer="adam",
+        attack_lr=0.1,              # Stable LR for Adam
+        tv_weight=1e-6,             # Tiny TV for smoothing
+        lr_schedule="cosine",       # Cosine with warmup
+        early_stop=False,           # Run to completion
+        preset="none",
+        match_metric="l2",          # L2 is stable and works well
+        layer_weights="auto",
+        fft_init=False,
         is_showcase=True,
         priority=0,
     )
@@ -263,27 +261,24 @@ def get_ablation_configs() -> List[ExperimentConfig]:
 
 
 def get_quick_validation_config() -> ExperimentConfig:
-    """Quick validation to ensure everything works before long runs.
-    
-    Uses Adam (faster than LBFGS) with fewer iterations for quick feedback.
-    """
+    """Quick validation to ensure everything works before long runs."""
     return ExperimentConfig(
         name="validation_quick",
-        description="Quick validation run - sanity check (should get PSNR > 20)",
+        description="Quick validation run",
         num_rounds=1,
         capture_round=0,
         batch_size=1,
         client_momentum=0.0,
         attack_source="gradients",
         attack_optimizer="adam",
-        attack_iterations=1000,
-        attack_restarts=1,
+        attack_iterations=3000,
+        attack_restarts=5,
         attack_lr=0.1,
-        tv_weight=1e-6,
+        tv_weight=1e-4,             # Slightly higher TV
         lr_schedule="cosine",
         early_stop=False,
-        match_metric="l2",
-        priority=-1,  # First
+        match_metric="sim",         # InvertingGradients style
+        priority=-1,
     )
 
 
