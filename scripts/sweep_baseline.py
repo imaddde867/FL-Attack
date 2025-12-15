@@ -31,6 +31,21 @@ def parse_args():
     parser.add_argument('--tv-weight', type=float, default=0.001)
     parser.add_argument('--attack-restarts', type=int, default=1)
     parser.add_argument('--label-strategy', type=str, default='auto')
+    # Enhancements
+    parser.add_argument('--lr-schedule', type=str, default='cosine')
+    parser.add_argument('--early-stop', action='store_true')
+    parser.add_argument('--patience', type=int, default=600)
+    parser.add_argument('--min-delta', type=float, default=1e-4)
+    parser.add_argument('--fft-init', action='store_true')
+    parser.add_argument('--preset', type=str, default='soft')
+    parser.add_argument('--match-metric', type=str, default='both')
+    parser.add_argument('--l2-weight', type=float, default=1e-2)
+    parser.add_argument('--cos-weight', type=float, default=1.0)
+    parser.add_argument('--use-layers', type=int, nargs='+', default=None)
+    parser.add_argument('--select-by-name', type=str, nargs='+', default=None)
+    parser.add_argument('--layer-weights', type=str, default='auto')
+    parser.add_argument('--compute-lpips', action='store_true')
+    parser.add_argument('--no-heatmap', action='store_true')
     parser.add_argument('--device', type=str, default=None)
     parser.add_argument('--no-augment', action='store_true')
     parser.add_argument('--dry-run', action='store_true')
@@ -83,6 +98,14 @@ def main():
             '--attack-restarts', str(args.attack_restarts),
             '--label-strategy', args.label_strategy,
             '--out-dir', str(run_dir),
+            '--save-config',
+            '--lr-schedule', args.lr_schedule,
+            '--patience', str(args.patience),
+            '--min-delta', str(args.min_delta),
+            '--preset', str(args.preset),
+            '--match-metric', args.match_metric,
+            '--l2-weight', str(args.l2_weight),
+            '--cos-weight', str(args.cos_weight),
         ]
 
         if args.capture_round is not None:
@@ -91,6 +114,20 @@ def main():
             cmd += ['--device', args.device]
         if args.no_augment:
             cmd.append('--no-augment')
+        if args.early_stop:
+            cmd.append('--early-stop')
+        if args.fft_init:
+            cmd.append('--fft-init')
+        if args.use_layers:
+            cmd += ['--use-layers'] + [str(x) for x in args.use_layers]
+        if args.select_by_name:
+            cmd += ['--select-by-name'] + list(args.select_by_name)
+        if args.layer_weights:
+            cmd += ['--layer-weights', str(args.layer_weights)]
+        if args.compute_lpips:
+            cmd.append('--compute-lpips')
+        if args.no_heatmap:
+            cmd.append('--no-heatmap')
         if args.extra_args:
             cmd += args.extra_args
 

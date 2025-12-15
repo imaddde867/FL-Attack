@@ -159,6 +159,12 @@ def run_baseline_experiment(args):
         param_names = captured_data.get('param_names')
     else:
         grads = captured_data['gradients']
+    # Fallback param names from model
+    if param_names is None:
+        try:
+            param_names = [n for (n, _) in fl_system.global_model.named_parameters()]
+        except Exception:
+            param_names = None
 
     label_strategy = args.label_strategy
     if label_strategy == 'auto':
@@ -178,6 +184,19 @@ def run_baseline_experiment(args):
         batch_size=args.attack_batch,
         label_strategy=label_strategy,
         param_names=param_names,
+        # Attack enhancements
+        lr_schedule=args.lr_schedule,
+        early_stop=args.early_stop,
+        patience=args.patience,
+        min_delta=args.min_delta,
+        fft_init=args.fft_init,
+        preset=args.preset,
+        match_metric=args.match_metric,
+        l2_weight=args.l2_weight,
+        cos_weight=args.cos_weight,
+        use_layers=args.use_layers,
+        select_by_name=args.select_by_name,
+        layer_weights=_parse_layer_weights(args.layer_weights),
     )
     
     # Visualize results
@@ -207,9 +226,13 @@ def run_baseline_experiment(args):
     num_show = min(recon_batch.size(0), max(1, min(args.attack_batch, 4)))
     pred_labels_cpu = inferred_labels.detach().cpu()
 
+    show_heatmap = (viz_true_batch is not None) and (not args.no_heatmap)
     if viz_true_batch is not None:
-        # Three rows: Original, Reconstruction, |Diff| heatmap
-        fig, axes = plt.subplots(3, num_show, figsize=(num_show * 3, 9))
+        if show_heatmap:
+            # Three rows: Original, Reconstruction, |Diff| heatmap
+            fig, axes = plt.subplots(3, num_show, figsize=(num_show * 3, 9))
+        else:
+            fig, axes = plt.subplots(2, num_show, figsize=(num_show * 3, 6))
     else:
         fig, axes = plt.subplots(1, num_show, figsize=(num_show * 3, 3))
 
@@ -231,11 +254,12 @@ def run_baseline_experiment(args):
                 f"Recon #{idx}\nPred: {pred_labels_cpu[idx].item()}"
             )
             axes[num_show + idx].axis('off')
-            # Difference heatmap (per-pixel mean abs diff over channels)
-            diff_map = (recon_chw - true_chw).abs().mean(dim=0).clamp(0, 1).cpu()
-            axes[2 * num_show + idx].imshow(diff_map, cmap='magma', vmin=0.0, vmax=1.0)
-            axes[2 * num_show + idx].set_title(f"|Diff| #{idx}")
-            axes[2 * num_show + idx].axis('off')
+            if show_heatmap:
+                # Difference heatmap (per-pixel mean abs diff over channels)
+                diff_map = (recon_chw - true_chw).abs().mean(dim=0).clamp(0, 1).cpu()
+                axes[2 * num_show + idx].imshow(diff_map, cmap='magma', vmin=0.0, vmax=1.0)
+                axes[2 * num_show + idx].set_title(f"|Diff| #{idx}")
+                axes[2 * num_show + idx].axis('off')
         else:
             axes[idx].imshow(recon_chw.permute(1, 2, 0).clamp(0, 1))
             axes[idx].set_title(f"Recon #{idx}\nPred: {pred_labels_cpu[idx].item()}")
@@ -279,6 +303,7 @@ def _parse_args():
     p.add_argument('--device', type=str, default=None, help='cuda|mps|cpu (auto if None)')
     p.add_argument('--seed', type=int, default=42)
     p.add_argument('--out-dir', type=str, default=None, help='Output directory')
+    p.add_argument('--save-config', action='store_true', help='Save args as config.json into out-dir')
 
     # FL system config
     p.add_argument('--num-clients', type=int, default=10)
@@ -305,6 +330,21 @@ def _parse_args():
     p.add_argument('--attack-batch', type=int, default=1)
     p.add_argument('--label-strategy', type=str, default='auto', choices=['auto','idlg','optimize'])
     p.add_argument('--compute-lpips', action='store_true')
+    # Attack enhancements
+    p.add_argument('--lr-schedule', type=str, default='none', choices=['none','cosine'])
+    p.add_argument('--early-stop', action='store_true')
+    p.add_argument('--patience', type=int, default=500)
+    p.add_argument('--min-delta', type=float, default=1e-4)
+    p.add_argument('--fft-init', action='store_true')
+    p.add_argument('--preset', type=str, default=None)
+    p.add_argument('--match-metric', type=str, default='l2', choices=['l2','cosine','both'])
+    p.add_argument('--l2-weight', type=float, default=1.0)
+    p.add_argument('--cos-weight', type=float, default=1.0)
+    p.add_argument('--use-layers', type=int, nargs='+', default=None, help='Indices of layers to match')
+    p.add_argument('--select-by-name', type=str, nargs='+', default=None, help='Substring patterns to select layers by name')
+    p.add_argument('--layer-weights', type=str, default=None, help="'auto' or comma-separated floats")
+    # Visualization
+    p.add_argument('--no-heatmap', action='store_true', help='Disable difference heatmap row')
 
     return p.parse_args()
 
@@ -313,4 +353,25 @@ if __name__ == "__main__":
     args = _parse_args()
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
+    # Normalize out-dir and optionally save config before the run
+    if args.out_dir is None:
+        ts = _dt.datetime.now().strftime('%Y%m%d_%H%M%S')
+        args.out_dir = os.path.join('results', f'baseline_{ts}')
+    os.makedirs(args.out_dir, exist_ok=True)
+    if args.save_config:
+        import json
+        with open(os.path.join(args.out_dir, 'config.json'), 'w') as f:
+            json.dump(vars(args), f, indent=2)
     run_baseline_experiment(args)
+def _parse_layer_weights(arg_val):
+    if arg_val is None:
+        return None
+    val = str(arg_val).strip()
+    if val.lower() == 'auto':
+        return 'auto'
+    try:
+        parts = [p for p in val.replace(';', ',').split(',') if p]
+        return [float(p) for p in parts]
+    except Exception:
+        print(f"[WARN] Could not parse --layer-weights='{arg_val}', using uniform.")
+        return None
