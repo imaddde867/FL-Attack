@@ -6,6 +6,131 @@ from torchvision.utils import save_image
 
 from device_utils import resolve_device
 
+
+# ---- Perceptual Loss Utilities ----
+
+_LPIPS_MODEL_CACHE = {}
+
+def get_lpips_model(device, net='alex'):
+    """Get or create a cached LPIPS model for perceptual loss."""
+    key = (str(device), net)
+    if key not in _LPIPS_MODEL_CACHE:
+        try:
+            import lpips
+            model = lpips.LPIPS(net=net).to(device)
+            model.eval()
+            for p in model.parameters():
+                p.requires_grad = False
+            _LPIPS_MODEL_CACHE[key] = model
+        except ImportError:
+            print("[WARN] LPIPS package not installed. Perceptual loss disabled.")
+            _LPIPS_MODEL_CACHE[key] = None
+    return _LPIPS_MODEL_CACHE[key]
+
+
+def perceptual_loss_lpips(dummy_data, reference_data, lpips_model, denorm_mean=(0.5, 0.5, 0.5), denorm_std=(0.5, 0.5, 0.5)):
+    """
+    Compute LPIPS perceptual loss between dummy and reference images.
+    
+    Args:
+        dummy_data: Reconstructed image tensor (normalized)
+        reference_data: Optional reference image for guided reconstruction
+        lpips_model: Pre-loaded LPIPS model
+        denorm_mean/std: Normalization parameters to convert to [-1, 1] range for LPIPS
+    
+    Returns:
+        LPIPS loss value (lower = more similar)
+    """
+    if lpips_model is None or reference_data is None:
+        return torch.tensor(0.0, device=dummy_data.device)
+    
+    # Convert from normalized space to [0,1] then to [-1,1] for LPIPS
+    mean_t = dummy_data.new_tensor(denorm_mean).view(1, -1, 1, 1)
+    std_t = dummy_data.new_tensor(denorm_std).view(1, -1, 1, 1)
+    
+    dummy_pix = torch.clamp(dummy_data * std_t + mean_t, 0, 1)
+    ref_pix = torch.clamp(reference_data * std_t + mean_t, 0, 1)
+    
+    # Convert to [-1, 1] for LPIPS
+    dummy_lp = dummy_pix * 2.0 - 1.0
+    ref_lp = ref_pix * 2.0 - 1.0
+    
+    return lpips_model(dummy_lp, ref_lp).mean()
+
+
+class VGGPerceptualLoss(nn.Module):
+    """
+    VGG-based perceptual loss (lighter alternative to LPIPS).
+    Uses early VGG layers for texture/style matching.
+    """
+    def __init__(self, device, layers=['relu1_2', 'relu2_2', 'relu3_3']):
+        super().__init__()
+        self.device = device
+        self.layers = layers
+        self.model = None
+        self._layer_mapping = {
+            'relu1_1': 1, 'relu1_2': 3,
+            'relu2_1': 6, 'relu2_2': 8,
+            'relu3_1': 11, 'relu3_2': 13, 'relu3_3': 15,
+            'relu4_1': 20, 'relu4_2': 22, 'relu4_3': 24,
+        }
+        self._init_vgg()
+    
+    def _init_vgg(self):
+        try:
+            from torchvision.models import vgg16
+            vgg = vgg16(weights='IMAGENET1K_V1').features.to(self.device)
+            vgg.eval()
+            for p in vgg.parameters():
+                p.requires_grad = False
+            self.model = vgg
+        except Exception as e:
+            print(f"[WARN] Could not load VGG for perceptual loss: {e}")
+            self.model = None
+    
+    def forward(self, x, y, denorm_mean=(0.5, 0.5, 0.5), denorm_std=(0.5, 0.5, 0.5)):
+        """Compute VGG feature loss between x and y."""
+        if self.model is None:
+            return torch.tensor(0.0, device=x.device)
+        
+        # Denormalize and prepare for VGG (ImageNet normalization)
+        mean_t = x.new_tensor(denorm_mean).view(1, -1, 1, 1)
+        std_t = x.new_tensor(denorm_std).view(1, -1, 1, 1)
+        
+        x_pix = torch.clamp(x * std_t + mean_t, 0, 1)
+        y_pix = torch.clamp(y * std_t + mean_t, 0, 1)
+        
+        # VGG ImageNet normalization
+        vgg_mean = x.new_tensor([0.485, 0.456, 0.406]).view(1, -1, 1, 1)
+        vgg_std = x.new_tensor([0.229, 0.224, 0.225]).view(1, -1, 1, 1)
+        x_vgg = (x_pix - vgg_mean) / vgg_std
+        y_vgg = (y_pix - vgg_mean) / vgg_std
+        
+        loss = torch.tensor(0.0, device=x.device)
+        x_feat, y_feat = x_vgg, y_vgg
+        
+        max_layer = max(self._layer_mapping.get(l, 0) for l in self.layers)
+        for i, layer in enumerate(self.model):
+            x_feat = layer(x_feat)
+            y_feat = layer(y_feat)
+            for layer_name in self.layers:
+                if self._layer_mapping.get(layer_name) == i:
+                    loss = loss + F.mse_loss(x_feat, y_feat)
+            if i >= max_layer:
+                break
+        
+        return loss
+
+
+_VGG_LOSS_CACHE = {}
+
+def get_vgg_loss(device):
+    """Get or create a cached VGG perceptual loss model."""
+    key = str(device)
+    if key not in _VGG_LOSS_CACHE:
+        _VGG_LOSS_CACHE[key] = VGGPerceptualLoss(device)
+    return _VGG_LOSS_CACHE[key]
+
 class GradientInversionAttack:
     def __init__(self, model, device=None, num_classes=None):
         self.device = resolve_device(device)
@@ -93,11 +218,22 @@ class GradientInversionAttack:
         match_metric='l2',
         l2_weight=1.0,
         cos_weight=1.0,
+        # Perceptual loss parameters
+        perceptual_weight=0.0,
+        perceptual_type='lpips',  # 'lpips', 'vgg', or 'none'
+        reference_image=None,
+        denorm_mean=(0.5, 0.5, 0.5),
+        denorm_std=(0.5, 0.5, 0.5),
     ):
         """
         Enhanced attack with label inference (iDLG approach), with configurable
         TV regularization, optimizer choice, and clamping. Adds cosine LR
         schedule, early stopping, optional FFT initialization, and TV/clamp presets.
+        
+        New in Phase 1:
+        - perceptual_weight: Weight for perceptual loss (0 = disabled)
+        - perceptual_type: 'lpips' or 'vgg' for perceptual loss computation
+        - reference_image: Optional reference for guided reconstruction
         """
         if seed is not None:
             torch.manual_seed(seed)
@@ -135,6 +271,14 @@ class GradientInversionAttack:
         best_image = None
         no_improve_steps = 0
 
+        # Initialize perceptual loss model if requested
+        perceptual_model = None
+        if perceptual_weight > 0:
+            if perceptual_type.lower() == 'lpips':
+                perceptual_model = get_lpips_model(self.device)
+            elif perceptual_type.lower() == 'vgg':
+                perceptual_model = get_vgg_loss(self.device)
+
         def step_once():
             optimizer.zero_grad()
             # Compute gradients for dummy data
@@ -163,6 +307,17 @@ class GradientInversionAttack:
             tv_loss = total_variation(dummy_data)
 
             total_loss = grad_match + tv_weight * tv_loss
+            
+            # Perceptual loss (optional)
+            if perceptual_weight > 0 and perceptual_model is not None and reference_image is not None:
+                if perceptual_type.lower() == 'lpips':
+                    p_loss = perceptual_loss_lpips(dummy_data, reference_image, perceptual_model, denorm_mean, denorm_std)
+                elif perceptual_type.lower() == 'vgg':
+                    p_loss = perceptual_model(dummy_data, reference_image, denorm_mean, denorm_std)
+                else:
+                    p_loss = torch.tensor(0.0, device=dummy_data.device)
+                total_loss = total_loss + perceptual_weight * p_loss
+            
             total_loss.backward()
             return total_loss
 
@@ -423,20 +578,41 @@ def _resolve_layer_indices(total_layers, use_layers=None, select_by_name=None, p
     return list(range(total_layers))
 
 
-def _prepare_layer_weights(indices, layer_weights, target_grads):
+def _prepare_layer_weights(indices, layer_weights, target_grads, param_names=None):
+    """
+    Prepare layer weights for gradient matching.
+    
+    Supports multiple weighting strategies:
+    - None / 'uniform' / 'none': Equal weights for all layers
+    - 'auto' / 'auto_norm' / 'inv_norm': Inverse of gradient norm (normalizes contribution)
+    - 'early': Exponential decay - upweights early layers, downweights later layers
+    - 'early_linear': Linear decay from early to late layers  
+    - 'early_conv': Upweights only convolutional layers in first 1-3 blocks
+    - 'spatial': Emphasizes layers with spatial structure (conv layers)
+    - List of floats: Explicit weights per layer
+    
+    Phase 1 Improvement: Early layer weighting improves spatial coherence
+    and reduces high-frequency noise in reconstructions.
+    """
     n = len(indices)
+    total_layers = len(target_grads)
+    
     # Handle None, empty string, or "uniform" as uniform weights
     if layer_weights is None or layer_weights == "" or (isinstance(layer_weights, str) and layer_weights.lower() in ('uniform', 'none')):
         return [1.0] * n
+    
     if isinstance(layer_weights, (list, tuple)):
         if len(layer_weights) == n:
             return list(layer_weights)
-        if len(layer_weights) == len(target_grads):
+        if len(layer_weights) == total_layers:
             return [float(layer_weights[i]) for i in indices]
         print("[WARN] layer_weights length mismatch, falling back to uniform.")
         return [1.0] * n
+    
     mode = str(layer_weights).lower()
+    
     if mode in ('auto', 'auto_norm', 'inv_norm'):
+        # Inverse gradient norm weighting
         eps = 1e-8
         ws = []
         for i in indices:
@@ -446,6 +622,68 @@ def _prepare_layer_weights(indices, layer_weights, target_grads):
         s = sum(ws) + eps
         ws = [w * (n / s) for w in ws]
         return ws
+    
+    if mode == 'early':
+        # Exponential decay: early layers get higher weight
+        # Weight = exp(-decay * relative_position)
+        decay = 2.0  # Decay rate
+        ws = []
+        for idx in indices:
+            rel_pos = idx / max(total_layers - 1, 1)  # 0 to 1
+            w = math.exp(-decay * rel_pos)
+            ws.append(w)
+        s = sum(ws) + 1e-8
+        ws = [w * (n / s) for w in ws]
+        return ws
+    
+    if mode == 'early_linear':
+        # Linear decay from early to late
+        # First layer gets weight 2.0, last layer gets 0.5
+        ws = []
+        for idx in indices:
+            rel_pos = idx / max(total_layers - 1, 1)
+            w = 2.0 - 1.5 * rel_pos  # 2.0 -> 0.5
+            ws.append(max(w, 0.1))
+        s = sum(ws) + 1e-8
+        ws = [w * (n / s) for w in ws]
+        return ws
+    
+    if mode == 'early_strong':
+        # Strong early layer emphasis (first 1/3 get 3x weight)
+        ws = []
+        early_cutoff = total_layers // 3
+        for idx in indices:
+            if idx < early_cutoff:
+                w = 3.0
+            elif idx < 2 * early_cutoff:
+                w = 1.0
+            else:
+                w = 0.3
+            ws.append(w)
+        s = sum(ws) + 1e-8
+        ws = [w * (n / s) for w in ws]
+        return ws
+    
+    if mode in ('early_conv', 'spatial'):
+        # Upweight early convolutional layers based on parameter names
+        ws = []
+        for i, idx in enumerate(indices):
+            name = param_names[idx] if param_names and idx < len(param_names) else ''
+            is_conv = 'conv' in name.lower() or 'features.0' in name.lower() or 'features.3' in name.lower()
+            is_early = idx < total_layers // 2
+            if is_conv and is_early:
+                w = 3.0
+            elif is_conv:
+                w = 1.5
+            elif is_early:
+                w = 1.2
+            else:
+                w = 0.5
+            ws.append(w)
+        s = sum(ws) + 1e-8
+        ws = [w * (n / s) for w in ws]
+        return ws
+    
     return [1.0] * n
 
 
@@ -471,7 +709,7 @@ def gradient_matching_loss(dummy_grads, target_grads,
     """
     L = len(target_grads)
     idxs = _resolve_layer_indices(L, use_layers, select_by_name, param_names)
-    ws = _prepare_layer_weights(idxs, layer_weights, target_grads)
+    ws = _prepare_layer_weights(idxs, layer_weights, target_grads, param_names=param_names)
     total = None
     for w, i in zip(ws, idxs):
         dg = dummy_grads[i]
