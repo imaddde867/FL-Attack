@@ -33,9 +33,11 @@ class SimpleCNN(nn.Module):
         return x
 
 class FederatedLearningSystem:
-    def __init__(self, num_clients=10, num_classes=10, device='cuda'):
+    def __init__(self, num_clients=10, num_classes=10, batch_size=64, data_subset=None, device='cuda'):
         self.num_clients = num_clients
         self.num_classes = num_classes
+        self.batch_size = batch_size
+        self.data_subset = data_subset
         self.device = device
         
         # Initialize global model
@@ -68,6 +70,13 @@ class FederatedLearningSystem:
         test_data = torchvision.datasets.CIFAR10(
             root='./data', train=False, download=True, transform=transform_test
         )
+
+        if self.data_subset:
+            # Limit data for faster R&D/debugging
+            train_indices = list(range(min(len(train_data), self.data_subset)))
+            test_indices = list(range(min(len(test_data), self.data_subset // 5))) # Keep ratio
+            train_data = Subset(train_data, train_indices)
+            test_data = Subset(test_data, test_indices)
         
         return train_data, test_data
     
@@ -82,7 +91,7 @@ class FederatedLearningSystem:
             indices = list(range(start_idx, end_idx))
             
             subset = Subset(self.train_data, indices)
-            loader = DataLoader(subset, batch_size=64, shuffle=True)
+            loader = DataLoader(subset, batch_size=self.batch_size, shuffle=True)
             client_loaders.append(loader)
         
         return client_loaders

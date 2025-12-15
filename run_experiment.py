@@ -1,7 +1,8 @@
 import torch
+import torch.nn.functional as F
 import matplotlib.pyplot as plt
-from torchvision.utils import make_grid
 import numpy as np
+import os
 from fl_system import FederatedLearningSystem
 from gradient_attack import GradientInversionAttack
 
@@ -9,6 +10,7 @@ def denormalize_cifar10(tensor):
     """Denormalize CIFAR-10 image for visualization"""
     mean = torch.tensor([0.4914, 0.4822, 0.4465]).view(3, 1, 1)
     std = torch.tensor([0.2470, 0.2435, 0.2616]).view(3, 1, 1)
+    # Tensor is (C, H, W)
     return tensor * std + mean
 
 def run_baseline_experiment():
@@ -19,22 +21,42 @@ def run_baseline_experiment():
     print("EXPERIMENT 1: BASELINE (No Privacy Protection - without DP or HE)")
     print("-"*60)
     
-    device = 'mps' if torch.backends.mps.is_available() else 'cpu'
+    # Determine device
+    if torch.cuda.is_available():
+        device = 'cuda'
+    elif torch.backends.mps.is_available():
+        device = 'mps'
+    else:
+        device = 'cpu'
+    
     print(f"Using device: {device}")
     
     # Initialize FL system
-    fl_system = FederatedLearningSystem(num_clients=10, device=device)
+    # Use batch_size=1 to showcase a successful DLG attack
+    # Use data_subset=200 to allow the experiment to run quickly
+    print("Initializing FL System with batch_size=1 and data_subset=200 for R&D demo...")
+    fl_system = FederatedLearningSystem(
+        num_clients=10, 
+        device=device,
+        batch_size=1,  # Critical for simple DLG attack to work well
+        data_subset=200 # Faster execution
+    )
     
-    # Train for several rounds to get decent accuracy
+    # Train for several rounds
     print("\nPhase 1: Training FL Model...")
     captured_data = None
-    for round_num in range(20):  # 20 rounds should give ~60-70% accuracy
-        # Capture gradients from client 0 in round 10
-        capture_client = 0 if round_num == 10 else None
+    num_rounds = 5  # Reduced rounds for quick demo
+    
+    for round_num in range(num_rounds):
+        # Capture gradients from client 0 in the last round
+        capture_client = 0 if round_num == (num_rounds - 1) else None
+        
+        print(f"Starting Round {round_num}...")
         round_data = fl_system.train_round(round_num, capture_from_client=capture_client)
         
         if round_data is not None:
             captured_data = round_data
+            print(f"  -> Gradients captured from client {capture_client}!")
     
     print("\n" + "="*60)
     print("Phase 2: Gradient Inversion Attack...")
@@ -47,34 +69,42 @@ def run_baseline_experiment():
     # Perform attack
     attacker = GradientInversionAttack(fl_system.global_model, device=device)
     
+    print("Reconstructing image from gradients...")
     reconstructed, inferred_label = attacker.reconstruct_with_label_inference(
         captured_data['gradients'],
-        num_iterations=3000,
+        num_iterations=2000, # Reduced iterations slightly for speed
         lr=0.1
     )
     
     # Visualize results
+    print("Saving result to 'baseline_attack_result.png'...")
     fig, axes = plt.subplots(1, 2, figsize=(10, 5))
     
     # True image
-    true_img = denormalize_cifar10(captured_data['true_data'][0].cpu())
+    # Move to cpu for visualization
+    true_img_tensor = captured_data['true_data'][0].cpu()
+    true_img = denormalize_cifar10(true_img_tensor)
     axes[0].imshow(true_img.permute(1, 2, 0).clamp(0, 1))
     axes[0].set_title(f"Original Image\nTrue Label: {captured_data['true_label'].item()}")
     axes[0].axis('off')
     
     # Reconstructed image
-    recon_img = denormalize_cifar10(reconstructed[0].cpu())
+    recon_img_tensor = reconstructed[0].cpu()
+    recon_img = denormalize_cifar10(recon_img_tensor)
     axes[1].imshow(recon_img.permute(1, 2, 0).clamp(0, 1))
     axes[1].set_title(f"Reconstructed Image\nInferred Label: {inferred_label.item()}")
     axes[1].axis('off')
     
     plt.tight_layout()
     plt.savefig('baseline_attack_result.png', dpi=150, bbox_inches='tight')
-    plt.show()
+    print("Result saved.")
     
     # Compute similarity metrics
+    # Calculate MSE on normalized tensors
     mse = F.mse_loss(reconstructed, captured_data['true_data']).item()
-    psnr = 10 * np.log10(4 / mse)  # Range is [-2, 2] so max squared diff is 16
+    
+    # Range of normalized data is approx [-2, 2], so span is 4. MAX^2 = 16.
+    psnr = 10 * np.log10(16 / mse)
     
     print(f"\nAttack Results:")
     print(f"  MSE: {mse:.4f}")
