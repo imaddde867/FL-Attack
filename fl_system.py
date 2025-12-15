@@ -1,14 +1,13 @@
+import copy
+from collections import OrderedDict
+
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Subset
 import torchvision
 import torchvision.transforms as transforms
-from collections import OrderedDict
-import numpy as np
-from torch.utils.data import Subset
-import torchvision.transforms as transforms
 from torchvision.datasets import CelebA
-import copy
 
 from device_utils import resolve_device
 
