@@ -5,6 +5,9 @@ import torchvision
 import torchvision.transforms as transforms
 from collections import OrderedDict
 import numpy as np
+from torch.utils.data import Subset
+import torchvision.transforms as transforms
+from torchvision.datasets import CelebA
 import copy
 
 class SimpleCNN(nn.Module):
@@ -40,7 +43,7 @@ class FederatedLearningSystem:
     def __init__(
         self,
         num_clients=10,
-        num_classes=10,
+        num_classes=8192,
         batch_size=64,
         data_subset=None,
         device='cuda',
@@ -58,53 +61,66 @@ class FederatedLearningSystem:
         self.client_momentum = client_momentum
         self.local_epochs = local_epochs
         self.augment = augment
-        
-        # Initialize global model
+
+        # Initialize global model for CelebA
         self.global_model = SimpleCNN(num_classes).to(device)
-        
-        # Load and partition data
-        self.train_data, self.test_data = self._load_cifar10()
+
+        # Load and partition CelebA
+        self.train_data, self.test_data = self._load_celeba()
         self.client_loaders = self._partition_data()
         self.test_loader = DataLoader(self.test_data, batch_size=128, shuffle=False)
-        
-    def _load_cifar10(self):
-        """Load CIFAR-10 with standard normalization"""
+
+    def _load_celeba(self):
+        """Load CelebA with 64x64 crops and identity labels"""
         if self.augment:
             transform_train = transforms.Compose([
-                transforms.RandomCrop(32, padding=4),
+                transforms.Resize(64),
+                transforms.CenterCrop(64),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
-                transforms.Normalize((0.4914, 0.4822, 0.4465), 
-                                   (0.2470, 0.2435, 0.2616))
+                transforms.Normalize((0.5, 0.5, 0.5),
+                                     (0.5, 0.5, 0.5)),
             ])
         else:
             transform_train = transforms.Compose([
+                transforms.Resize(64),
+                transforms.CenterCrop(64),
                 transforms.ToTensor(),
-                transforms.Normalize((0.4914, 0.4822, 0.4465), 
-                                   (0.2470, 0.2435, 0.2616))
+                transforms.Normalize((0.5, 0.5, 0.5),
+                                     (0.5, 0.5, 0.5)),
             ])
-        
+
         transform_test = transforms.Compose([
+            transforms.Resize(64),
+            transforms.CenterCrop(64),
             transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465), 
-                               (0.2470, 0.2435, 0.2616))
+            transforms.Normalize((0.5, 0.5, 0.5),
+                                 (0.5, 0.5, 0.5)),
         ])
-        
-        train_data = torchvision.datasets.CIFAR10(
-            root='./data', train=True, download=True, transform=transform_train
+
+        train_data = CelebA(
+            root="./data",
+            split="train",
+            target_type="identity",   # identity ID as label
+            transform=transform_train,
+            download=True,
         )
-        test_data = torchvision.datasets.CIFAR10(
-            root='./data', train=False, download=True, transform=transform_test
+        test_data = CelebA(
+            root="./data",
+            split="valid",            # or "test"
+            target_type="identity",
+            transform=transform_test,
+            download=True,
         )
 
         if self.data_subset:
-            # Limit data for faster R&D/debugging
             train_indices = list(range(min(len(train_data), self.data_subset)))
-            test_indices = list(range(min(len(test_data), self.data_subset // 5))) # Keep ratio
+            test_indices = list(range(min(len(test_data), self.data_subset // 5)))
             train_data = Subset(train_data, train_indices)
             test_data = Subset(test_data, test_indices)
-        
+
         return train_data, test_data
+
     
     def _partition_data(self):
         """Simple IID partition of data across clients"""
