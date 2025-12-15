@@ -380,7 +380,7 @@ def generate_comparison_report(results: List[Dict], output_dir: Path):
     lines = [
         "# Baseline Experimentation Results",
         "",
-        f"Generated from `run_baseline_final.py`",
+        f"Generated from `exp_base.py`",
         "",
         "## Summary",
         "",
@@ -468,7 +468,6 @@ def parse_args():
     # FL settings (shared across experiments)
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--num-clients", type=int, default=10, help="Number of FL clients")
-    parser.add_argument("--num-rounds", type=int, default=5, help="FL training rounds")
     parser.add_argument("--data-subset", type=int, default=200, help="Data subset size")
     parser.add_argument("--client-lr", type=float, default=0.01, help="Client learning rate")
     parser.add_argument("--local-epochs", type=int, default=1, help="Local training epochs")
@@ -492,12 +491,11 @@ def main():
     
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Base flags shared by all experiments
+    # Base flags shared by all experiments (excluding num-rounds which is per-experiment)
     base_flags = [
         "--device", args.device,
         "--seed", str(args.seed),
         "--num-clients", str(args.num_clients),
-        "--num-rounds", str(args.num_rounds),
         "--data-subset", str(args.data_subset),
         "--client-lr", str(args.client_lr),
         "--local-epochs", str(args.local_epochs),
