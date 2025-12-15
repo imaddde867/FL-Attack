@@ -9,16 +9,23 @@ A clean, concise, and efficient script for producing:
 
 Optimized for 16GB M4 Mac with MPS acceleration.
 
+KEY INSIGHTS FOR HIGH-QUALITY RECONSTRUCTION:
+- Use UNTRAINED model (num_rounds=1, capture_round=0) - gradients leak most from fresh models
+- Use LBFGS optimizer - much better convergence than Adam for this problem
+- Low TV weight (1e-4 to 1e-5) - avoid over-smoothing
+- Many iterations (8000+) without early stopping for best quality
+- batch_size=1 and momentum=0 are critical
+
 Run Order (efficient memory/time):
 1. Quick validation run (sanity check)
 2. High-quality baseline (final showcase image)
 3. Defense-relevant ablations (batch size, momentum effects)
 
 Usage:
-    python scripts/run_baseline_final.py                    # Full suite
-    python scripts/run_baseline_final.py --mode showcase    # Just the best result
-    python scripts/run_baseline_final.py --mode ablation    # Just ablations
-    python scripts/run_baseline_final.py --dry-run          # Preview commands
+    python scripts/exp_base.py                    # Full suite
+    python scripts/exp_base.py --mode showcase    # Just the best result
+    python scripts/exp_base.py --mode ablation    # Just ablations
+    python scripts/exp_base.py --dry-run          # Preview commands
 """
 
 import argparse
@@ -45,19 +52,22 @@ class ExperimentConfig:
     batch_size: int = 1
     client_momentum: float = 0.0
     attack_source: str = "gradients"
+    num_rounds: int = 1          # KEY: fewer rounds = untrained model = better attack
+    capture_round: int = 0       # Capture from first round (untrained model)
     # Attack settings (higher = better quality but slower)
     attack_iterations: int = 2000
     attack_restarts: int = 3
-    attack_lr: float = 0.1
-    tv_weight: float = 1e-3
+    attack_lr: float = 1.0       # Higher LR for LBFGS
+    attack_optimizer: str = "lbfgs"  # LBFGS is much better for gradient inversion
+    tv_weight: float = 1e-4      # Low TV to avoid over-smoothing
     # Enhanced settings for quality
-    lr_schedule: str = "cosine"
-    early_stop: bool = True
+    lr_schedule: str = "none"    # No schedule for LBFGS
+    early_stop: bool = False     # Let it converge fully for best quality
     patience: int = 600
-    preset: str = "soft"
-    match_metric: str = "both"
+    preset: str = "none"         # No preset - use raw optimization
+    match_metric: str = "l2"     # Pure L2 matching works well with LBFGS
     layer_weights: str = "auto"
-    fft_init: bool = False
+    fft_init: bool = False       # Random init works better with LBFGS
     # Flags
     is_showcase: bool = False
     priority: int = 0  # Lower = runs first
@@ -68,16 +78,21 @@ class ExperimentConfig:
             "--batch-size", str(self.batch_size),
             "--client-momentum", str(self.client_momentum),
             "--attack-source", self.attack_source,
+            "--num-rounds", str(self.num_rounds),
+            "--capture-round", str(self.capture_round),
             "--attack-iterations", str(self.attack_iterations),
             "--attack-restarts", str(self.attack_restarts),
             "--attack-lr", str(self.attack_lr),
+            "--attack-optimizer", self.attack_optimizer,
             "--tv-weight", str(self.tv_weight),
             "--lr-schedule", self.lr_schedule,
             "--patience", str(self.patience),
-            "--preset", self.preset,
             "--match-metric", self.match_metric,
             "--layer-weights", self.layer_weights,
         ]
+        # Only pass preset if it's not "none" - otherwise it overrides tv_weight
+        if self.preset and self.preset.lower() not in ("none", ""):
+            flags.extend(["--preset", self.preset])
         if self.early_stop:
             flags.append("--early-stop")
         if self.fft_init:
@@ -93,28 +108,36 @@ def get_showcase_config() -> ExperimentConfig:
     """
     High-quality showcase configuration.
     
-    Settings optimized for producing the best possible reconstruction
-    that can be used as the "successful attack" demonstration.
+    KEY SETTINGS FOR BEST VISUAL QUALITY:
+    - num_rounds=1, capture_round=0: Attack untrained model (gradients leak most)
+    - LBFGS optimizer: Superior convergence for this optimization problem
+    - Low TV weight (1e-5): Avoid over-smoothing that causes blur
+    - Many iterations (8000): Allow full convergence
+    - No early stopping: Let it run to completion
+    - Multiple restarts: Best of 5 random initializations
     """
     return ExperimentConfig(
         name="showcase_best",
         description="High-quality baseline attack - optimal settings for visual results",
+        # CRITICAL: Attack untrained model for maximum gradient leakage
+        num_rounds=1,
+        capture_round=0,
         # Optimal FL settings for successful gradient inversion
         batch_size=1,           # Critical: single sample for iDLG
         client_momentum=0.0,    # No momentum = clean gradients
         attack_source="gradients",  # Direct gradients (most information)
         # Aggressive attack settings for best quality
-        attack_iterations=4000,     # Higher iterations for convergence
+        attack_iterations=8000,     # Many iterations for full convergence
         attack_restarts=5,          # Multiple restarts for robustness
-        attack_lr=0.1,
-        tv_weight=5e-4,             # Moderate smoothing
-        lr_schedule="cosine",       # Better convergence
-        early_stop=True,
-        patience=800,               # More patience for fine details
-        preset="soft",              # Relaxed clamping
-        match_metric="both",        # L2 + cosine loss
+        attack_optimizer="lbfgs",   # LBFGS is superior for gradient inversion
+        attack_lr=1.0,              # Higher LR works with LBFGS
+        tv_weight=1e-5,             # Very low TV to preserve details
+        lr_schedule="none",         # No LR decay with LBFGS
+        early_stop=False,           # Run to completion for best quality
+        preset="none",              # No clamping preset
+        match_metric="l2",          # Pure L2 works well with LBFGS
         layer_weights="auto",       # Inverse-norm weighting
-        fft_init=True,              # Better initialization
+        fft_init=False,             # Random init works better with LBFGS
         is_showcase=True,
         priority=0,
     )
@@ -127,71 +150,103 @@ def get_ablation_configs() -> List[ExperimentConfig]:
     Selected to demonstrate:
     1. Why batch_size=1 is necessary (compare bs=1 vs bs=2)
     2. Impact of momentum on gradient quality
-    3. Attack source comparison (gradients vs updates)
+    3. Effect of training rounds (untrained vs trained model)
     
-    NOT included (wasteful):
-    - bs=4+ (known to fail completely)
-    - Multiple momentum values (binary comparison sufficient)
+    All use optimal attack settings (LBFGS, low TV) to isolate FL parameter effects.
     """
     configs = []
     
-    # Ablation 1: Baseline reference (same as showcase but fewer iterations)
+    # Ablation 1: Baseline reference with optimal settings
     configs.append(ExperimentConfig(
-        name="abl_baseline_reference",
-        description="Baseline: bs=1, mom=0 - reference for comparisons",
+        name="abl_baseline_optimal",
+        description="Baseline: optimal attack on untrained model (bs=1, mom=0, round=0)",
+        num_rounds=1,
+        capture_round=0,
         batch_size=1,
         client_momentum=0.0,
         attack_source="gradients",
-        attack_iterations=2500,
+        attack_optimizer="lbfgs",
+        attack_iterations=5000,
         attack_restarts=3,
+        attack_lr=1.0,
+        tv_weight=1e-5,
+        early_stop=False,
         priority=1,
     ))
     
-    # Ablation 2: Batch size impact (bs=2 - showing degradation starts here)
+    # Ablation 2: Effect of model training (attack after 5 rounds)
     configs.append(ExperimentConfig(
-        name="abl_batchsize_2",
-        description="Ablation: bs=2 - demonstrate batch size sensitivity",
-        batch_size=2,
+        name="abl_trained_model",
+        description="Ablation: attack after 5 training rounds - shows defense from training",
+        num_rounds=5,
+        capture_round=4,  # Last round
+        batch_size=1,
         client_momentum=0.0,
         attack_source="gradients",
-        attack_iterations=2000,
-        attack_restarts=2,
+        attack_optimizer="lbfgs",
+        attack_iterations=5000,
+        attack_restarts=3,
+        attack_lr=1.0,
+        tv_weight=1e-5,
+        early_stop=False,
         priority=2,
     ))
     
-    # Ablation 3: Momentum impact (mom=0.9 - common FL setting)
+    # Ablation 3: Batch size impact (bs=2)
     configs.append(ExperimentConfig(
-        name="abl_momentum_0.9",
-        description="Ablation: momentum=0.9 - typical FL setting degrades attack",
-        batch_size=1,
-        client_momentum=0.9,
+        name="abl_batchsize_2",
+        description="Ablation: bs=2 - demonstrate batch size defense",
+        num_rounds=1,
+        capture_round=0,
+        batch_size=2,
+        client_momentum=0.0,
         attack_source="gradients",
-        attack_iterations=2000,
+        attack_optimizer="adam",  # Adam for batch>1
+        attack_iterations=3000,
         attack_restarts=2,
+        attack_lr=0.1,
+        tv_weight=1e-4,
+        match_metric="both",
+        early_stop=True,
+        patience=800,
         priority=3,
     ))
     
-    # Ablation 4: One-step update (common in FedAvg)
+    # Ablation 4: Momentum impact (mom=0.9)
     configs.append(ExperimentConfig(
-        name="abl_source_onestep",
-        description="Ablation: one_step_update source - FedAvg scenario",
+        name="abl_momentum_high",
+        description="Ablation: momentum=0.9 - typical FL setting degrades attack",
+        num_rounds=1,
+        capture_round=0,
         batch_size=1,
-        client_momentum=0.0,
-        attack_source="one_step_update",
-        attack_iterations=2000,
-        attack_restarts=2,
+        client_momentum=0.9,
+        attack_source="gradients",
+        attack_optimizer="lbfgs",
+        attack_iterations=5000,
+        attack_restarts=3,
+        attack_lr=1.0,
+        tv_weight=1e-5,
+        early_stop=False,
         priority=4,
     ))
     
-    # Ablation 5: Combined defense factors (bs=2 + momentum)
+    # Ablation 5: Combined realistic FL scenario
     configs.append(ExperimentConfig(
-        name="abl_combined_defense",
-        description="Ablation: bs=2 + momentum=0.5 - realistic FL protection",
-        batch_size=2,
-        client_momentum=0.5,
+        name="abl_realistic_fl",
+        description="Ablation: realistic FL (bs=4, mom=0.9, trained) - typical protection",
+        num_rounds=5,
+        capture_round=4,
+        batch_size=4,
+        client_momentum=0.9,
         attack_source="gradients",
-        attack_iterations=1500,
+        attack_optimizer="adam",
+        attack_iterations=2000,
         attack_restarts=2,
+        attack_lr=0.1,
+        tv_weight=1e-3,
+        match_metric="both",
+        early_stop=True,
+        patience=600,
         priority=5,
     ))
     
@@ -202,15 +257,18 @@ def get_quick_validation_config() -> ExperimentConfig:
     """Quick validation to ensure everything works before long runs."""
     return ExperimentConfig(
         name="validation_quick",
-        description="Quick validation run - sanity check",
+        description="Quick validation run - sanity check (should get PSNR > 25)",
+        num_rounds=1,
+        capture_round=0,
         batch_size=1,
         client_momentum=0.0,
         attack_source="gradients",
-        attack_iterations=500,
+        attack_optimizer="lbfgs",
+        attack_iterations=1000,
         attack_restarts=1,
-        tv_weight=1e-3,
-        early_stop=True,
-        patience=200,
+        attack_lr=1.0,
+        tv_weight=1e-5,
+        early_stop=False,
         priority=-1,  # First
     )
 
