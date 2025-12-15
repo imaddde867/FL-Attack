@@ -194,20 +194,30 @@ class HomomorphicEncryptor:
 
         return out
 
-if __name__ == "__main__":
-    enc = HomomorphicEncryptor(bits=256, precision=1000)
+"""Usage example (uncomment to run)"""
+# if __name__ == "__main__":
+   # enc = HomomorphicEncryptor(bits=256, precision=1000)
 
     # 1) encrypt/decrypt round‑trip
-    vals = [0.5, -1.25, 3.0]
-    cts = enc.encrypt_vector(vals)
-    dec = enc.decrypt_vector(cts)
-    print("HE orig:", vals)
-    print("HE dec :", dec)
+   # vals = [0.5, -1.25, 3.0]
+   # cts = enc.encrypt_vector(vals)
+   # dec = enc.decrypt_vector(cts)
+   # print("HE orig:", vals)
+   # print("HE dec :", dec)
 
     # 2) homomorphic sum of two vectors
-    vals2 = [1.0, 2.0, -4.0]
-    cts2 = enc.encrypt_vector(vals2)
-    agg = enc.aggregate_encrypted_vectors([cts, cts2])
-    dec_agg = enc.decrypt_vector(agg)
-    print("sum orig:", [a + b for a, b in zip(vals, vals2)])
-    print("sum dec :", dec_agg)
+    # vals2 = [1.0, 2.0, -4.0]
+    # cts2 = enc.encrypt_vector(vals2)
+    # agg = enc.aggregate_encrypted_vectors([cts, cts2])
+    # dec_agg = enc.decrypt_vector(agg)
+    # print("sum orig:", [a + b for a, b in zip(vals, vals2)])
+    # print("sum dec :", dec_agg)
+
+"""
+output:
+HE orig: [0.5, -1.25, 3.0]
+HE dec : [0.5, -1.25, 3.0]
+sum orig: [1.5, 0.75, -1.0]
+sum dec : [1.5, 0.75, -1.0]
+
+"""
