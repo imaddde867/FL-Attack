@@ -27,8 +27,8 @@ class GradientInversionAttack:
         This is a simplified version of the DLG/iDLG attack
         """
         # Initialize dummy data and label
-        dummy_data = torch.randn(1, 3, 32, 32, requires_grad=True, device=self.device)
-        dummy_label = torch.randint(0, 10, (1,), device=self.device)
+        dummy_data = torch.randn(1, 3, 64, 64, requires_grad=True, device=self.device)
+        dummy_label = torch.randint(0, self.num_classes, (1,), device=self.device)
         
         # Optimizer for dummy data
         optimizer = torch.optim.LBFGS([dummy_data], lr=lr)
@@ -71,7 +71,6 @@ class GradientInversionAttack:
     def reconstruct_with_label_inference(
         self,
         captured_gradients,
-        num_classes=10,
         num_iterations=3000,
         lr=0.1,
         tv_weight=0.001,
@@ -91,7 +90,7 @@ class GradientInversionAttack:
         print(f"Inferred label: {inferred_label.item()}")
 
         # Initialize dummy data
-        dummy_data = torch.randn(1, 3, 32, 32, requires_grad=True, device=self.device)
+        dummy_data = torch.randn(1, 3, 64, 64, requires_grad=True, device=self.device)
 
         # Use inferred label
         dummy_label = inferred_label.unsqueeze(0)
@@ -229,7 +228,7 @@ class GradientInversionAttack:
         if seed is not None:
             torch.manual_seed(seed)
 
-        dummy_data = torch.randn(batch_size, 3, 32, 32, requires_grad=True, device=self.device)
+        dummy_data = torch.randn(batch_size, 3, 64, 64, requires_grad=True, device=self.device)
         params = [dummy_data]
 
         if label_strategy == 'idlg' and batch_size == 1:
