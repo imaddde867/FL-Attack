@@ -74,6 +74,19 @@ def compute_metrics(pred, target, compute_lpips=False, lpips_model=None, denorm_
                 metrics['LPIPS'] = score.mean().item()
     return metrics
 
+def _parse_layer_weights(arg_val):
+    if arg_val is None:
+        return None
+    val = str(arg_val).strip()
+    if val.lower() == 'auto':
+        return 'auto'
+    try:
+        parts = [p for p in val.replace(';', ',').split(',') if p]
+        return [float(p) for p in parts]
+    except Exception:
+        print(f"[WARN] Could not parse --layer-weights='{arg_val}', using uniform.")
+        return None
+
 def run_baseline_experiment(args):
     """
     Experiment 1: Baseline FL Training + Gradient Inversion Attack
@@ -363,15 +376,3 @@ if __name__ == "__main__":
         with open(os.path.join(args.out_dir, 'config.json'), 'w') as f:
             json.dump(vars(args), f, indent=2)
     run_baseline_experiment(args)
-def _parse_layer_weights(arg_val):
-    if arg_val is None:
-        return None
-    val = str(arg_val).strip()
-    if val.lower() == 'auto':
-        return 'auto'
-    try:
-        parts = [p for p in val.replace(';', ',').split(',') if p]
-        return [float(p) for p in parts]
-    except Exception:
-        print(f"[WARN] Could not parse --layer-weights='{arg_val}', using uniform.")
-        return None
