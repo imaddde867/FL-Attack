@@ -14,11 +14,11 @@ from fl_system import FederatedLearningSystem
 from gradient_attack import GradientInversionAttack
 
 
-def denormalize_cifar10(tensor):
-    """Denormalize CIFAR-10 image for visualization"""
-    mean = torch.tensor([0.4914, 0.4822, 0.4465]).view(3, 1, 1)
-    std = torch.tensor([0.2470, 0.2435, 0.2616]).view(3, 1, 1)
-    return tensor * std + mean
+def denormalize_tensor(tensor, mean, std):
+    """Generic denormalization helper."""
+    mean_t = tensor.new_tensor(mean).view(-1, 1, 1)
+    std_t = tensor.new_tensor(std).view(-1, 1, 1)
+    return tensor * std_t + mean_t
 
 
 def compute_simple_ssim(pred, target, data_range=4.0):
@@ -48,11 +48,11 @@ def maybe_init_lpips(device, enabled):
     return model
 
 
-def compute_metrics(pred, target, compute_lpips=False, lpips_model=None):
+def compute_metrics(pred, target, compute_lpips=False, lpips_model=None, denorm_mean=None, denorm_std=None):
     metrics = {}
     mse = F.mse_loss(pred, target).item()
     metrics['MSE'] = mse
-    max_range = 4.0  # approx range of normalized CIFAR-10 tensors
+    max_range = 4.0  # approx data range used for normalized tensors
     metrics['PSNR'] = 10 * np.log10((max_range ** 2) / max(mse, 1e-12))
     metrics['SSIM'] = compute_simple_ssim(pred, target, data_range=max_range)
     if compute_lpips:
@@ -60,8 +60,16 @@ def compute_metrics(pred, target, compute_lpips=False, lpips_model=None):
             metrics['LPIPS'] = float('nan')
         else:
             with torch.no_grad():
-                pred_lp = torch.clamp(pred / 2.0, -1, 1)
-                target_lp = torch.clamp(target / 2.0, -1, 1)
+                if denorm_mean is not None and denorm_std is not None:
+                    # Convert to pixel space [0,1], then to [-1,1] for LPIPS
+                    pred_pix = torch.clamp(denormalize_tensor(pred, denorm_mean, denorm_std), 0, 1)
+                    target_pix = torch.clamp(denormalize_tensor(target, denorm_mean, denorm_std), 0, 1)
+                    pred_lp = pred_pix * 2.0 - 1.0
+                    target_lp = target_pix * 2.0 - 1.0
+                else:
+                    # Fallback: assume roughly [-1,1] already
+                    pred_lp = torch.clamp(pred, -1, 1)
+                    target_lp = torch.clamp(target, -1, 1)
                 score = lpips_model(pred_lp, target_lp)
                 metrics['LPIPS'] = score.mean().item()
     return metrics
@@ -92,6 +100,9 @@ def run_baseline_experiment(args):
         local_epochs=args.local_epochs,
         augment=not args.no_augment,
     )
+    # Use CelebA normalization defaults if attributes are missing
+    denorm_mean = getattr(fl_system, 'channel_mean', (0.5, 0.5, 0.5))
+    denorm_std = getattr(fl_system, 'channel_std', (0.5, 0.5, 0.5))
     
     # Train for several rounds
     print("\nPhase 1: Training FL Model...")
@@ -136,6 +147,7 @@ def run_baseline_experiment(args):
 
     print("Reconstructing image from captured signal...")
     source = captured_data.get('source', args.attack_source)
+    param_names = None
     if source == 'one_step_update':
         grads = attacker.gradients_from_one_step_update(
             captured_data['first_update'], captured_data['opt_lr']
@@ -144,6 +156,7 @@ def run_baseline_experiment(args):
         grads = attacker.gradients_from_avg_update(
             captured_data['avg_update'], captured_data['opt_lr']
         )
+        param_names = captured_data.get('param_names')
     else:
         grads = captured_data['gradients']
 
@@ -164,6 +177,7 @@ def run_baseline_experiment(args):
         optimizer_type=args.attack_optimizer,
         batch_size=args.attack_batch,
         label_strategy=label_strategy,
+        param_names=param_names,
     )
     
     # Visualize results
@@ -194,30 +208,36 @@ def run_baseline_experiment(args):
     pred_labels_cpu = inferred_labels.detach().cpu()
 
     if viz_true_batch is not None:
-        fig, axes = plt.subplots(2, num_show, figsize=(num_show * 3, 6))
+        # Three rows: Original, Reconstruction, |Diff| heatmap
+        fig, axes = plt.subplots(3, num_show, figsize=(num_show * 3, 9))
     else:
         fig, axes = plt.subplots(1, num_show, figsize=(num_show * 3, 3))
 
     axes = np.array(axes).reshape(-1)
 
     for idx in range(num_show):
-        recon_img = denormalize_cifar10(recon_batch[idx])
+        recon_chw = denormalize_tensor(recon_batch[idx], denorm_mean, denorm_std)
         if viz_true_batch is not None:
-            true_img = denormalize_cifar10(viz_true_batch[idx])
-            axes[idx].imshow(true_img.permute(1, 2, 0).clamp(0, 1))
+            true_chw = denormalize_tensor(viz_true_batch[idx], denorm_mean, denorm_std)
+            axes[idx].imshow(true_chw.permute(1, 2, 0).clamp(0, 1))
             if true_labels_cpu is not None:
                 label_text = true_labels_cpu[idx].item()
             else:
                 label_text = 'N/A'
             axes[idx].set_title(f"Original #{idx}\nLabel: {label_text}")
             axes[idx].axis('off')
-            axes[num_show + idx].imshow(recon_img.permute(1, 2, 0).clamp(0, 1))
+            axes[num_show + idx].imshow(recon_chw.permute(1, 2, 0).clamp(0, 1))
             axes[num_show + idx].set_title(
                 f"Recon #{idx}\nPred: {pred_labels_cpu[idx].item()}"
             )
             axes[num_show + idx].axis('off')
+            # Difference heatmap (per-pixel mean abs diff over channels)
+            diff_map = (recon_chw - true_chw).abs().mean(dim=0).clamp(0, 1).cpu()
+            axes[2 * num_show + idx].imshow(diff_map, cmap='magma', vmin=0.0, vmax=1.0)
+            axes[2 * num_show + idx].set_title(f"|Diff| #{idx}")
+            axes[2 * num_show + idx].axis('off')
         else:
-            axes[idx].imshow(recon_img.permute(1, 2, 0).clamp(0, 1))
+            axes[idx].imshow(recon_chw.permute(1, 2, 0).clamp(0, 1))
             axes[idx].set_title(f"Recon #{idx}\nPred: {pred_labels_cpu[idx].item()}")
             axes[idx].axis('off')
 
@@ -234,6 +254,8 @@ def run_baseline_experiment(args):
             reconstructed, target_tensor,
             compute_lpips=args.compute_lpips,
             lpips_model=lpips_model,
+            denorm_mean=denorm_mean,
+            denorm_std=denorm_std,
         )
         if true_labels is not None:
             compare_true = true_labels
