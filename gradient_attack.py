@@ -122,6 +122,10 @@ class GradientInversionAttack:
             optimizer = torch.optim.Adam([dummy_data], lr=lr)
         elif optimizer_type.lower() == 'lbfgs':
             optimizer = torch.optim.LBFGS([dummy_data], lr=lr)
+        elif optimizer_type.lower() == 'sgd':
+            optimizer = torch.optim.SGD([dummy_data], lr=lr, momentum=0.9)
+        elif optimizer_type.lower() == 'adamw':
+            optimizer = torch.optim.AdamW([dummy_data], lr=lr, weight_decay=0.01)
         else:
             optimizer = torch.optim.Adam([dummy_data], lr=lr)
 
@@ -170,7 +174,7 @@ class GradientInversionAttack:
                 cur_loss = step_once().item()
                 optimizer.step()
 
-            # Cosine LR schedule (for Adam) with warmup
+            # Cosine LR schedule (for non-LBFGS) with warmup
             if lr_schedule and lr_schedule.lower() == 'cosine' and not isinstance(optimizer, torch.optim.LBFGS):
                 warmup_iters = min(100, num_iterations // 10)
                 _set_lr_cosine(optimizer, base_lr=lr, t=iteration + 1, T=num_iterations, warmup=warmup_iters)
@@ -421,7 +425,8 @@ def _resolve_layer_indices(total_layers, use_layers=None, select_by_name=None, p
 
 def _prepare_layer_weights(indices, layer_weights, target_grads):
     n = len(indices)
-    if layer_weights is None:
+    # Handle None, empty string, or "uniform" as uniform weights
+    if layer_weights is None or layer_weights == "" or (isinstance(layer_weights, str) and layer_weights.lower() in ('uniform', 'none')):
         return [1.0] * n
     if isinstance(layer_weights, (list, tuple)):
         if len(layer_weights) == n:

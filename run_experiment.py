@@ -338,7 +338,7 @@ def _parse_args():
     p.add_argument('--attack-iterations', type=int, default=2000)
     p.add_argument('--attack-lr', type=float, default=0.1)
     p.add_argument('--tv-weight', type=float, default=0.001)
-    p.add_argument('--attack-optimizer', type=str, default='adam', choices=['adam','lbfgs'])
+    p.add_argument('--attack-optimizer', type=str, default='adam', choices=['adam','lbfgs','sgd','adamw'])
     p.add_argument('--attack-restarts', type=int, default=1)
     p.add_argument('--attack-batch', type=int, default=1)
     p.add_argument('--label-strategy', type=str, default='auto', choices=['auto','idlg','optimize'])

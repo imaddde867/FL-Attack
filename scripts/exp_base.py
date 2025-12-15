@@ -88,8 +88,10 @@ class ExperimentConfig:
             "--lr-schedule", self.lr_schedule,
             "--patience", str(self.patience),
             "--match-metric", self.match_metric,
-            "--layer-weights", self.layer_weights,
         ]
+        # Only pass layer_weights if it's set to something meaningful
+        if self.layer_weights is not None and self.layer_weights != "":
+            flags.extend(["--layer-weights", str(self.layer_weights)])
         # Only pass preset if it's not "none" - otherwise it overrides tv_weight
         if self.preset and self.preset.lower() not in ("none", ""):
             flags.extend(["--preset", self.preset])
@@ -112,10 +114,10 @@ def get_showcase_config() -> ExperimentConfig:
     - Untrained/fresh model (round 0): Maximum gradient information leakage
     - Batch size 1 with iDLG label inference: Deterministic target
     - No momentum: Clean, unperturbed gradients
-    - High LR (0.5) with Adam: Fast convergence to good minima
-    - Zero TV regularization: Let optimization find exact gradient match
-    - Many restarts (20+): Exhaustive search for global minimum
-    - Auto layer weights: Focus on layers with smaller gradients (more signal)
+    - LR=0.1 with cosine schedule: Best tested performance (PSNR 25.8+)
+    - Tiny TV (1e-6): Minimal smoothing
+    - Many restarts (15+): Exhaustive search for global minimum
+    - Uniform layer weights (default): Better than auto-weighted
     
     This configuration is designed to demonstrate how vulnerable an 
     unprotected FL system is to gradient inversion attacks.
@@ -130,17 +132,17 @@ def get_showcase_config() -> ExperimentConfig:
         batch_size=1,               # iDLG requires single sample
         client_momentum=0.0,        # Clean gradients, no momentum buffer
         attack_source="gradients",  # Direct gradients (maximum information)
-        # Highly aggressive attack configuration
-        attack_iterations=8000,     # Long enough for full convergence
-        attack_restarts=20,         # Many restarts to find best solution
+        # Best tested attack configuration (PSNR 25.8+)
+        attack_iterations=5000,     # Sufficient for convergence
+        attack_restarts=15,         # Many restarts for global minimum
         attack_optimizer="adam",    # Adam is fast on MPS
-        attack_lr=0.5,              # Higher LR for faster convergence
-        tv_weight=0.0,              # NO TV - let it match gradients exactly
-        lr_schedule="cosine",       # Cosine decay for fine-tuning
+        attack_lr=0.1,              # Optimal LR from testing
+        tv_weight=1e-6,             # Tiny TV for smoothness
+        lr_schedule="cosine",       # Cosine decay
         early_stop=False,           # Run to full completion
         preset="none",
         match_metric="l2",          # Pure L2 gradient matching
-        layer_weights="auto",       # Normalize by gradient magnitude
+        layer_weights=None,         # Uniform weights (best tested)
         fft_init=False,
         is_showcase=True,
         priority=0,
@@ -277,12 +279,12 @@ def get_quick_validation_config() -> ExperimentConfig:
         attack_optimizer="adam",
         attack_iterations=2000,
         attack_restarts=3,
-        attack_lr=0.5,              # Higher LR for faster convergence
-        tv_weight=0.0,              # No TV for validation
+        attack_lr=0.1,              # Optimal LR
+        tv_weight=1e-6,             # Tiny TV
         lr_schedule="cosine",
         early_stop=False,
-        match_metric="l2",          # L2 is reliable
-        layer_weights="auto",
+        match_metric="l2",
+        layer_weights=None,         # Uniform weights (best)
         priority=-1,
     )
 
