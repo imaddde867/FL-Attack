@@ -106,37 +106,41 @@ class ExperimentConfig:
 
 def get_showcase_config() -> ExperimentConfig:
     """
-    Ultra high-quality showcase configuration.
+    Devastating attack configuration for maximum reconstruction quality.
     
-    KEY SETTINGS FOR BEST VISUAL QUALITY:
-    - num_rounds=1, capture_round=0: Attack untrained model (maximum leakage)
-    - L2 loss with auto layer weights: Proven to work well
-    - Moderate LR (0.1) with cosine annealing + warmup
-    - Many restarts (15): Find global minimum across initializations
-    - Very long iterations (10000): Full convergence to minimum
-    - Tiny TV (1e-6): Just enough smoothing to avoid noise
+    KEY INSIGHTS FROM GRADIENT INVERSION RESEARCH:
+    - Untrained/fresh model (round 0): Maximum gradient information leakage
+    - Batch size 1 with iDLG label inference: Deterministic target
+    - No momentum: Clean, unperturbed gradients
+    - High LR (0.5) with Adam: Fast convergence to good minima
+    - Zero TV regularization: Let optimization find exact gradient match
+    - Many restarts (20+): Exhaustive search for global minimum
+    - Auto layer weights: Focus on layers with smaller gradients (more signal)
+    
+    This configuration is designed to demonstrate how vulnerable an 
+    unprotected FL system is to gradient inversion attacks.
     """
     return ExperimentConfig(
-        name="showcase_best",
-        description="Ultra high-quality baseline attack - maximum vulnerability demo",
+        name="showcase_devastating",
+        description="DEVASTATING gradient inversion - demonstrates total vulnerability",
         # CRITICAL: Attack untrained model for maximum gradient leakage
         num_rounds=1,
         capture_round=0,
-        # Optimal FL settings for successful gradient inversion
-        batch_size=1,           # Critical: single sample for iDLG
-        client_momentum=0.0,    # No momentum = clean gradients
-        attack_source="gradients",  # Direct gradients (most information)
-        # Ultra-aggressive attack settings
-        attack_iterations=10000,    # Very long run for full convergence
-        attack_restarts=15,         # Many restarts to find global minimum
-        attack_optimizer="adam",
-        attack_lr=0.1,              # Stable LR for Adam
-        tv_weight=1e-6,             # Tiny TV for smoothing
-        lr_schedule="cosine",       # Cosine with warmup
-        early_stop=False,           # Run to completion
+        # Maximum vulnerability FL settings
+        batch_size=1,               # iDLG requires single sample
+        client_momentum=0.0,        # Clean gradients, no momentum buffer
+        attack_source="gradients",  # Direct gradients (maximum information)
+        # Highly aggressive attack configuration
+        attack_iterations=8000,     # Long enough for full convergence
+        attack_restarts=20,         # Many restarts to find best solution
+        attack_optimizer="adam",    # Adam is fast on MPS
+        attack_lr=0.5,              # Higher LR for faster convergence
+        tv_weight=0.0,              # NO TV - let it match gradients exactly
+        lr_schedule="cosine",       # Cosine decay for fine-tuning
+        early_stop=False,           # Run to full completion
         preset="none",
-        match_metric="l2",          # L2 is stable and works well
-        layer_weights="auto",
+        match_metric="l2",          # Pure L2 gradient matching
+        layer_weights="auto",       # Normalize by gradient magnitude
         fft_init=False,
         is_showcase=True,
         priority=0,
@@ -271,13 +275,14 @@ def get_quick_validation_config() -> ExperimentConfig:
         client_momentum=0.0,
         attack_source="gradients",
         attack_optimizer="adam",
-        attack_iterations=3000,
-        attack_restarts=5,
-        attack_lr=0.1,
-        tv_weight=1e-4,             # Slightly higher TV
+        attack_iterations=2000,
+        attack_restarts=3,
+        attack_lr=0.5,              # Higher LR for faster convergence
+        tv_weight=0.0,              # No TV for validation
         lr_schedule="cosine",
         early_stop=False,
-        match_metric="sim",         # InvertingGradients style
+        match_metric="l2",          # L2 is reliable
+        layer_weights="auto",
         priority=-1,
     )
 
