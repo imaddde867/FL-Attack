@@ -1,6 +1,13 @@
 # Federated Learning Baseline + Gradient Inversion (R&D)
 
-This project demonstrates how a standard federated learning baseline (no differential privacy or homomorphic encryption) leaks training examples via gradient‑based image reconstruction (DLG/iDLG) and a one‑step update variant. CIFAR‑10 is used and downloaded automatically to `./data`.
+This project demonstrates how a standard federated learning baseline (no differential privacy or homomorphic encryption) leaks training examples via gradient‑based image reconstruction (DLG/iDLG) and a one‑step update variant. The project now uses CelebA (attributes classification; binary by default, e.g., `Male`) exclusively.
+
+Dataset setup (CelebA):
+- Place the CelebA images under `./data/img_align_celeba/` (the code also accepts the nested form `./data/img_align_celeba/img_align_celeba/`).
+- Ensure the following CSV files exist in `./data/`:
+  - `list_attr_celeba.csv`
+  - `list_eval_partition.csv`
+The loader expects these files and will raise an error if they are missing.
 
 ## Attack/Signal Variants
 
@@ -32,7 +39,7 @@ This project demonstrates how a standard federated learning baseline (no differe
 ## Model/Architecture Levers
 
 - Pooling/BN toggles: AvgPool vs MaxPool, with/without BatchNorm/Dropout to test sensitivity.
-- Datasets: CIFAR‑10 (current), consider MNIST (easier) and Tiny‑ImageNet (scale).
+- Datasets: CelebA (current). Future ideas: MNIST (easier) and Tiny‑ImageNet (scale).
 
 - CLI for experiments, output dirs, seeds, attack batch, label strategy (`run_experiment.py`).
 - Capture modes: raw `gradients`, `one_step_update`, and aggregated update (FedAvg delta) with metadata capture for comparisons (`fl_system.py`).
@@ -69,3 +76,7 @@ This project demonstrates how a standard federated learning baseline (no differe
 - Python 3.9+
 - PyTorch + torchvision, matplotlib
 - Install: `pip install torch torchvision matplotlib`
+
+Notes:
+- Images are normalized with mean/std (0.5, 0.5, 0.5) for CelebA 64×64 crops.
+- Default task is binary attribute classification (e.g., `Male`), adjustable in code.
