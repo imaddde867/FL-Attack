@@ -8,6 +8,8 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import numpy as np
 
+from device_utils import resolve_device
+
 from fl_system import FederatedLearningSystem
 from gradient_attack import GradientInversionAttack
 
@@ -29,8 +31,7 @@ def compute_simple_ssim(pred, target, data_range=4.0):
                 (target - mu_y.view(-1, *([1] * (target.ndim - 1))))).mean(dim=dims)
     C1 = (0.01 * data_range) ** 2
     C2 = (0.03 * data_range) ** 2
-    ssim = ((2 * mu_x * mu_y + C1) * (2 * sigma_xy + C2)) /
-           ((mu_x ** 2 + mu_y ** 2 + C1) * (sigma_x + sigma_y + C2))
+    ssim = ((2 * mu_x * mu_y + C1) * (2 * sigma_xy + C2)) / ((mu_x ** 2 + mu_y ** 2 + C1) * (sigma_x + sigma_y + C2))
     return ssim.mean().item()
 
 
@@ -73,16 +74,7 @@ def run_baseline_experiment(args):
     print("EXPERIMENT 1: BASELINE (No Privacy Protection - without DP or HE)")
     print("-"*60)
     
-    # Determine device
-    if args.device:
-        device = args.device
-    else:
-        if torch.cuda.is_available():
-            device = 'cuda'
-        elif torch.backends.mps.is_available():
-            device = 'mps'
-        else:
-            device = 'cpu'
+    device = resolve_device(args.device)
     print(f"Using device: {device}")
     lpips_model = maybe_init_lpips(device, args.compute_lpips)
     

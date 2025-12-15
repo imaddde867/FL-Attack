@@ -10,6 +10,8 @@ import torchvision.transforms as transforms
 from torchvision.datasets import CelebA
 import copy
 
+from device_utils import resolve_device
+
 class SimpleCNN(nn.Module):
     """Lightweight CNN for CelebA (64x64)"""
     def __init__(self, num_classes=8192):
@@ -46,7 +48,7 @@ class FederatedLearningSystem:
         num_classes=8192,
         batch_size=64,
         data_subset=None,
-        device='cuda',
+        device=None,
         client_lr=0.01,
         client_momentum=0.9,
         local_epochs=1,
@@ -56,14 +58,14 @@ class FederatedLearningSystem:
         self.num_classes = num_classes
         self.batch_size = batch_size
         self.data_subset = data_subset
-        self.device = device
+        self.device = resolve_device(device)
         self.client_lr = client_lr
         self.client_momentum = client_momentum
         self.local_epochs = local_epochs
         self.augment = augment
-
+        
         # Initialize global model for CelebA
-        self.global_model = SimpleCNN(num_classes).to(device)
+        self.global_model = SimpleCNN(num_classes).to(self.device)
 
         # Load and partition CelebA
         self.train_data, self.test_data = self._load_celeba()

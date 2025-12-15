@@ -3,10 +3,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.utils import save_image
 
+from device_utils import resolve_device
+
 class GradientInversionAttack:
-    def __init__(self, model, device='cuda', num_classes=None):
-        self.model = model
-        self.device = device
+    def __init__(self, model, device=None, num_classes=None):
+        self.device = resolve_device(device)
+        self.model = model.to(self.device)
         if num_classes is None:
             num_classes = getattr(model, 'num_classes', None)
         if num_classes is None:
