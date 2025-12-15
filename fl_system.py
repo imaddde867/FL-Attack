@@ -33,12 +33,27 @@ class SimpleCNN(nn.Module):
         return x
 
 class FederatedLearningSystem:
-    def __init__(self, num_clients=10, num_classes=10, batch_size=64, data_subset=None, device='cuda'):
+    def __init__(
+        self,
+        num_clients=10,
+        num_classes=10,
+        batch_size=64,
+        data_subset=None,
+        device='cuda',
+        client_lr=0.01,
+        client_momentum=0.9,
+        local_epochs=1,
+        augment=True,
+    ):
         self.num_clients = num_clients
         self.num_classes = num_classes
         self.batch_size = batch_size
         self.data_subset = data_subset
         self.device = device
+        self.client_lr = client_lr
+        self.client_momentum = client_momentum
+        self.local_epochs = local_epochs
+        self.augment = augment
         
         # Initialize global model
         self.global_model = SimpleCNN(num_classes).to(device)
@@ -50,13 +65,20 @@ class FederatedLearningSystem:
         
     def _load_cifar10(self):
         """Load CIFAR-10 with standard normalization"""
-        transform_train = transforms.Compose([
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465), 
-                               (0.2470, 0.2435, 0.2616))
-        ])
+        if self.augment:
+            transform_train = transforms.Compose([
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize((0.4914, 0.4822, 0.4465), 
+                                   (0.2470, 0.2435, 0.2616))
+            ])
+        else:
+            transform_train = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize((0.4914, 0.4822, 0.4465), 
+                                   (0.2470, 0.2435, 0.2616))
+            ])
         
         transform_test = transforms.Compose([
             transforms.ToTensor(),
@@ -96,18 +118,26 @@ class FederatedLearningSystem:
         
         return client_loaders
     
-    def train_client(self, client_id, epochs=1, capture_gradients=False):
-        """Train a single client and optionally capture gradients"""
+    def train_client(self, client_id, epochs=None, capture=False, capture_mode='gradients'):
+        """Train a single client and optionally capture attack source.
+
+        capture_mode: 'gradients' captures per-parameter gradients on first batch.
+                      'one_step_update' captures the model delta after one optimizer step
+                      on the first batch and records the optimizer lr for inversion.
+        """
         # Clone global model for local training
         local_model = copy.deepcopy(self.global_model)
         local_model.train()
         
-        optimizer = torch.optim.SGD(local_model.parameters(), lr=0.01, momentum=0.9)
+        optimizer = torch.optim.SGD(
+            local_model.parameters(), lr=self.client_lr, momentum=self.client_momentum
+        )
         criterion = nn.CrossEntropyLoss()
         
         captured_data = None
-        
-        for epoch in range(epochs):
+        train_epochs = self.local_epochs if epochs is None else epochs
+
+        for epoch in range(train_epochs):
             for batch_idx, (data, target) in enumerate(self.client_loaders[client_id]):
                 data, target = data.to(self.device), target.to(self.device)
                 
@@ -116,13 +146,34 @@ class FederatedLearningSystem:
                 loss = criterion(output, target)
                 loss.backward()
                 
-                # Capture first batch gradients for attack
-                if capture_gradients and batch_idx == 0 and epoch == 0:
-                    captured_data = {
-                        'gradients': [p.grad.clone() for p in local_model.parameters()],
-                        'true_data': data[0:1].clone(),  # First image
-                        'true_label': target[0:1].clone()
-                    }
+                # Capture on first batch if requested
+                if capture and batch_idx == 0 and epoch == 0:
+                    if capture_mode == 'gradients':
+                        captured_data = {
+                            'source': 'gradients',
+                            'gradients': [p.grad.clone() for p in local_model.parameters()],
+                            'true_data': data[0:1].clone(),  # First image
+                            'true_label': target[0:1].clone(),
+                        }
+                    elif capture_mode == 'one_step_update':
+                        # Snapshot params before step
+                        before = [p.detach().clone() for p in local_model.parameters()]
+                        optimizer.step()
+                        after = [p.detach().clone() for p in local_model.parameters()]
+                        # Compute delta from one step
+                        deltas = [a - b for a, b in zip(after, before)]
+                        captured_data = {
+                            'source': 'one_step_update',
+                            'first_update': deltas,
+                            'opt_lr': self.client_lr,
+                            'true_data': data[0:1].clone(),
+                            'true_label': target[0:1].clone(),
+                        }
+                        # After capturing one-step update, continue training with remaining batches
+                        # Skip the usual optimizer.step() below for this batch since it's already applied.
+                        continue
+                    else:
+                        raise ValueError(f"Unknown capture_mode: {capture_mode}")
                 
                 optimizer.step()
         
@@ -168,7 +219,7 @@ class FederatedLearningSystem:
         accuracy = 100. * correct / total
         return accuracy
     
-    def train_round(self, round_num, capture_from_client=None):
+    def train_round(self, round_num, capture_from_client=None, capture_mode='gradients'):
         """Execute one federated learning round"""
         updates = []
         captured_data = None
@@ -179,7 +230,9 @@ class FederatedLearningSystem:
         
         for client_id in participants:
             capture = (capture_from_client is not None and client_id == capture_from_client)
-            update, client_data = self.train_client(client_id, epochs=1, capture_gradients=capture)
+            update, client_data = self.train_client(
+                client_id, epochs=None, capture=capture, capture_mode=capture_mode
+            )
             updates.append(update)
             
             if client_data is not None:
