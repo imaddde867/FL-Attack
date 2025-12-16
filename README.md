@@ -1,5 +1,10 @@
 # Security in Federated Learning: Gradient Inversion, Ablations, and Defenses
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue?style=for-the-badge&logo=python&logoColor=white) ![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white) ![Federated Learning](https://img.shields.io/badge/Federated%20Learning-Enabled-green?style=for-the-badge) ![Privacy](https://img.shields.io/badge/Privacy-Differential%20%26%20Homomorphic-orange?style=for-the-badge)
+
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue?style=for-the-badge&logo=python&logoColor=white)](https://python.org) [![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org) [![Federated Learning](https://img.shields.io/badge/Federated%20Learning-Enabled-green?style=for-the-badge)](https://github.com/imaddde867/FL-Attack) [![Privacy](https://img.shields.io/badge/Privacy-DP%20%26%20HE-orange?style=for-the-badge)](https://github.com/imaddde867/FL-Attack)
+
+[![Live Demo](https://img.shields.io/badge/🔬_Live_Demo-View_Dashboard-58a6ff?style=for-the-badge)](https://imaddde867.github.io/FL-Attack/) [![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-Deployed-success?style=for-the-badge&logo=github)](https://imaddde867.github.io/FL-Attack/)
+
+> **[🔗 View Interactive Dashboard →](https://imaddde867.github.io/FL-Attack/)**
 
 ![Poster (4K)](results/report/poster_4k.png)
 
