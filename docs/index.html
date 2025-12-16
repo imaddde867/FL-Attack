@@ -386,30 +386,6 @@
       height: 18px;
       fill: currentColor;
     }
-    .shuffle-btn {
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--bg-panel);
-      color: var(--muted);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      padding: 0;
-      transition: all 0.15s ease;
-    }
-    .shuffle-btn:hover {
-      color: var(--text);
-      background: var(--accent-emphasis);
-      border-color: var(--accent);
-    }
-    .shuffle-btn svg {
-      width: 14px;
-      height: 14px;
-      fill: currentColor;
-    }
     .circle-button .icon-pause {
       display: none;
     }
@@ -752,9 +728,6 @@
                     <rect x="14" y="5" width="3" height="14" />
                   </svg>
                 </button>
-                <button id="shuffleBtn" class="shuffle-btn" aria-label="Random experiment" title="Random experiment">
-                  <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
-                </button>
                 <select id="autoplaySpeed" class="autoplay-speed" aria-label="Loop speed">
                   <option value="4000">Slow</option>
                   <option value="2000" selected>Medium</option>
@@ -1065,13 +1038,6 @@
         } else {
           startAutoplay();
         }
-      });
-      document.getElementById("shuffleBtn").addEventListener("click", () => {
-        if (!state.filteredIds.length) return;
-        const randomIdx = Math.floor(Math.random() * state.filteredIds.length);
-        state.selectedRunId = state.filteredIds[randomIdx];
-        renderSelectedRun();
-        renderLeaderboards();
       });
       document.getElementById("autoplaySpeed").addEventListener("change", (ev) => {
         const value = Number(ev.target.value);
