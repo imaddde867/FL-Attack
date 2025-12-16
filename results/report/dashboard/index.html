@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Privacy-Preserving Federated Learning | Gradient Inversion Analysis</title>
+  <title>Federated Learning Privacy Analysis | Interactive Dashboard</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231a237e'/%3E%3Cpath d='M32 12L16 22v20l16 10 16-10V22L32 12z' fill='none' stroke='%2369a9ff' stroke-width='2'/%3E%3Ccircle cx='32' cy='32' r='8' fill='%2369a9ff'/%3E%3C/svg%3E" />
   <style>
     :root {
@@ -493,8 +493,8 @@
   <div class="page">
     <header>
       <div>
-        <h1>Privacy-Preserving Federated Learning</h1>
-        <div class="subtitle">Gradient Inversion Attack & Defense Analysis</div>
+        <h1>Federated Learning Privacy Analysis</h1>
+        <div class="subtitle">How Well Can Private Data Be Recovered from Shared Models?</div>
         <div class="key-finding" id="keyFinding"></div>
       </div>
       <div class="meta">
@@ -507,7 +507,7 @@
         <div class="viewer-panels">
           <div class="panel carousel-panel" id="autoplayPanel">
             <div class="comparison-header">
-              <h2>Reconstructed Image</h2>
+              <h2>Recovered Image</h2>
               <div class="autoplay-controls">
                 <button id="autoplayToggle" class="circle-button" aria-label="Start autoplay" title="Start autoplay" aria-pressed="false">
                   <span class="sr-only">Start autoplay</span>
@@ -533,32 +533,32 @@
           </div>
           <div class="panel details-panel" id="selectedPanel">
             <div class="comparison-header">
-              <h2>Experiment Details</h2>
+              <h2>Test Details</h2>
               <div class="nav-buttons">
-                <button id="prevBtn" title="Previous experiment (←)">← Prev</button>
-                <button id="nextBtn" title="Next experiment (→)">Next →</button>
+                <button id="prevBtn" title="Previous (←)">← Prev</button>
+                <button id="nextBtn" title="Next (→)">Next →</button>
               </div>
             </div>
-            <div class="run-summary" id="runSummary">Select an experiment to view details</div>
+            <div class="run-summary" id="runSummary">Select a test to view details</div>
             <div class="metrics-grid" id="selectedMetrics"></div>
             <div class="details-stack">
               <div>
-                <div class="section-label">Configuration Path</div>
+                <div class="section-label">File Location</div>
                 <div class="run-path" id="runPath"></div>
               </div>
               <div>
-                <div class="section-label">Raw Metrics Output</div>
-                <pre class="metrics-text" id="metricsText">No metrics data available.</pre>
+                <div class="section-label">Full Results</div>
+                <pre class="metrics-text" id="metricsText">No data available.</pre>
               </div>
             </div>
           </div>
         </div>
         <section class="tabs">
           <div class="tab-buttons">
-            <button data-tab="leaderboards" class="active">Results Table</button>
-            <button data-tab="distributions">Metric Distributions</button>
-            <button data-tab="ablations">Ablation Study</button>
-            <button data-tab="montages">Visual Comparisons</button>
+            <button data-tab="leaderboards" class="active">All Results</button>
+            <button data-tab="distributions">Charts</button>
+            <button data-tab="ablations">Component Analysis</button>
+            <button data-tab="montages">Side-by-Side</button>
           </div>
           <div id="tab-leaderboards" class="tab-panel active">
             <div class="leaderboard-controls">
@@ -569,12 +569,12 @@
               <table>
                 <thead>
                   <tr>
-                    <th data-sort="group">Category</th>
-                    <th data-sort="method">Defense</th>
-                    <th data-sort="client">Client</th>
-                    <th data-sort="psnr">PSNR ↑</th>
-                    <th data-sort="ssim">SSIM ↑</th>
-                    <th data-sort="lpips">LPIPS ↓</th>
+                    <th data-sort="group">Test Type</th>
+                    <th data-sort="method">Protection</th>
+                    <th data-sort="client">User</th>
+                    <th data-sort="psnr">Quality ↑</th>
+                    <th data-sort="ssim">Similarity ↑</th>
+                    <th data-sort="lpips">Difference ↓</th>
                     <th data-sort="labelmatch">Label</th>
                     <th>Preview</th>
                   </tr>
@@ -593,7 +593,7 @@
           <div id="tab-montages" class="tab-panel">
             <div class="montage-grid" id="montageGrid"></div>
             <div class="empty-state" id="montageEmpty" style="display:none;">
-              No visual comparisons available for this configuration.
+              No side-by-side images available.
             </div>
           </div>
         </section>
@@ -949,7 +949,7 @@
       const tbody = document.getElementById("leaderboardBody");
       tbody.innerHTML = "";
       const filteredCountEl = document.getElementById("filteredCount");
-      if (filteredCountEl) filteredCountEl.textContent = `Showing ${state.filteredIds.length} experiments`;
+      if (filteredCountEl) filteredCountEl.textContent = `${state.filteredIds.length} results`;
       const runs = state.filteredIds.map((id) => state.runsById[id]);
       runs.sort((a, b) => {
         const dir = state.tableSort.dir === "asc" ? 1 : -1;
@@ -1014,13 +1014,13 @@
       const metricsContainer = document.getElementById("selectedMetrics");
       const metricsBox = document.getElementById("metricsText");
       if (!run) {
-        if (summaryEl) summaryEl.textContent = "Select an experiment to view details";
+        if (summaryEl) summaryEl.textContent = "Select a test to view details";
         if (pathEl) pathEl.textContent = "—";
         if (metricsContainer) metricsContainer.innerHTML = "";
         if (metricsBox) {
           metricsBox.textContent = state.filteredIds.length
-            ? "Select an experiment from the table below."
-            : "No experiments match the current configuration.";
+            ? "Select a row from the table below."
+            : "No matching results found.";
         }
         updateUrlState();
         syncAutoplayDisplay();
@@ -1037,15 +1037,22 @@
       }
       if (metricsContainer) {
         metricsContainer.innerHTML = "";
+        const metricLabels = {
+          "PSNR": "Quality",
+          "SSIM": "Similarity", 
+          "LPIPS": "Difference",
+          "MSE": "Error",
+          "LabelMatch": "Label Match"
+        };
         ["PSNR", "SSIM", "LPIPS", "MSE", "LabelMatch"].forEach((metric) => {
           const div = document.createElement("div");
           div.className = "metric-card";
-          div.innerHTML = `<div class="label">${metric}</div><div class="value">${formatMetric(run.metrics[metric])}</div>`;
+          div.innerHTML = `<div class="label">${metricLabels[metric]}</div><div class="value">${formatMetric(run.metrics[metric])}</div>`;
           metricsContainer.appendChild(div);
         });
       }
       if (metricsBox) {
-        metricsBox.textContent = "Loading metrics...";
+        metricsBox.textContent = "Loading...";
       }
       loadMetricsText(run);
       updateUrlState();
