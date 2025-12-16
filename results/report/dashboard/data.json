@@ -1,6 +1,6 @@
 {
   "meta": {
-    "build_time": "2025-12-16 02:44 UTC",
+    "build_time": "2025-12-16 02:53 UTC",
     "total_runs": 39,
     "groups": {
       "ablation": 21,
@@ -1966,13 +1966,67 @@
     ]
   },
   "baselines_by_client": {
-    "global": "run_0031_ablation-baseline-c3-c3",
+    "global": "run_0003_defenses-baseline-global",
+    "c5": "run_0007_multi-client-bmk-c5-c5",
+    "c2": "run_0008_multi-client-bmk-c2-c2",
+    "c3": "run_0009_multi-client-bmk-c3-c3",
+    "c4": "run_0010_multi-client-bmk-c4-c4",
+    "c1": "run_0011_multi-client-bmk-c1-c1",
+    "c6": "run_0012_multi-client-bmk-c6-c6",
+    "c8": "run_0013_multi-client-bmk-c8-c8",
+    "c9": "run_0014_multi-client-bmk-c9-c9",
     "c7": "run_0029_ablation-baseline-c7-c7",
-    "c0": "run_0030_ablation-baseline-c0-c0",
-    "c3": "run_0031_ablation-baseline-c3-c3"
+    "c0": "run_0030_ablation-baseline-c0-c0"
+  },
+  "baseline_index": {
+    "global": "run_0009_multi-client-bmk-c3-c3",
+    "by_client": {
+      "global": "run_0003_defenses-baseline-global",
+      "c5": "run_0007_multi-client-bmk-c5-c5",
+      "c2": "run_0008_multi-client-bmk-c2-c2",
+      "c3": "run_0009_multi-client-bmk-c3-c3",
+      "c4": "run_0010_multi-client-bmk-c4-c4",
+      "c1": "run_0011_multi-client-bmk-c1-c1",
+      "c6": "run_0012_multi-client-bmk-c6-c6",
+      "c8": "run_0013_multi-client-bmk-c8-c8",
+      "c9": "run_0014_multi-client-bmk-c9-c9",
+      "c7": "run_0029_ablation-baseline-c7-c7",
+      "c0": "run_0030_ablation-baseline-c0-c0"
+    },
+    "by_group": {
+      "defenses": {
+        "global": "run_0003_defenses-baseline-global",
+        "clients": {
+          "global": "run_0003_defenses-baseline-global"
+        }
+      },
+      "multi_client": {
+        "global": "run_0009_multi-client-bmk-c3-c3",
+        "clients": {
+          "c5": "run_0007_multi-client-bmk-c5-c5",
+          "c2": "run_0008_multi-client-bmk-c2-c2",
+          "c3": "run_0009_multi-client-bmk-c3-c3",
+          "c4": "run_0010_multi-client-bmk-c4-c4",
+          "c1": "run_0011_multi-client-bmk-c1-c1",
+          "c6": "run_0012_multi-client-bmk-c6-c6",
+          "c8": "run_0013_multi-client-bmk-c8-c8",
+          "c9": "run_0014_multi-client-bmk-c9-c9",
+          "c7": "run_0015_multi-client-bmk-c7-c7",
+          "c0": "run_0016_multi-client-bmk-c0-c0"
+        }
+      },
+      "ablation": {
+        "global": "run_0031_ablation-baseline-c3-c3",
+        "clients": {
+          "c7": "run_0029_ablation-baseline-c7-c7",
+          "c0": "run_0030_ablation-baseline-c0-c0",
+          "c3": "run_0031_ablation-baseline-c3-c3"
+        }
+      }
+    }
   },
   "best_overall_id": "run_0009_multi-client-bmk-c3-c3",
-  "best_baseline_id": "run_0031_ablation-baseline-c3-c3",
+  "best_baseline_id": "run_0009_multi-client-bmk-c3-c3",
   "best_per_setting": {
     "he": "run_0000_defenses-he-global",
     "dp_eps1": "run_0001_defenses-dp-eps1-global",
@@ -2057,5 +2111,6 @@
       "name": "Top reconstructions",
       "path": "assets/montages/top_ranked.png"
     }
-  ]
+  ],
+  "placeholder_image": "assets/images/placeholder.png"
 }

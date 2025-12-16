@@ -160,6 +160,7 @@
       background: #090d13;
       border: 1px solid var(--border);
       border-radius: 8px;
+      cursor: zoom-in;
     }
     .metrics-grid {
       display: grid;
@@ -227,6 +228,7 @@
       background: #090d13;
       max-height: 220px;
       object-fit: contain;
+      cursor: zoom-in;
     }
     .comparison-header {
       display: flex;
@@ -304,6 +306,14 @@
       border-bottom: 1px solid var(--border);
       padding: 8px;
       text-align: left;
+    }
+    .table-thumb {
+      width: 64px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: #090d13;
     }
     tbody tr {
       cursor: pointer;
@@ -518,6 +528,8 @@
   <script>
     const state = {
       data: null,
+      baselineIndex: null,
+      placeholderImage: null,
       runsById: {},
       filters: {
         groups: new Set(),
@@ -545,13 +557,19 @@
 
     function initDashboard(data) {
       state.data = data;
+      state.baselineIndex = data.baseline_index || null;
+      state.placeholderImage = data.placeholder_image || "";
       data.runs.forEach((run) => {
         state.runsById[run.run_id] = run;
       });
       populateFilters(data.filter_values);
-      state.selectedRunId = data.best_overall_id || (data.runs[0] && data.runs[0].run_id);
+      applyQueryParams();
+      if (!state.selectedRunId) {
+        state.selectedRunId = data.best_overall_id || (data.runs[0] && data.runs[0].run_id);
+      }
       updateMeta(data.meta);
       wireEvents();
+      document.getElementById("btnCompareToggle").classList.toggle("active", state.compareEnabled);
       populateCharts(data.charts);
       populateAblations(data.aggregates.ablations || []);
       populateMontages(data.montages || []);
@@ -574,6 +592,56 @@
       });
     }
 
+    function applyQueryParams() {
+      const params = new URLSearchParams(window.location.search);
+      if (!params || Array.from(params.keys()).length === 0) {
+        return;
+      }
+      const mapping = [
+        { param: "group", key: "groups" },
+        { param: "method", key: "methods" },
+        { param: "client", key: "clients" },
+      ];
+      mapping.forEach(({ param, key }) => {
+        if (!params.has(param)) return;
+        const values = params
+          .get(param)
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean);
+        if (values.length) {
+          setFilterSet(key, values);
+        }
+      });
+      if (params.has("search")) {
+        const term = params.get("search");
+        document.getElementById("searchInput").value = term;
+        state.search = term.toLowerCase();
+      }
+      if (params.has("compare")) {
+        const value = params.get("compare");
+        const enabled = value === null || value === "" || value === "1" || value.toLowerCase() === "true";
+        state.compareEnabled = enabled;
+      }
+      if (params.has("run_id")) {
+        const runId = params.get("run_id");
+        if (state.runsById[runId]) {
+          state.selectedRunId = runId;
+        }
+      } else if (params.has("method") || params.has("client")) {
+        const targetMethod = params.get("method");
+        const targetClient = params.get("client");
+        const candidate = state.data.runs.find((run) => {
+          const methodMatch = !targetMethod || targetMethod.split(",").includes(run.method);
+          const clientMatch = !targetClient || targetClient.split(",").includes(run.client);
+          return methodMatch && clientMatch;
+        });
+        if (candidate) {
+          state.selectedRunId = candidate.run_id;
+        }
+      }
+    }
+
     function toggleFilter(key, value, btn) {
       const set = state.filters[key];
       if (set.has(value)) {
@@ -585,6 +653,7 @@
       }
       if (set.size === 0) {
         setFilterSet(key, state.data.filter_values[key]);
+        applyFilters();
         return;
       }
       applyFilters();
@@ -639,11 +708,13 @@
         state.compareEnabled = !state.compareEnabled;
         ev.currentTarget.classList.toggle("active", state.compareEnabled);
         updateComparison();
+        updateUrlState();
       });
       document.getElementById("lockBaselineBtn").addEventListener("click", () => {
         if (!state.compareEnabled) return;
-        const baseline = getBaselineForSelection();
-        if (!baseline) return;
+        const baselineInfo = getBaselineForSelection();
+        if (!baselineInfo || !baselineInfo.run) return;
+        const baseline = baselineInfo.run;
         state.lockBaselineId = state.lockBaselineId === baseline.run_id ? null : baseline.run_id;
         updateComparison();
       });
@@ -667,6 +738,16 @@
           renderLeaderboards();
         });
       });
+      ["selectedImage", "comparisonBaseImage", "comparisonTargetImage"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("click", () => {
+          const srcAttr = el.getAttribute("src");
+          if (srcAttr && srcAttr.trim()) {
+            openLightbox(srcAttr);
+          }
+        });
+      });
     }
 
     function clearFilterSelections() {
@@ -682,11 +763,15 @@
     }
 
     function setFilterSet(key, values) {
-      const arr = Array.isArray(values) ? values : Array.from(values);
+      const allowed = state.data.filter_values[key] || [];
+      const arrRaw = Array.isArray(values) ? values : Array.from(values || []);
+      const filtered = arrRaw.filter((val) => allowed.includes(val));
+      const arr = filtered.length ? filtered : allowed.slice();
       state.filters[key] = new Set(arr);
       const container = document.getElementById(`${key.slice(0, -1)}Filters`);
+      if (!container) return;
       Array.from(container.children).forEach((chip) => {
-        chip.classList.toggle("active", arr.includes(chip.dataset.value));
+        chip.classList.toggle("active", state.filters[key].has(chip.dataset.value));
       });
     }
 
@@ -783,6 +868,7 @@
         if (run.run_id === state.selectedRunId) {
           tr.classList.add("selected");
         }
+        const thumbSrc = run.image_path || state.placeholderImage || "";
         tr.innerHTML = `
           <td>${run.group}</td>
           <td>${run.method}</td>
@@ -791,7 +877,7 @@
           <td>${formatMetric(run.metrics.SSIM)}</td>
           <td>${formatMetric(run.metrics.LPIPS)}</td>
           <td>${formatMetric(run.metrics.LabelMatch)}</td>
-          <td>${run.image_path ? "image" : "n/a"}</td>
+          <td><img src="${thumbSrc}" alt="preview ${run.run_id}" class="table-thumb" /></td>
         `;
         tr.addEventListener("click", () => {
           state.selectedRunId = run.run_id;
@@ -799,15 +885,35 @@
           updateComparison();
           renderLeaderboards();
         });
+        const thumb = tr.querySelector(".table-thumb");
+        if (thumb) {
+          thumb.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            const attr = thumb.getAttribute("src");
+            if (attr && attr.trim()) {
+              openLightbox(attr);
+            }
+          });
+        }
         tbody.appendChild(tr);
       });
     }
 
     function renderSelectedRun() {
       const run = state.runsById[state.selectedRunId];
-      if (!run) return;
-      document.getElementById("selectedImage").src = run.image_path;
-      document.getElementById("comparisonTargetImage").src = run.image_path;
+      if (!run) {
+        updateUrlState();
+        return;
+      }
+      const primarySrc = run.image_path || state.placeholderImage || "";
+      const selectedImg = document.getElementById("selectedImage");
+      const comparisonImg = document.getElementById("comparisonTargetImage");
+      if (selectedImg) {
+        selectedImg.setAttribute("src", primarySrc);
+      }
+      if (comparisonImg) {
+        comparisonImg.setAttribute("src", primarySrc);
+      }
       document.getElementById("runPath").textContent = run.source_dir || "Path unavailable";
       const metricsContainer = document.getElementById("selectedMetrics");
       metricsContainer.innerHTML = "";
@@ -818,6 +924,21 @@
         metricsContainer.appendChild(div);
       });
       loadMetricsText(run);
+      updateUrlState();
+    }
+
+    function updateUrlState() {
+      if (!window.history || !window.history.replaceState) return;
+      const params = new URLSearchParams();
+      if (state.selectedRunId) {
+        params.set("run_id", state.selectedRunId);
+      }
+      if (state.compareEnabled) {
+        params.set("compare", "1");
+      }
+      const query = params.toString();
+      const newUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
     }
 
     function formatMetric(value) {
@@ -864,20 +985,22 @@
       if (!state.compareEnabled) {
         label.textContent = "Comparison disabled";
         deltaContainer.innerHTML = "";
-        baseImg.src = "";
+        baseImg.src = state.placeholderImage || "";
         return;
       }
-      const baseline = getBaselineForSelection();
+      const baselineInfo = getBaselineForSelection();
+      const baseline = baselineInfo && baselineInfo.run;
       const selected = state.runsById[state.selectedRunId];
       if (!baseline || !selected) {
         label.textContent = "No baseline available";
         deltaContainer.innerHTML = "";
-        baseImg.src = "";
+        baseImg.src = state.placeholderImage || "";
         return;
       }
-      baseImg.src = baseline.image_path;
+      baseImg.src = baseline.image_path || state.placeholderImage || "";
       const lockedText = state.lockBaselineId ? " (locked)" : "";
-      label.textContent = `Comparing to ${baseline.method} / ${baseline.client}${lockedText}`;
+      const reasonText = baselineInfo && baselineInfo.reason ? ` [${baselineInfo.reason}]` : "";
+      label.textContent = `Comparing to ${baseline.method} / ${baseline.client}${reasonText}${lockedText}`;
       deltaContainer.innerHTML = "";
       [["PSNR", "dB"], ["SSIM", ""], ["LPIPS", ""], ["LabelMatch", ""]].forEach(([metric, suffix]) => {
         const baseVal = baseline.metrics[metric];
@@ -903,12 +1026,46 @@
       if (!state.compareEnabled) return null;
       const selected = state.runsById[state.selectedRunId];
       if (!selected) return null;
-      if (state.lockBaselineId) {
-        return state.runsById[state.lockBaselineId];
-      }
+      const index = state.baselineIndex || {};
       const client = selected.client || "global";
-      const baselineId = state.data.baselines_by_client[client] || state.data.baselines_by_client.global;
-      return state.runsById[baselineId];
+      const tryRun = (runId, reason) => {
+        if (!runId) return null;
+        const run = state.runsById[runId];
+        return run ? { run, reason } : null;
+      };
+      if (state.lockBaselineId) {
+        const locked = tryRun(state.lockBaselineId, "locked baseline");
+        if (locked) {
+          return locked;
+        }
+      }
+      const groupEntry = index.by_group && index.by_group[selected.group];
+      if (groupEntry) {
+        if (groupEntry.clients && groupEntry.clients[client]) {
+          const info = tryRun(groupEntry.clients[client], `${selected.group}: client ${client}`);
+          if (info) return info;
+        }
+        if (groupEntry.clients && groupEntry.clients.global) {
+          const info = tryRun(groupEntry.clients.global, `${selected.group}: client global`);
+          if (info) return info;
+        }
+        if (groupEntry.global) {
+          const info = tryRun(groupEntry.global, `${selected.group}: best baseline`);
+          if (info) return info;
+        }
+      }
+      if (index.by_client && index.by_client[client]) {
+        const info = tryRun(index.by_client[client], `client ${client}`);
+        if (info) return info;
+      }
+      if (index.by_client && index.by_client.global) {
+        const info = tryRun(index.by_client.global, "global client baseline");
+        if (info) return info;
+      }
+      if (index.global) {
+        return tryRun(index.global, "global best baseline");
+      }
+      return null;
     }
 
     function jumpSelection(delta) {

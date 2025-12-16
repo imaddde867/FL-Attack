@@ -208,10 +208,11 @@ class DashboardBuilder:
         montages = self.prepare_montages(runs)
         charts = self.generate_charts(df_augmented)
 
-        baselines_map = self.compute_baselines(runs)
+        baseline_index = self.compute_baselines(runs)
+        baselines_map = baseline_index.get("by_client", {})
         best_overall_id = self.get_best_run_id(runs)
         best_per_setting = self.get_best_by_method(runs)
-        best_baseline_id = baselines_map.get("global")
+        best_baseline_id = baseline_index.get("global")
 
         key_finding = self.derive_key_finding(df_augmented, baselines_map)
         meta = {
@@ -236,12 +237,14 @@ class DashboardBuilder:
             "runs": [run.__dict__ for run in runs],
             "aggregates": aggregates,
             "baselines_by_client": baselines_map,
+            "baseline_index": baseline_index,
             "best_overall_id": best_overall_id,
             "best_baseline_id": best_baseline_id,
             "best_per_setting": best_per_setting,
             "filter_values": filter_values,
             "charts": charts,
             "montages": montages,
+            "placeholder_image": safe_relative(self.placeholder_path, self.output_dir),
         }
 
         self.write_json(self.output_dir / "data.json", data_blob)
@@ -370,7 +373,16 @@ class DashboardBuilder:
     def copy_image_for_run(self, source_dir: Optional[Path], slug: str) -> Optional[str]:
         if not source_dir or not source_dir.exists():
             return None
-        candidates = sorted(source_dir.rglob("baseline_attack_result.png"))
+        direct = source_dir / "baseline_attack_result.png"
+        if direct.exists():
+            candidates = [direct]
+        else:
+            files = list(source_dir.rglob("baseline_attack_result.png"))
+            files.sort(
+                key=lambda path: path.stat().st_mtime if path.exists() else 0,
+                reverse=True,
+            )
+            candidates = files
         if not candidates:
             return None
         src = candidates[0]
@@ -384,7 +396,16 @@ class DashboardBuilder:
     ) -> Optional[str]:
         if not source_dir or not source_dir.exists():
             return None
-        candidates = sorted(source_dir.rglob("metrics.txt"))
+        direct = source_dir / "metrics.txt"
+        if direct.exists():
+            candidates = [direct]
+        else:
+            files = list(source_dir.rglob("metrics.txt"))
+            files.sort(
+                key=lambda path: path.stat().st_mtime if path.exists() else 0,
+                reverse=True,
+            )
+            candidates = files
         if not candidates:
             return None
         src = candidates[0]
@@ -393,24 +414,58 @@ class DashboardBuilder:
         return safe_relative(dest, self.output_dir)
 
     # ------------------------------------------------------------------
-    def compute_baselines(self, runs: List[RunEntry]) -> Dict[str, str]:
-        baselines: Dict[str, RunEntry] = {}
+    def compute_baselines(self, runs: List[RunEntry]) -> Dict[str, object]:
+        def is_baseline(run: RunEntry) -> bool:
+            label = run.method.lower()
+            setting = run.setting.lower()
+            if "baseline" in label or "baseline" in setting:
+                return True
+            if run.group == "multi_client":
+                return label.startswith("bmk") or setting.startswith("bmk")
+            return False
+
+        by_group_clients: Dict[str, Dict[str, RunEntry]] = defaultdict(dict)
+        by_group_best: Dict[str, RunEntry] = {}
+        by_client: Dict[str, RunEntry] = {}
+        overall_best: Optional[RunEntry] = None
+
         for run in runs:
-            label = run.setting.lower()
-            if "baseline" not in label:
+            if not is_baseline(run):
                 continue
+            group = run.group
             client = run.client or "global"
-            current = baselines.get(client)
-            if not current or ranking_tuple(run.metrics) < ranking_tuple(
-                current.metrics
-            ):
-                baselines[client] = run
-        if baselines:
-            # Determine best global baseline
-            all_baseline_runs = list(baselines.values())
-            all_baseline_runs.sort(key=lambda x: ranking_tuple(x.metrics))
-            baselines["global"] = all_baseline_runs[0]
-        return {client: run.run_id for client, run in baselines.items()}
+
+            current = by_group_clients[group].get(client)
+            if not current or ranking_tuple(run.metrics) < ranking_tuple(current.metrics):
+                by_group_clients[group][client] = run
+
+            group_best = by_group_best.get(group)
+            if not group_best or ranking_tuple(run.metrics) < ranking_tuple(group_best.metrics):
+                by_group_best[group] = run
+
+            client_best = by_client.get(client)
+            if not client_best or ranking_tuple(run.metrics) < ranking_tuple(client_best.metrics):
+                by_client[client] = run
+
+            if not overall_best or ranking_tuple(run.metrics) < ranking_tuple(overall_best.metrics):
+                overall_best = run
+
+        baseline_index = {
+            "global": overall_best.run_id if overall_best else None,
+            "by_client": {client: run.run_id for client, run in by_client.items()},
+            "by_group": {},
+        }
+
+        if overall_best:
+            baseline_index["by_client"].setdefault("global", overall_best.run_id)
+
+        for group, clients in by_group_clients.items():
+            baseline_index["by_group"][group] = {
+                "global": by_group_best[group].run_id if group in by_group_best else None,
+                "clients": {client: run.run_id for client, run in clients.items()},
+            }
+
+        return baseline_index
 
     # ------------------------------------------------------------------
     def get_best_run_id(self, runs: List[RunEntry]) -> Optional[str]:
@@ -690,18 +745,24 @@ class DashboardBuilder:
         if subset.empty:
             self.save_empty_chart(dest, "Ablations", "No ablation runs.")
             return
-        means = subset.groupby("method")[["PSNR", "SSIM", "LPIPS"]].mean().sort_values(
-            by="LPIPS"
-        )
-        fig, ax = plt.subplots(figsize=(9, 5))
-        idx = range(len(means))
-        ax.barh(idx, means["PSNR"], label="PSNR")
-        ax.barh(idx, means["SSIM"], left=means["PSNR"], label="SSIM")
-        ax.set_yticks(list(idx))
-        ax.set_yticklabels(means.index.tolist())
-        ax.set_xlabel("PSNR + SSIM (stacked)")
-        ax.set_title("Ablation families (stacked PSNR/SSIM)")
-        ax.legend()
+        summary = subset.groupby("method")[["PSNR", "SSIM", "LPIPS"]].agg(["mean", "std"])
+        summary = summary.sort_values(("LPIPS", "mean"))
+        methods = summary.index.tolist()
+        metrics = ["PSNR", "SSIM", "LPIPS"]
+        titles = ["PSNR (higher better)", "SSIM (higher better)", "LPIPS (lower better)"]
+        colors = ["#5ac8fa", "#a390f0", "#f7b05b"]
+        fig, axes = plt.subplots(1, 3, figsize=(13, 4), sharex=True)
+        x = range(len(methods))
+        for idx, metric in enumerate(metrics):
+            means = summary[(metric, "mean")].tolist()
+            std = summary[(metric, "std")].fillna(0).tolist()
+            axes[idx].bar(x, means, yerr=std, capsize=4, color=colors[idx])
+            axes[idx].set_title(titles[idx])
+            axes[idx].set_xticks(list(x))
+            axes[idx].set_xticklabels(methods, rotation=40, ha="right")
+            axes[idx].grid(alpha=0.3, axis="y")
+        axes[0].set_ylabel("Score")
+        fig.suptitle("Ablation families: mean ± std per metric")
         fig.tight_layout()
         fig.savefig(dest, dpi=150)
         plt.close(fig)
@@ -964,6 +1025,7 @@ DASHBOARD_HTML = """
       background: #090d13;
       border: 1px solid var(--border);
       border-radius: 8px;
+      cursor: zoom-in;
     }
     .metrics-grid {
       display: grid;
@@ -1031,6 +1093,7 @@ DASHBOARD_HTML = """
       background: #090d13;
       max-height: 220px;
       object-fit: contain;
+      cursor: zoom-in;
     }
     .comparison-header {
       display: flex;
@@ -1108,6 +1171,14 @@ DASHBOARD_HTML = """
       border-bottom: 1px solid var(--border);
       padding: 8px;
       text-align: left;
+    }
+    .table-thumb {
+      width: 64px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: #090d13;
     }
     tbody tr {
       cursor: pointer;
@@ -1322,6 +1393,8 @@ DASHBOARD_HTML = """
   <script>
     const state = {
       data: null,
+      baselineIndex: null,
+      placeholderImage: null,
       runsById: {},
       filters: {
         groups: new Set(),
@@ -1349,13 +1422,19 @@ DASHBOARD_HTML = """
 
     function initDashboard(data) {
       state.data = data;
+      state.baselineIndex = data.baseline_index || null;
+      state.placeholderImage = data.placeholder_image || "";
       data.runs.forEach((run) => {
         state.runsById[run.run_id] = run;
       });
       populateFilters(data.filter_values);
-      state.selectedRunId = data.best_overall_id || (data.runs[0] && data.runs[0].run_id);
+      applyQueryParams();
+      if (!state.selectedRunId) {
+        state.selectedRunId = data.best_overall_id || (data.runs[0] && data.runs[0].run_id);
+      }
       updateMeta(data.meta);
       wireEvents();
+      document.getElementById("btnCompareToggle").classList.toggle("active", state.compareEnabled);
       populateCharts(data.charts);
       populateAblations(data.aggregates.ablations || []);
       populateMontages(data.montages || []);
@@ -1378,6 +1457,56 @@ DASHBOARD_HTML = """
       });
     }
 
+    function applyQueryParams() {
+      const params = new URLSearchParams(window.location.search);
+      if (!params || Array.from(params.keys()).length === 0) {
+        return;
+      }
+      const mapping = [
+        { param: "group", key: "groups" },
+        { param: "method", key: "methods" },
+        { param: "client", key: "clients" },
+      ];
+      mapping.forEach(({ param, key }) => {
+        if (!params.has(param)) return;
+        const values = params
+          .get(param)
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean);
+        if (values.length) {
+          setFilterSet(key, values);
+        }
+      });
+      if (params.has("search")) {
+        const term = params.get("search");
+        document.getElementById("searchInput").value = term;
+        state.search = term.toLowerCase();
+      }
+      if (params.has("compare")) {
+        const value = params.get("compare");
+        const enabled = value === null || value === "" || value === "1" || value.toLowerCase() === "true";
+        state.compareEnabled = enabled;
+      }
+      if (params.has("run_id")) {
+        const runId = params.get("run_id");
+        if (state.runsById[runId]) {
+          state.selectedRunId = runId;
+        }
+      } else if (params.has("method") || params.has("client")) {
+        const targetMethod = params.get("method");
+        const targetClient = params.get("client");
+        const candidate = state.data.runs.find((run) => {
+          const methodMatch = !targetMethod || targetMethod.split(",").includes(run.method);
+          const clientMatch = !targetClient || targetClient.split(",").includes(run.client);
+          return methodMatch && clientMatch;
+        });
+        if (candidate) {
+          state.selectedRunId = candidate.run_id;
+        }
+      }
+    }
+
     function toggleFilter(key, value, btn) {
       const set = state.filters[key];
       if (set.has(value)) {
@@ -1389,6 +1518,7 @@ DASHBOARD_HTML = """
       }
       if (set.size === 0) {
         setFilterSet(key, state.data.filter_values[key]);
+        applyFilters();
         return;
       }
       applyFilters();
@@ -1443,11 +1573,13 @@ DASHBOARD_HTML = """
         state.compareEnabled = !state.compareEnabled;
         ev.currentTarget.classList.toggle("active", state.compareEnabled);
         updateComparison();
+        updateUrlState();
       });
       document.getElementById("lockBaselineBtn").addEventListener("click", () => {
         if (!state.compareEnabled) return;
-        const baseline = getBaselineForSelection();
-        if (!baseline) return;
+        const baselineInfo = getBaselineForSelection();
+        if (!baselineInfo || !baselineInfo.run) return;
+        const baseline = baselineInfo.run;
         state.lockBaselineId = state.lockBaselineId === baseline.run_id ? null : baseline.run_id;
         updateComparison();
       });
@@ -1471,6 +1603,16 @@ DASHBOARD_HTML = """
           renderLeaderboards();
         });
       });
+      ["selectedImage", "comparisonBaseImage", "comparisonTargetImage"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("click", () => {
+          const srcAttr = el.getAttribute("src");
+          if (srcAttr && srcAttr.trim()) {
+            openLightbox(srcAttr);
+          }
+        });
+      });
     }
 
     function clearFilterSelections() {
@@ -1486,11 +1628,15 @@ DASHBOARD_HTML = """
     }
 
     function setFilterSet(key, values) {
-      const arr = Array.isArray(values) ? values : Array.from(values);
+      const allowed = state.data.filter_values[key] || [];
+      const arrRaw = Array.isArray(values) ? values : Array.from(values || []);
+      const filtered = arrRaw.filter((val) => allowed.includes(val));
+      const arr = filtered.length ? filtered : allowed.slice();
       state.filters[key] = new Set(arr);
       const container = document.getElementById(`${key.slice(0, -1)}Filters`);
+      if (!container) return;
       Array.from(container.children).forEach((chip) => {
-        chip.classList.toggle("active", arr.includes(chip.dataset.value));
+        chip.classList.toggle("active", state.filters[key].has(chip.dataset.value));
       });
     }
 
@@ -1587,6 +1733,7 @@ DASHBOARD_HTML = """
         if (run.run_id === state.selectedRunId) {
           tr.classList.add("selected");
         }
+        const thumbSrc = run.image_path || state.placeholderImage || "";
         tr.innerHTML = `
           <td>${run.group}</td>
           <td>${run.method}</td>
@@ -1595,7 +1742,7 @@ DASHBOARD_HTML = """
           <td>${formatMetric(run.metrics.SSIM)}</td>
           <td>${formatMetric(run.metrics.LPIPS)}</td>
           <td>${formatMetric(run.metrics.LabelMatch)}</td>
-          <td>${run.image_path ? "image" : "n/a"}</td>
+          <td><img src="${thumbSrc}" alt="preview ${run.run_id}" class="table-thumb" /></td>
         `;
         tr.addEventListener("click", () => {
           state.selectedRunId = run.run_id;
@@ -1603,15 +1750,35 @@ DASHBOARD_HTML = """
           updateComparison();
           renderLeaderboards();
         });
+        const thumb = tr.querySelector(".table-thumb");
+        if (thumb) {
+          thumb.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            const attr = thumb.getAttribute("src");
+            if (attr && attr.trim()) {
+              openLightbox(attr);
+            }
+          });
+        }
         tbody.appendChild(tr);
       });
     }
 
     function renderSelectedRun() {
       const run = state.runsById[state.selectedRunId];
-      if (!run) return;
-      document.getElementById("selectedImage").src = run.image_path;
-      document.getElementById("comparisonTargetImage").src = run.image_path;
+      if (!run) {
+        updateUrlState();
+        return;
+      }
+      const primarySrc = run.image_path || state.placeholderImage || "";
+      const selectedImg = document.getElementById("selectedImage");
+      const comparisonImg = document.getElementById("comparisonTargetImage");
+      if (selectedImg) {
+        selectedImg.setAttribute("src", primarySrc);
+      }
+      if (comparisonImg) {
+        comparisonImg.setAttribute("src", primarySrc);
+      }
       document.getElementById("runPath").textContent = run.source_dir || "Path unavailable";
       const metricsContainer = document.getElementById("selectedMetrics");
       metricsContainer.innerHTML = "";
@@ -1622,6 +1789,21 @@ DASHBOARD_HTML = """
         metricsContainer.appendChild(div);
       });
       loadMetricsText(run);
+      updateUrlState();
+    }
+
+    function updateUrlState() {
+      if (!window.history || !window.history.replaceState) return;
+      const params = new URLSearchParams();
+      if (state.selectedRunId) {
+        params.set("run_id", state.selectedRunId);
+      }
+      if (state.compareEnabled) {
+        params.set("compare", "1");
+      }
+      const query = params.toString();
+      const newUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
     }
 
     function formatMetric(value) {
@@ -1668,20 +1850,22 @@ DASHBOARD_HTML = """
       if (!state.compareEnabled) {
         label.textContent = "Comparison disabled";
         deltaContainer.innerHTML = "";
-        baseImg.src = "";
+        baseImg.src = state.placeholderImage || "";
         return;
       }
-      const baseline = getBaselineForSelection();
+      const baselineInfo = getBaselineForSelection();
+      const baseline = baselineInfo && baselineInfo.run;
       const selected = state.runsById[state.selectedRunId];
       if (!baseline || !selected) {
         label.textContent = "No baseline available";
         deltaContainer.innerHTML = "";
-        baseImg.src = "";
+        baseImg.src = state.placeholderImage || "";
         return;
       }
-      baseImg.src = baseline.image_path;
+      baseImg.src = baseline.image_path || state.placeholderImage || "";
       const lockedText = state.lockBaselineId ? " (locked)" : "";
-      label.textContent = `Comparing to ${baseline.method} / ${baseline.client}${lockedText}`;
+      const reasonText = baselineInfo && baselineInfo.reason ? ` [${baselineInfo.reason}]` : "";
+      label.textContent = `Comparing to ${baseline.method} / ${baseline.client}${reasonText}${lockedText}`;
       deltaContainer.innerHTML = "";
       [["PSNR", "dB"], ["SSIM", ""], ["LPIPS", ""], ["LabelMatch", ""]].forEach(([metric, suffix]) => {
         const baseVal = baseline.metrics[metric];
@@ -1707,12 +1891,46 @@ DASHBOARD_HTML = """
       if (!state.compareEnabled) return null;
       const selected = state.runsById[state.selectedRunId];
       if (!selected) return null;
-      if (state.lockBaselineId) {
-        return state.runsById[state.lockBaselineId];
-      }
+      const index = state.baselineIndex || {};
       const client = selected.client || "global";
-      const baselineId = state.data.baselines_by_client[client] || state.data.baselines_by_client.global;
-      return state.runsById[baselineId];
+      const tryRun = (runId, reason) => {
+        if (!runId) return null;
+        const run = state.runsById[runId];
+        return run ? { run, reason } : null;
+      };
+      if (state.lockBaselineId) {
+        const locked = tryRun(state.lockBaselineId, "locked baseline");
+        if (locked) {
+          return locked;
+        }
+      }
+      const groupEntry = index.by_group && index.by_group[selected.group];
+      if (groupEntry) {
+        if (groupEntry.clients && groupEntry.clients[client]) {
+          const info = tryRun(groupEntry.clients[client], `${selected.group}: client ${client}`);
+          if (info) return info;
+        }
+        if (groupEntry.clients && groupEntry.clients.global) {
+          const info = tryRun(groupEntry.clients.global, `${selected.group}: client global`);
+          if (info) return info;
+        }
+        if (groupEntry.global) {
+          const info = tryRun(groupEntry.global, `${selected.group}: best baseline`);
+          if (info) return info;
+        }
+      }
+      if (index.by_client && index.by_client[client]) {
+        const info = tryRun(index.by_client[client], `client ${client}`);
+        if (info) return info;
+      }
+      if (index.by_client && index.by_client.global) {
+        const info = tryRun(index.by_client.global, "global client baseline");
+        if (info) return info;
+      }
+      if (index.global) {
+        return tryRun(index.global, "global best baseline");
+      }
+      return null;
     }
 
     function jumpSelection(delta) {
