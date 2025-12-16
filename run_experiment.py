@@ -12,6 +12,8 @@ from device_utils import resolve_device
 
 from fl_system import FederatedLearningSystem
 from gradient_attack import GradientInversionAttack
+from Differential_privacy import gaussian_sigma_for_dp, clip_gradients, add_gaussian_noise
+from homomorphic_encryptor import HomomorphicEncryptor
 
 
 def denormalize_tensor(tensor, mean, std):
@@ -78,8 +80,13 @@ def _parse_layer_weights(arg_val):
     if arg_val is None:
         return None
     val = str(arg_val).strip()
-    if val.lower() == 'auto':
-        return 'auto'
+    # Support string-based weighting modes
+    valid_modes = ['auto', 'auto_norm', 'inv_norm', 'early', 'early_linear', 
+                   'early_strong', 'early_conv', 'spatial', 'uniform', 'none']
+    if val.lower() in valid_modes:
+        if val.lower() in ('uniform', 'none'):
+            return None  # Uniform weights = no special weighting
+        return val.lower()
     try:
         parts = [p for p in val.replace(';', ',').split(',') if p]
         return [float(p) for p in parts]
@@ -178,6 +185,34 @@ def run_baseline_experiment(args):
             param_names = [n for (n, _) in fl_system.global_model.named_parameters()]
         except Exception:
             param_names = None
+
+    # ============================================================
+    # Apply Privacy Defenses (DP and/or HE)
+    # ============================================================
+    if args.dp_epsilon is not None:
+        print(f"\n[DEFENSE] Applying Differential Privacy (ε={args.dp_epsilon}, δ={args.dp_delta})")
+        sigma = gaussian_sigma_for_dp(args.dp_epsilon, args.dp_delta, sensitivity=args.dp_max_norm)
+        print(f"  -> Clipping gradients to L2 norm ≤ {args.dp_max_norm}")
+        grads = clip_gradients(grads, args.dp_max_norm)
+        print(f"  -> Adding Gaussian noise with σ={sigma:.4f}")
+        grads = add_gaussian_noise(grads, sigma)
+        print(f"  -> DP protection applied!")
+
+    if args.use_he:
+        print(f"\n[DEFENSE] Applying Homomorphic Encryption (bits={args.he_bits})")
+        he = HomomorphicEncryptor(bits=args.he_bits, precision=args.he_precision)
+        # Encrypt, aggregate, decrypt (simulating secure aggregation)
+        # This adds quantization noise from fixed-point representation
+        protected_grads = []
+        for g in grads:
+            flat = g.flatten().tolist()
+            encrypted = he.encrypt_vector(flat)
+            # Add encrypted Laplace noise for extra protection
+            encrypted_noisy = he.add_noise_encrypted(encrypted, scale=0.01)
+            decrypted = he.decrypt_vector(encrypted_noisy)
+            protected_grads.append(torch.tensor(decrypted, dtype=g.dtype, device=g.device).view_as(g))
+        grads = protected_grads
+        print(f"  -> HE encrypt/decrypt round-trip applied with noise!")
 
     label_strategy = args.label_strategy
     if label_strategy == 'auto':
@@ -358,6 +393,14 @@ def _parse_args():
     p.add_argument('--layer-weights', type=str, default=None, help="'auto' or comma-separated floats")
     # Visualization
     p.add_argument('--no-heatmap', action='store_true', help='Disable difference heatmap row')
+
+    # Privacy defenses
+    p.add_argument('--dp-epsilon', type=float, default=None, help='Enable DP with this epsilon (e.g., 1.0, 0.5)')
+    p.add_argument('--dp-delta', type=float, default=1e-5, help='DP delta parameter')
+    p.add_argument('--dp-max-norm', type=float, default=1.0, help='DP gradient clipping max norm')
+    p.add_argument('--use-he', action='store_true', help='Enable Homomorphic Encryption on gradients')
+    p.add_argument('--he-bits', type=int, default=512, help='HE key size in bits')
+    p.add_argument('--he-precision', type=int, default=1000000, help='HE float precision')
 
     return p.parse_args()
 

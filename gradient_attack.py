@@ -624,44 +624,40 @@ def _prepare_layer_weights(indices, layer_weights, target_grads, param_names=Non
         return ws
     
     if mode == 'early':
-        # Exponential decay: early layers get higher weight
-        # Weight = exp(-decay * relative_position)
-        decay = 2.0  # Decay rate
+        # Exponential decay: w_i = exp(-0.08 * i)
+        # Normalized so mean(w) = 1
         ws = []
         for idx in indices:
-            rel_pos = idx / max(total_layers - 1, 1)  # 0 to 1
-            w = math.exp(-decay * rel_pos)
+            w = math.exp(-0.08 * idx)
             ws.append(w)
-        s = sum(ws) + 1e-8
-        ws = [w * (n / s) for w in ws]
+        # Normalize: divide by mean to get mean = 1
+        mean_w = sum(ws) / len(ws) if ws else 1.0
+        ws = [w / mean_w for w in ws]
         return ws
     
     if mode == 'early_linear':
-        # Linear decay from early to late
-        # First layer gets weight 2.0, last layer gets 0.5
+        # Linear decay: w_i = 1 - i/(L-1)
+        # Normalized so mean(w) = 1
+        L = total_layers
         ws = []
         for idx in indices:
-            rel_pos = idx / max(total_layers - 1, 1)
-            w = 2.0 - 1.5 * rel_pos  # 2.0 -> 0.5
-            ws.append(max(w, 0.1))
-        s = sum(ws) + 1e-8
-        ws = [w * (n / s) for w in ws]
+            w = max(1.0 - idx / max(L - 1, 1), 0.01)  # Avoid zero weight
+            ws.append(w)
+        # Normalize: divide by mean to get mean = 1
+        mean_w = sum(ws) / len(ws) if ws else 1.0
+        ws = [w / mean_w for w in ws]
         return ws
     
     if mode == 'early_strong':
-        # Strong early layer emphasis (first 1/3 get 3x weight)
+        # Strong exponential decay: w_i = exp(-0.20 * i)
+        # Normalized so mean(w) = 1
         ws = []
-        early_cutoff = total_layers // 3
         for idx in indices:
-            if idx < early_cutoff:
-                w = 3.0
-            elif idx < 2 * early_cutoff:
-                w = 1.0
-            else:
-                w = 0.3
+            w = math.exp(-0.20 * idx)
             ws.append(w)
-        s = sum(ws) + 1e-8
-        ws = [w * (n / s) for w in ws]
+        # Normalize: divide by mean to get mean = 1
+        mean_w = sum(ws) / len(ws) if ws else 1.0
+        ws = [w / mean_w for w in ws]
         return ws
     
     if mode in ('early_conv', 'spatial'):

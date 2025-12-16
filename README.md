@@ -1,82 +1,53 @@
-# Federated Learning Baseline + Gradient Inversion (R&D)
+# Federated Learning Gradient Inversion + Defenses
 
-This project demonstrates how a standard federated learning baseline (no differential privacy or homomorphic encryption) leaks training examples via gradient‑based image reconstruction (DLG/iDLG) and a one‑step update variant. The project now uses CelebA (attributes classification; binary by default, e.g., `Male`) exclusively.
+Compact R&D sandbox showing how a simple FL setup on CelebA leaks training examples via gradient-based reconstruction (DLG/iDLG, one-step, aggregated updates), and how basic defenses (DP and HE) change the outcome. Apple M‑series/MPS is supported.
 
-Dataset setup (CelebA):
-- Place the CelebA images under `./data/img_align_celeba/` (the code also accepts the nested form `./data/img_align_celeba/img_align_celeba/`).
-- Ensure the following CSV files exist in `./data/`:
-  - `list_attr_celeba.csv`
-  - `list_eval_partition.csv`
-The loader expects these files and will raise an error if they are missing.
+## Data
+- Place images in `data/img_align_celeba/` (nested `data/img_align_celeba/img_align_celeba/` also works).
+- Put `data/list_attr_celeba.csv` and `data/list_eval_partition.csv` alongside images.
 
-## Attack/Signal Variants
+## What’s Included
+- Attack signals: `gradients`, `one_step_update`, `agg_update` (FedAvg delta approximation).
+- Attacker: multi-restarts, Adam/LBFGS/SGD/AdamW, TV/clamp, cosine LR, early stopping, FFT init, layer selection/weights, batch>1 with soft labels.
+- Defenses: Differential Privacy (clip + Gaussian noise) and Homomorphic Encryption (Paillier‑like, fixed‑point, optional encrypted noise) applied to the captured signal before reconstruction.
+- Automation: curated experiment suites and analysis scripts for showcase, ablations, multi‑client, and defenses.
 
-- One-step update attack: reconstruct from a single local SGD step by approximating gradients as −Δ/η (server sees model deltas). `--attack-source one_step_update`.
-- Aggregated-update attack: capture FedAvg delta and approximate gradients via −Δavg/η to mimic secure-aggregation vantage (`--attack-source agg_update`).
-- Multi-restarts + optimizer variants: randomized restarts, Adam or LBFGS, tunable TV weight/clamping.
-- Batch-size sensitivity: sweep `--batch-size` and `--attack-batch` (optimizing k dummy samples) to show degradation beyond batch size 1.
-- Label leakage toggles: iDLG (single-sample) vs soft-label optimization (`--label-strategy optimize`).
-
-## FL/Training Controls
-
-- Local optimizer knobs: vary client LR, momentum, and local epochs; momentum/more epochs obfuscate single‑sample signals.
-- Data augmentation toggle: `--no-augment` to disable augmentation; augmentation typically degrades reconstruction.
-- IID vs non‑IID (future): add non‑IID partitioning to study heterogeneity effects.
-
-## Measurement & Visualization
-
-- Metrics: MSE, PSNR, SSIM, optional LPIPS (`--compute-lpips` adds it to metrics file).
-- Visuals: tiled grid (up to 4 samples) showing original vs reconstruction and predicted labels.
-- Failure modes: explore degradation vs batch size, momentum, epochs, augmentation.
-
-## Reproducibility & UX
-
-- CLI-driven runs: device, seeds, attack iterations/LR, TV weight, restarts, capture mode, attack batch, label strategy.
-- Artifact logging: timestamped results folder with images and metrics (CSV-friendly).
-- Sweep runner: `python scripts/sweep_baseline.py` sweeps batch sizes × momenta × attack sources, writes `sweep_summary.csv`, and auto-plots the requested metric per momentum setting.
-- Config snapshots (future): dump full args/env for exact repro.
-
-## Model/Architecture Levers
-
-- Pooling/BN toggles: AvgPool vs MaxPool, with/without BatchNorm/Dropout to test sensitivity.
-- Datasets: CelebA (current). Future ideas: MNIST (easier) and Tiny‑ImageNet (scale).
-
-- CLI for experiments, output dirs, seeds, attack batch, label strategy (`run_experiment.py`).
-- Capture modes: raw `gradients`, `one_step_update`, and aggregated update (FedAvg delta) with metadata capture for comparisons (`fl_system.py`).
-- Gradient attacker: multi-restarts, Adam/LBFGS, tunable TV/clamp, batch>1 reconstruction with soft-label optimization (`gradient_attack.py`).
-- Metrics: MSE/PSNR/SSIM (+ optional LPIPS), label-match rate, tiled visualizations, timestamped artifacts (`run_experiment.py`).
-- Sweep script for batch size × momentum × attack-source matrices (`scripts/sweep_baseline.py`).
-
-## Quick Usage
-
-- Baseline (batch size 1, gradients, Adam, TV):
-  - `python run_experiment.py --batch-size 1 --attack-iterations 2000 --attack-restarts 3 --tv-weight 0.001 --attack-optimizer adam`
-- One-step update attack (no momentum, single epoch):
-  - `python run_experiment.py --attack-source one_step_update --client-momentum 0.0 --local-epochs 1`
-- Aggregated-update attack (FedAvg delta, metadata from client 0):
-  - `python run_experiment.py --attack-source agg_update --capture-client 0 --client-momentum 0.0 --local-epochs 1`
-- Batch>1 reconstruction (optimize labels):
-  - `python run_experiment.py --attack-batch 2 --label-strategy optimize --attack-iterations 4000`
-- Show augmentation impact:
-  - `python run_experiment.py --no-augment`
-- Stress with larger batch sizes:
-  - `python run_experiment.py --batch-size 4 --attack-iterations 4000 --attack-restarts 5`
-- Sweep + plots (MSE vs batch size for each momentum):
-  - `python scripts/sweep_baseline.py --batch-sizes 1 2 4 --momenta 0.0 0.9 --plot-metric MSE`
-
-## Outputs
-
-- Saved under `results/<timestamp>/` (or your `--out-dir`):
-  - `baseline_attack_result.png` — tiled original vs reconstructed samples
-  - `metrics.txt` — MSE, PSNR, SSIM, optional LPIPS, label-match rate (if labels known)
-  - `sweep_summary.csv` (from sweeper) — aggregated metrics per configuration
-
-## Requirements
-
+## Install
 - Python 3.9+
-- PyTorch + torchvision, matplotlib
-- Install: `pip install torch torchvision matplotlib`
+- PyTorch, torchvision, matplotlib (optional: `lpips` for perceptual metric)
+- Example: `pip install torch torchvision matplotlib lpips`
 
-Notes:
-- Images are normalized with mean/std (0.5, 0.5, 0.5) for CelebA 64×64 crops.
-- Default task is binary attribute classification (e.g., `Male`), adjustable in code.
+## Quick Start
+- Best single‑face “showcase” (recommended): `bash scripts/run_showcase.sh`
+- Fast benchmark config: `bash scripts/run_benchmark.sh`
+- Attack many clients + summarize: `bash scripts/run_multi_client.sh` then `python scripts/analyze_multi_client.py --results-dir results/multi_client`
+
+Or drive directly:
+- Baseline (batch=1, gradients): `python run_experiment.py --num-rounds 1 --capture-round 0 --batch-size 1 --client-momentum 0.0 --attack-iterations 3000 --attack-restarts 3 --tv-weight 1e-5 --lr-schedule cosine --compute-lpips`
+- One‑step update: `python run_experiment.py --attack-source one_step_update --client-momentum 0.0 --local-epochs 1`
+- Aggregated update: `python run_experiment.py --attack-source agg_update --capture-client 0 --client-momentum 0.0 --local-epochs 1`
+
+## Privacy Defenses (flags)
+- Differential Privacy: `--dp-epsilon <ε> --dp-delta <δ> --dp-max-norm <L2>`
+- Homomorphic Encryption: `--use-he [--he-bits 512 --he-precision 1000000]`
+- End‑to‑end defense sweeps: `bash scripts/run_defenses.sh` and analyze with `python scripts/analyze_defenses.py --results-dir results/defenses`
+
+## Results & Outputs
+- Saved under `results/<name>/` or your `--out-dir`:
+  - `baseline_attack_result.png` – original vs reconstruction (plus heatmap row if ground truth available)
+  - `metrics.txt` – MSE, PSNR, SSIM, optional LPIPS, LabelMatch
+  - `config.json` – exact run arguments
+
+## Repo Map
+- `fl_system.py` – minimal CelebA FL loop + capture modes
+- `gradient_attack.py` – gradient inversion core and options
+- `Differential_privacy.py` – clip, noise calibration, DP aggregation helpers
+- `homomorphic_encryptor.py` – lightweight additive HE for vectors
+- `run_experiment.py` – CLI for end‑to‑end runs (attacks + defenses)
+- `scripts/exp_base.py` – curated baseline suite (showcase + ablations + report)
+- `scripts/exp_phase1.py` – refinement sweeps (TV, layer weighting, perceptual)
+- `scripts/run_*.sh` – convenience wrappers for common experiment sets
+
+Notes
+- CelebA is loaded as 64×64 crops normalized with mean/std (0.5, 0.5, 0.5).
+- Default task is a binary attribute (e.g., `Male`).

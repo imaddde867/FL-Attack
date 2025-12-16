@@ -304,6 +304,11 @@ class FederatedLearningSystem:
 
         num_participants = max(1, self.num_clients // 2)
         participants = np.random.choice(self.num_clients, num_participants, replace=False)
+        
+        # Ensure the capture client is included in participants if specified
+        if capture_from_client is not None and capture_from_client not in participants:
+            # Replace a random participant with the capture client
+            participants = np.append(participants[:-1], capture_from_client)
 
         for client_id in participants:
             capture = (capture_from_client is not None and client_id == capture_from_client)

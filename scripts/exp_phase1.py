@@ -363,9 +363,12 @@ def generate_report(results: List[Dict[str, Any]], output_dir: Path):
                 psnr_val = best.get('PSNR', 'N/A')
                 ssim_val = best.get('SSIM', 'N/A')
                 lpips_val = best.get('LPIPS', 'N/A')
-                f.write(f"- PSNR: {psnr_val:.2f if isinstance(psnr_val, (int, float)) else psnr_val}\n")
-                f.write(f"- SSIM: {ssim_val:.3f if isinstance(ssim_val, (int, float)) else ssim_val}\n")
-                f.write(f"- LPIPS: {lpips_val:.4f if isinstance(lpips_val, (int, float)) and not (isinstance(lpips_val, float) and lpips_val != lpips_val) else 'N/A'}\n")
+                psnr_str = f"{psnr_val:.2f}" if isinstance(psnr_val, (int, float)) else str(psnr_val)
+                ssim_str = f"{ssim_val:.3f}" if isinstance(ssim_val, (int, float)) else str(ssim_val)
+                lpips_str = f"{lpips_val:.4f}" if isinstance(lpips_val, (int, float)) and lpips_val == lpips_val else 'N/A'
+                f.write(f"- PSNR: {psnr_str}\n")
+                f.write(f"- SSIM: {ssim_str}\n")
+                f.write(f"- LPIPS: {lpips_str}\n")
                 f.write("\n")
         
         # Best overall
@@ -521,9 +524,18 @@ def main():
     if successful and not args.dry_run:
         best = max(successful, key=lambda x: x.get("PSNR", 0))
         print(f"\nBest result: {best['name']}")
-        print(f"  PSNR: {best.get('PSNR', 'N/A'):.2f}")
-        print(f"  SSIM: {best.get('SSIM', 'N/A'):.3f}")
-        print(f"  LPIPS: {best.get('LPIPS', 'N/A')}")
+        psnr_val = best.get('PSNR', 'N/A')
+        ssim_val = best.get('SSIM', 'N/A')
+        lpips_val = best.get('LPIPS', 'N/A')
+        mse_val = best.get('MSE', 'N/A')
+        psnr_str = f"{psnr_val:.2f}" if isinstance(psnr_val, (int, float)) else str(psnr_val)
+        ssim_str = f"{ssim_val:.3f}" if isinstance(ssim_val, (int, float)) else str(ssim_val)
+        lpips_str = f"{lpips_val:.4f}" if isinstance(lpips_val, (int, float)) else str(lpips_val)
+        mse_str = f"{mse_val:.4f}" if isinstance(mse_val, (int, float)) else str(mse_val)
+        print(f"  PSNR: {psnr_str}")
+        print(f"  SSIM: {ssim_str}")
+        print(f"  LPIPS: {lpips_str}")
+        print(f"  MSE: {mse_str}")
         print(f"\nResults saved to: {output_dir}")
 
 
