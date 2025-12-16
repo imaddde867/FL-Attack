@@ -869,7 +869,7 @@ DASHBOARD_HTML = """
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Federated Learning Gradient Inversion: Interactive Explorer</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50%25' x='50%25' font-size='48' dominant-baseline='middle' text-anchor='middle'%3E%F0%9F%90%8E%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231f2636'/%3E%3Ctext y='55%25' x='50%25' font-size='34' fill='%23f5f6fa' text-anchor='middle'%3E%F0%9F%90%8E%3C/text%3E%3C/svg%3E" />
   <style>
     :root {
       color-scheme: dark;
@@ -1013,14 +1013,14 @@ DASHBOARD_HTML = """
       overflow: hidden;
     }
     .viewer-panels {
-      display: flex;
-      flex-direction: row;
-      gap: 20px;
-      padding: 20px 28px;
+      display: grid;
+      grid-template-columns: minmax(420px, 0.65fr) minmax(360px, 0.35fr);
+      gap: 24px;
+      padding: 24px 28px 12px;
       border-bottom: 1px solid var(--border);
+      align-items: stretch;
     }
     .panel {
-      flex: 1;
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -1028,26 +1028,48 @@ DASHBOARD_HTML = """
       display: flex;
       flex-direction: column;
       gap: 14px;
+      min-height: 0;
     }
-    .panel-help {
-      margin: 0;
-      font-size: 13px;
-      color: var(--muted);
-      line-height: 1.35;
+    .carousel-panel,
+    .details-panel {
+      min-height: 0;
     }
     .panel h2 {
       margin: 0;
       font-size: 18px;
       letter-spacing: 0.04em;
     }
-    .selected-image {
-      width: 100%;
-      max-height: 420px;
-      object-fit: contain;
-      background: #090d13;
+    .carousel-frame {
+      flex: 1;
+      position: relative;
+      border-radius: 12px;
       border: 1px solid var(--border);
-      border-radius: 8px;
+      background: #090d13;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+    .autoplay-image {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 10px;
       cursor: zoom-in;
+    }
+    .carousel-badge {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(15, 19, 28, 0.85);
+      border: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text);
+      pointer-events: none;
     }
     .metrics-grid {
       display: grid;
@@ -1070,6 +1092,11 @@ DASHBOARD_HTML = """
       font-size: 20px;
       font-weight: 600;
     }
+    .run-summary {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+    }
     .run-path {
       font-family: "SFMono-Regular", "Consolas", monospace;
       font-size: 12px;
@@ -1080,15 +1107,30 @@ DASHBOARD_HTML = """
       overflow-x: auto;
       border: 1px solid var(--border);
     }
+    .section-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .details-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
     .metrics-text {
       background: #0f131d;
       border: 1px solid var(--border);
       border-radius: 6px;
-      padding: 10px;
-      max-height: 140px;
+      padding: 12px;
+      min-height: 140px;
+      max-height: 220px;
       overflow-y: auto;
       font-family: "SFMono-Regular", "Consolas", monospace;
       font-size: 12px;
+      white-space: pre-wrap;
+      margin: 0;
     }
     .nav-buttons {
       display: flex;
@@ -1110,36 +1152,79 @@ DASHBOARD_HTML = """
       gap: 10px;
       flex-wrap: wrap;
     }
-    .autoplay-image {
-      width: 100%;
-      max-height: 320px;
-      object-fit: contain;
-      background: #090d13;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-    }
     .autoplay-controls {
       display: flex;
-      gap: 10px;
+      gap: 4px;
       align-items: center;
-      flex-wrap: wrap;
     }
-    .autoplay-controls button,
-    .autoplay-controls select {
-      padding: 6px 12px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--bg-panel);
-      color: var(--text);
-      cursor: pointer;
-    }
-    .autoplay-controls select {
-      padding: 6px 8px;
-    }
-    .autoplay-status {
-      font-size: 13px;
+    .circle-button {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
       color: var(--muted);
-      line-height: 1.4;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      transition: all 0.2s ease;
+    }
+    .circle-button:hover:not(:disabled) {
+      color: var(--text);
+      background: rgba(255,255,255,0.1);
+    }
+    .circle-button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    .circle-button svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+    .circle-button .icon-pause {
+      display: none;
+    }
+    .circle-button.playing .icon-play {
+      display: none;
+    }
+    .circle-button.playing .icon-pause {
+      display: block;
+    }
+    .autoplay-speed {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 4px 18px 4px 8px;
+      appearance: none;
+      cursor: pointer;
+      background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+      background-position: right 6px center;
+      background-size: 5px 5px;
+      background-repeat: no-repeat;
+      transition: color 0.2s ease;
+    }
+    .autoplay-speed:hover:not(:disabled) {
+      color: var(--text);
+    }
+    .autoplay-speed:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
     .tabs {
       flex: 1;
@@ -1267,6 +1352,9 @@ DASHBOARD_HTML = """
         flex-direction: row;
         flex-wrap: wrap;
       }
+      .viewer-panels {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -1332,40 +1420,52 @@ DASHBOARD_HTML = """
       </aside>
       <section class="viewer">
         <div class="viewer-panels">
-          <div class="panel" id="selectedPanel">
+          <div class="panel carousel-panel" id="autoplayPanel">
             <div class="comparison-header">
-              <h2>Selected run</h2>
+              <h2>Autoplay carousel</h2>
+              <div class="autoplay-controls">
+                <button id="autoplayToggle" class="circle-button" aria-label="Start autoplay" title="Start autoplay" aria-pressed="false">
+                  <span class="sr-only">Start autoplay</span>
+                  <svg class="icon-play" viewBox="0 0 24 24" role="presentation">
+                    <polygon points="8,5 19,12 8,19" />
+                  </svg>
+                  <svg class="icon-pause" viewBox="0 0 24 24" role="presentation">
+                    <rect x="7" y="5" width="3" height="14" />
+                    <rect x="14" y="5" width="3" height="14" />
+                  </svg>
+                </button>
+                <select id="autoplaySpeed" class="autoplay-speed" aria-label="Loop speed">
+                  <option value="12000">Slow</option>
+                  <option value="8000" selected>Medium</option>
+                  <option value="5000">Fast</option>
+                </select>
+              </div>
+            </div>
+            <div class="carousel-frame">
+              <img id="autoplayImage" class="autoplay-image" alt="Autoplay preview" />
+              <div class="carousel-badge" id="autoplayStatus">Slide 0 / 0</div>
+            </div>
+          </div>
+          <div class="panel details-panel" id="selectedPanel">
+            <div class="comparison-header">
+              <h2>Run details</h2>
               <div class="nav-buttons">
                 <button id="prevBtn" title="Previous run (Arrow Left)">Prev</button>
                 <button id="nextBtn" title="Next run (Arrow Right)">Next</button>
               </div>
             </div>
-            <img id="selectedImage" class="selected-image" alt="Selected run image" />
+            <div class="run-summary" id="runSummary">No run selected.</div>
             <div class="metrics-grid" id="selectedMetrics"></div>
-            <div class="run-path" id="runPath"></div>
-            <div class="metrics-text" id="metricsText">Metrics file not available.</div>
-          </div>
-          <div class="panel" id="autoplayPanel">
-            <div class="comparison-header">
-              <h2>Autoplay showcase</h2>
-              <div class="autoplay-controls">
-                <button id="autoplayToggle">Start loop</button>
-                <label style="display:flex; align-items:center; gap:6px;">
-                  <span style="font-size:12px; color:var(--muted);">Speed</span>
-                  <select id="autoplaySpeed">
-                    <option value="12000">Slow</option>
-                    <option value="8000" selected>Medium</option>
-                    <option value="5000">Fast</option>
-                  </select>
-                </label>
+            <div class="details-stack">
+              <div>
+                <div class="section-label">Run path</div>
+                <div class="run-path" id="runPath"></div>
+              </div>
+              <div>
+                <div class="section-label">Metrics</div>
+                <pre class="metrics-text" id="metricsText">Metrics file not available.</pre>
               </div>
             </div>
-            <p class="panel-help">
-              Let the dashboard cycle through every filtered run automatically. Great for leaving the monitor running all day as a live slideshow.
-            </p>
-            <img id="autoplayImage" class="autoplay-image" alt="Autoplay preview" />
-            <div class="metrics-grid" id="autoplayMetrics"></div>
-            <div class="autoplay-status" id="autoplayStatus">Autoplay idle.</div>
           </div>
         </div>
         <section class="tabs">
@@ -1472,6 +1572,7 @@ DASHBOARD_HTML = """
       populateAblations(data.aggregates.ablations || []);
       populateMontages(data.montages || []);
       applyFilters();
+      startAutoplay();
     }
 
     function populateFilters(values) {
@@ -1633,16 +1734,15 @@ DASHBOARD_HTML = """
           renderLeaderboards();
         });
       });
-      ["selectedImage", "autoplayImage"].forEach((id) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener("click", () => {
-          const srcAttr = el.getAttribute("src");
+      const autoplayImg = document.getElementById("autoplayImage");
+      if (autoplayImg) {
+        autoplayImg.addEventListener("click", () => {
+          const srcAttr = autoplayImg.getAttribute("src");
           if (srcAttr && srcAttr.trim()) {
             openLightbox(srcAttr);
           }
         });
-      });
+      }
     }
 
     function clearFilterSelections() {
@@ -1686,7 +1786,10 @@ DASHBOARD_HTML = """
       }
       runs.sort(sorterFor(state.sort));
       state.filteredIds = runs.map((run) => run.run_id);
-      if (!state.filteredIds.includes(state.selectedRunId) && state.filteredIds.length > 0) {
+      if (state.filteredIds.length === 0) {
+        state.selectedRunId = null;
+        stopAutoplay();
+      } else if (!state.filteredIds.includes(state.selectedRunId)) {
         state.selectedRunId = state.filteredIds[0];
       }
       renderLeaderboards();
@@ -1697,13 +1800,13 @@ DASHBOARD_HTML = """
     function sorterFor(key) {
       switch (key) {
         case "psnr":
-          return (a, b) => numeric(b.metrics.PSNR) - numeric(a.metrics.PSNR);
+          return (a, b) => metricValue(b.metrics.PSNR, true) - metricValue(a.metrics.PSNR, true);
         case "ssim":
-          return (a, b) => numeric(b.metrics.SSIM) - numeric(a.metrics.SSIM);
+          return (a, b) => metricValue(b.metrics.SSIM, true) - metricValue(a.metrics.SSIM, true);
         case "lpips":
-          return (a, b) => numeric(a.metrics.LPIPS) - numeric(b.metrics.LPIPS);
+          return (a, b) => metricValue(a.metrics.LPIPS, false) - metricValue(b.metrics.LPIPS, false);
         case "labelmatch":
-          return (a, b) => numeric(b.metrics.LabelMatch) - numeric(a.metrics.LabelMatch);
+          return (a, b) => metricValue(b.metrics.LabelMatch, true) - metricValue(a.metrics.LabelMatch, true);
         case "path":
           return (a, b) => a.source_dir.localeCompare(b.source_dir);
         default:
@@ -1712,24 +1815,28 @@ DASHBOARD_HTML = """
     }
 
     function bestSort(a, b) {
-      const lp = numeric(a.metrics.LPIPS) - numeric(b.metrics.LPIPS);
+      const lp = metricValue(a.metrics.LPIPS, false) - metricValue(b.metrics.LPIPS, false);
       if (lp !== 0) return lp;
-      const ssim = numeric(b.metrics.SSIM) - numeric(a.metrics.SSIM);
+      const ssim = metricValue(b.metrics.SSIM, true) - metricValue(a.metrics.SSIM, true);
       if (ssim !== 0) return ssim;
-      return numeric(b.metrics.PSNR) - numeric(a.metrics.PSNR);
+      return metricValue(b.metrics.PSNR, true) - metricValue(a.metrics.PSNR, true);
     }
 
     function worstSort(a, b) {
-      const lp = numeric(b.metrics.LPIPS) - numeric(a.metrics.LPIPS);
+      const lp = metricValue(b.metrics.LPIPS, false) - metricValue(a.metrics.LPIPS, false);
       if (lp !== 0) return lp;
-      return numeric(a.metrics.SSIM) - numeric(b.metrics.SSIM);
+      return metricValue(a.metrics.SSIM, true) - metricValue(b.metrics.SSIM, true);
     }
 
-    function numeric(value) {
-      if (value === null || value === undefined || Number.isNaN(value)) {
-        return 0;
+    function metricValue(value, preferHigher) {
+      if (value === null || value === undefined || value === "") {
+        return preferHigher ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY;
       }
-      return Number(value);
+      const num = Number(value);
+      if (!Number.isFinite(num)) {
+        return preferHigher ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY;
+      }
+      return num;
     }
 
     function renderLeaderboards() {
@@ -1747,13 +1854,13 @@ DASHBOARD_HTML = """
           case "client":
             return a.client.localeCompare(b.client) * dir;
           case "psnr":
-            return (numeric(a.metrics.PSNR) - numeric(b.metrics.PSNR)) * dir;
+            return (metricValue(a.metrics.PSNR, true) - metricValue(b.metrics.PSNR, true)) * dir;
           case "ssim":
-            return (numeric(a.metrics.SSIM) - numeric(b.metrics.SSIM)) * dir;
+            return (metricValue(a.metrics.SSIM, true) - metricValue(b.metrics.SSIM, true)) * dir;
           case "lpips":
-            return (numeric(a.metrics.LPIPS) - numeric(b.metrics.LPIPS)) * dir;
+            return (metricValue(a.metrics.LPIPS, false) - metricValue(b.metrics.LPIPS, false)) * dir;
           case "labelmatch":
-            return (numeric(a.metrics.LabelMatch) - numeric(b.metrics.LabelMatch)) * dir;
+            return (metricValue(a.metrics.LabelMatch, true) - metricValue(b.metrics.LabelMatch, true)) * dir;
           default:
             return 0;
         }
@@ -1777,7 +1884,6 @@ DASHBOARD_HTML = """
         tr.addEventListener("click", () => {
           state.selectedRunId = run.run_id;
           renderSelectedRun();
-          updateComparison();
           renderLeaderboards();
         });
         const thumb = tr.querySelector(".table-thumb");
@@ -1796,26 +1902,42 @@ DASHBOARD_HTML = """
 
     function renderSelectedRun() {
       const run = state.runsById[state.selectedRunId];
+      const summaryEl = document.getElementById("runSummary");
+      const pathEl = document.getElementById("runPath");
+      const metricsContainer = document.getElementById("selectedMetrics");
+      const metricsBox = document.getElementById("metricsText");
       if (!run) {
+        if (summaryEl) summaryEl.textContent = "No run selected.";
+        if (pathEl) pathEl.textContent = "No run available.";
+        if (metricsContainer) metricsContainer.innerHTML = "";
+        if (metricsBox) {
+          metricsBox.textContent = state.filteredIds.length
+            ? "Select a run to view metrics."
+            : "No runs match the current filters.";
+        }
         updateUrlState();
         syncAutoplayDisplay();
         refreshAutoplayTimer();
         return;
       }
-      const primarySrc = run.image_path || state.placeholderImage || "";
-      const selectedImg = document.getElementById("selectedImage");
-      if (selectedImg) {
-        selectedImg.setAttribute("src", primarySrc);
+      if (summaryEl) {
+        summaryEl.textContent = `${run.group} | ${run.method} | ${run.client}`;
       }
-      document.getElementById("runPath").textContent = run.source_dir || "Path unavailable";
-      const metricsContainer = document.getElementById("selectedMetrics");
-      metricsContainer.innerHTML = "";
-      ["PSNR", "SSIM", "LPIPS", "MSE", "LabelMatch"].forEach((metric) => {
-        const div = document.createElement("div");
-        div.className = "metric-card";
-        div.innerHTML = `<div class="label">${metric}</div><div class="value">${formatMetric(run.metrics[metric])}</div>`;
-        metricsContainer.appendChild(div);
-      });
+      if (pathEl) {
+        pathEl.textContent = run.source_dir || "Path unavailable";
+      }
+      if (metricsContainer) {
+        metricsContainer.innerHTML = "";
+        ["PSNR", "SSIM", "LPIPS", "MSE", "LabelMatch"].forEach((metric) => {
+          const div = document.createElement("div");
+          div.className = "metric-card";
+          div.innerHTML = `<div class="label">${metric}</div><div class="value">${formatMetric(run.metrics[metric])}</div>`;
+          metricsContainer.appendChild(div);
+        });
+      }
+      if (metricsBox) {
+        metricsBox.textContent = "Loading metrics...";
+      }
       loadMetricsText(run);
       updateUrlState();
       syncAutoplayDisplay();
@@ -1849,8 +1971,9 @@ DASHBOARD_HTML = """
     const metricsCache = {};
     function loadMetricsText(run) {
       const box = document.getElementById("metricsText");
+      if (!box) return;
       if (!run.metrics_path) {
-        box.textContent = "metrics.txt not available for this run.";
+        box.textContent = "Metrics file not available for this run.";
         return;
       }
       if (metricsCache[run.metrics_path]) {
@@ -1866,9 +1989,15 @@ DASHBOARD_HTML = """
           }
         })
         .catch(() => {
-          box.textContent = "Failed to load metrics.txt.";
+          if (state.selectedRunId === run.run_id) {
+        box.textContent = "Failed to load metrics.";
+          }
         });
     }
+
+
+
+
 
     function startAutoplay() {
       if (!state.filteredIds.length) return;
@@ -1903,43 +2032,44 @@ DASHBOARD_HTML = """
       const nextIdx = currentIdx === -1 ? 0 : (currentIdx + 1) % state.filteredIds.length;
       state.selectedRunId = state.filteredIds[nextIdx];
       renderSelectedRun();
+      renderLeaderboards();
     }
 
     function syncAutoplayDisplay() {
       const image = document.getElementById("autoplayImage");
-      const metricsBox = document.getElementById("autoplayMetrics");
       const status = document.getElementById("autoplayStatus");
       const run = state.runsById[state.selectedRunId];
+      const fallback = state.placeholderImage || "";
       if (!run) {
-        if (image) image.setAttribute("src", state.placeholderImage || "");
-        if (metricsBox) metricsBox.innerHTML = "";
-        if (status) status.textContent = "No runs to autoplay.";
+        if (image) image.setAttribute("src", fallback);
+        if (status) {
+          status.textContent = state.filteredIds.length ? "Slide 0 / " + state.filteredIds.length : "No runs";
+        }
         return;
       }
-      const src = run.image_path || state.placeholderImage || "";
+      const src = run.image_path || fallback;
       if (image) image.setAttribute("src", src);
-      if (metricsBox) {
-        metricsBox.innerHTML = "";
-        ["PSNR", "SSIM", "LPIPS"].forEach((metric) => {
-          const card = document.createElement("div");
-          card.className = "metric-card";
-          card.innerHTML = `<div class="label">${metric}</div><div class="value">${formatMetric(run.metrics[metric])}</div>`;
-          metricsBox.appendChild(card);
-        });
-      }
       if (status) {
         const idx = state.filteredIds.indexOf(run.run_id);
         const total = state.filteredIds.length || 1;
         const position = idx >= 0 ? idx + 1 : 1;
-        status.textContent = `Slide ${position} of ${total} · ${run.group} · ${run.method} · ${run.client}`;
+        status.textContent = `Slide ${position} / ${total}`;
       }
     }
 
     function updateAutoplayControls() {
       const btn = document.getElementById("autoplayToggle");
       if (btn) {
-        btn.textContent = state.autoplay.playing ? "Pause loop" : "Start loop";
         btn.disabled = state.filteredIds.length === 0;
+        btn.classList.toggle("playing", state.autoplay.playing);
+        const label = state.autoplay.playing ? "Pause autoplay" : "Start autoplay";
+        btn.setAttribute("aria-label", label);
+        btn.setAttribute("title", label);
+        btn.setAttribute("aria-pressed", String(state.autoplay.playing));
+        const sr = btn.querySelector(".sr-only");
+        if (sr) {
+          sr.textContent = label;
+        }
       }
       const select = document.getElementById("autoplaySpeed");
       if (select) {
@@ -1948,12 +2078,12 @@ DASHBOARD_HTML = """
     }
 
     function jumpSelection(delta) {
+      if (!state.filteredIds.length) return;
       const idx = state.filteredIds.indexOf(state.selectedRunId);
       if (idx === -1) return;
       const nextIdx = Math.min(Math.max(idx + delta, 0), state.filteredIds.length - 1);
       state.selectedRunId = state.filteredIds[nextIdx];
       renderSelectedRun();
-      updateComparison();
       renderLeaderboards();
     }
 
