@@ -375,14 +375,14 @@ def create_ablation_charts(df: pd.DataFrame, chart_w: int = 500, chart_h: int = 
         stds = agg_data[std_col].fillna(0).values
 
         ax.bar(x, means, yerr=stds, capsize=3, color=color, alpha=0.85,
-               edgecolor='white', linewidth=0.5)
-        ax.set_title(title, fontsize=14, color='white', fontweight='bold', pad=10)
+               edgecolor='#333333', linewidth=0.5)
+        ax.set_title(title, fontsize=14, color='#1e232d', fontweight='bold', pad=10)
         ax.set_xticks(x)
-        ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=9, color='white')
-        ax.tick_params(colors='white')
+        ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=9, color='#1e232d')
+        ax.tick_params(colors='#1e232d')
 
         for spine in ax.spines.values():
-            spine.set_color('#465673')
+            spine.set_color('#c8d2e1')
         ax.set_facecolor(np.array(CARD_BG) / 255)
 
         plt.tight_layout()
