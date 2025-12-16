@@ -1,53 +1,64 @@
-# Federated Learning Gradient Inversion + Defenses
+# Security in Federated Learning: Gradient Inversion, Ablations, and Defenses
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue?style=for-the-badge&logo=python&logoColor=white) ![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white) ![Federated Learning](https://img.shields.io/badge/Federated%20Learning-Enabled-green?style=for-the-badge) ![Privacy](https://img.shields.io/badge/Privacy-Differential%20%26%20Homomorphic-orange?style=for-the-badge)
 
-Compact R&D sandbox showing how a simple FL setup on CelebA leaks training examples via gradient-based reconstruction (DLG/iDLG, one-step, aggregated updates), and how basic defenses (DP and HE) change the outcome. Apple M‑series/MPS is supported.
+![Poster (4K)](results/report/poster_4k.png)
 
-## Data
-- Place images in `data/img_align_celeba/` (nested `data/img_align_celeba/img_align_celeba/` also works).
-- Put `data/list_attr_celeba.csv` and `data/list_eval_partition.csv` alongside images.
+**What this shows**
+- Baseline gradient leakage produces recognizable reconstructions on CelebA.
+- Ablations (TV, metric choice, FFT init) materially affect attack quality across clients.
+- In this setup, DP and HE—especially combined—degrade reconstructions, confirmed by metrics and visuals.
 
-## What’s Included
-- Attack signals: `gradients`, `one_step_update`, `agg_update` (FedAvg delta approximation).
-- Attacker: multi-restarts, Adam/LBFGS/SGD/AdamW, TV/clamp, cosine LR, early stopping, FFT init, layer selection/weights, batch>1 with soft labels.
-- Defenses: Differential Privacy (clip + Gaussian noise) and Homomorphic Encryption (Paillier‑like, fixed‑point, optional encrypted noise) applied to the captured signal before reconstruction.
-- Automation: curated experiment suites and analysis scripts for showcase, ablations, multi‑client, and defenses.
+**Quickstart Demo**
+- Generate report (aggregates metrics, writes `results/report/summary.csv`)
+  - `python scripts/make_poster.py`
+- Generate poster (4K PNG/PDF)
+  - `python scripts/make_poster.py`
+- Launch dashboard (static)
+  - `python -m http.server --directory results/report 8000`
+  - Visit http://localhost:8000
 
-## Install
-- Python 3.9+
-- PyTorch, torchvision, matplotlib (optional: `lpips` for perceptual metric)
-- Example: `pip install torch torchvision matplotlib lpips`
+Optional: produce fresh results before summarizing
+- Showcase (single best visual): `bash scripts/run_showcase.sh`
+- Multi‑client benchmark: `bash scripts/run_multi_client.sh`
+- Defenses sweep (DP/HE/DP+HE): `bash scripts/run_defenses.sh`
 
-## Quick Start
-- Best single‑face “showcase” (recommended): `bash scripts/run_showcase.sh`
-- Fast benchmark config: `bash scripts/run_benchmark.sh`
-- Attack many clients + summarize: `bash scripts/run_multi_client.sh` then `python scripts/analyze_multi_client.py --results-dir results/multi_client`
+**Results at a Glance**
+Pulled from `results/report/summary.csv`.
+- Baseline (no defense): 29.38 dB PSNR, 0.117 LPIPS
+- DP + HE (combined): 6.37 dB PSNR, 0.824 LPIPS
+- Multi‑client spread (10 clients): best 29.51 → worst 24.91 dB PSNR
 
-Or drive directly:
-- Baseline (batch=1, gradients): `python run_experiment.py --num-rounds 1 --capture-round 0 --batch-size 1 --client-momentum 0.0 --attack-iterations 3000 --attack-restarts 3 --tv-weight 1e-5 --lr-schedule cosine --compute-lpips`
-- One‑step update: `python run_experiment.py --attack-source one_step_update --client-momentum 0.0 --local-epochs 1`
-- Aggregated update: `python run_experiment.py --attack-source agg_update --capture-client 0 --client-momentum 0.0 --local-epochs 1`
+See the aggregated CSV at `results/report/summary.csv`. The poster above visualizes: baseline grid (best reconstructions), DP variants, HE, and DP+HE side‑by‑side, plus ablation highlights.
 
-## Privacy Defenses (flags)
-- Differential Privacy: `--dp-epsilon <ε> --dp-delta <δ> --dp-max-norm <L2>`
-- Homomorphic Encryption: `--use-he [--he-bits 512 --he-precision 1000000]`
-- End‑to‑end defense sweeps: `bash scripts/run_defenses.sh` and analyze with `python scripts/analyze_defenses.py --results-dir results/defenses`
+**Reproducible Pipeline**
+```
+data -> scripts/run_* (showcase / multi_client / defenses)
+     -> per-run outputs: results/*/metrics.txt + baseline_attack_result.png
+     -> make_report: results/report/summary.csv (via scripts/make_poster.py)
+     -> make_poster: results/report/poster_4k.png (and poster_4k.pdf)
+     -> make_dashboard: serve results/report via http.server
+```
 
-## Results & Outputs
-- Saved under `results/<name>/` or your `--out-dir`:
-  - `baseline_attack_result.png` – original vs reconstruction (plus heatmap row if ground truth available)
-  - `metrics.txt` – MSE, PSNR, SSIM, optional LPIPS, LabelMatch
-  - `config.json` – exact run arguments
+**Repository Layout**
+- `scripts/`
+  - `run_showcase.sh`, `run_multi_client.sh`, `run_defenses.sh`
+  - `analyze_multi_client.py`, `analyze_defenses.py`, `analyze_ablation.py`
+  - `make_poster.py` (aggregates metrics, writes `summary.csv`, renders `poster_4k.png`)
+- `results/`
+  - `report/` (poster + `summary.csv`)
+  - `showcase/`, `multi_client/`, `defenses/`, `ablation/` (per‑run images and `metrics.txt`)
+- Core
+  - `run_experiment.py`, `fl_system.py`, `gradient_attack.py`
+  - `Differential_privacy.py`, `homomorphic_encryptor.py`, `device_utils.py`
+- Data (expected)
+  - `data/img_align_celeba/`, `data/list_attr_celeba.csv`, `data/list_eval_partition.csv`
 
-## Repo Map
-- `fl_system.py` – minimal CelebA FL loop + capture modes
-- `gradient_attack.py` – gradient inversion core and options
-- `Differential_privacy.py` – clip, noise calibration, DP aggregation helpers
-- `homomorphic_encryptor.py` – lightweight additive HE for vectors
-- `run_experiment.py` – CLI for end‑to‑end runs (attacks + defenses)
-- `scripts/exp_base.py` – curated baseline suite (showcase + ablations + report)
-- `scripts/exp_phase1.py` – refinement sweeps (TV, layer weighting, perceptual)
-- `scripts/run_*.sh` – convenience wrappers for common experiment sets
+**Notes / Limitations**
+- Findings are specific to this dataset and configuration; interpret as “observed in this setup,” not general privacy guarantees.
+- DP/HE implementations are research-grade; parameters are chosen to demonstrate qualitative/quantitative effects, not deployment guidance.
+- Metrics sometimes include negative SSIM under heavy noise—this reflects the measurement on extremely degraded reconstructions.
 
-Notes
-- CelebA is loaded as 64×64 crops normalized with mean/std (0.5, 0.5, 0.5).
-- Default task is a binary attribute (e.g., `Male`).
+Outputs referenced
+- Hero poster: `results/report/poster_4k.png` (PDF also: `results/report/poster_4k.pdf`)
+- Metrics summary: `results/report/summary.csv`
+- Showcase visual: `results/showcase/baseline_attack_result.png`
