@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Federated Learning Gradient Inversion: Interactive Explorer</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f131c;
+      --bg-card: #171d2a;
+      --bg-panel: #1f2636;
+      --border: #2e3548;
+      --text: #f5f6fa;
+      --muted: #c7cddf;
+      --accent: #69a9ff;
+      --accent-strong: #f5d742;
+      --danger: #ff7676;
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: inherit;
+      line-height: 1.4;
+    }
+    .page {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header {
+      background: #0b0e15;
+      padding: 18px 32px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 26px;
+      letter-spacing: 0.02em;
+    }
+    header .meta {
+      text-align: right;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    header .key-finding {
+      margin-top: 6px;
+      font-size: 15px;
+      color: var(--accent-strong);
+    }
+    main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 320px;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    .filter-block h3 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .filter-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .chip {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s ease;
+    }
+    .chip.active {
+      background: rgba(105, 169, 255, 0.15);
+      border-color: var(--accent);
+      color: var(--text);
+    }
+    .sidebar input[type="search"],
+    .sidebar select {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
+      color: var(--text);
+    }
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+    }
+    .quick-actions button {
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 13px;
+    }
+    .quick-actions button.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(105, 169, 255, 0.4);
+    }
+    .viewer {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .viewer-panels {
+      display: flex;
+      flex-direction: row;
+      gap: 20px;
+      padding: 20px 28px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .panel h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0.04em;
+    }
+    .selected-image {
+      width: 100%;
+      max-height: 420px;
+      object-fit: contain;
+      background: #090d13;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+    }
+    .metric-card {
+      background: var(--bg-panel);
+      border-radius: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+    .metric-card .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .metric-card .value {
+      font-size: 20px;
+      font-weight: 600;
+    }
+    .run-path {
+      font-family: "SFMono-Regular", "Consolas", monospace;
+      font-size: 12px;
+      color: var(--muted);
+      background: #0b0f18;
+      padding: 8px 10px;
+      border-radius: 6px;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+    }
+    .metrics-text {
+      background: #0f131d;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      max-height: 140px;
+      overflow-y: auto;
+      font-family: "SFMono-Regular", "Consolas", monospace;
+      font-size: 12px;
+    }
+    .nav-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .nav-buttons button {
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+    .comparison-grid img {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #090d13;
+      max-height: 220px;
+      object-fit: contain;
+    }
+    .comparison-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .comparison-actions button {
+      margin-left: 6px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .delta-card {
+      padding: 8px;
+      background: var(--bg-panel);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+    .delta-value {
+      font-size: 16px;
+      font-weight: bold;
+    }
+    .tabs {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 0 28px 28px;
+    }
+    .tab-buttons {
+      display: flex;
+      gap: 16px;
+      margin-top: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab-buttons button {
+      border: none;
+      background: none;
+      color: var(--muted);
+      padding: 12px 4px;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      font-size: 15px;
+    }
+    .tab-buttons button.active {
+      color: var(--text);
+      border-color: var(--accent);
+    }
+    .tab-panel {
+      display: none;
+      padding: 18px 0;
+      flex: 1;
+      overflow-y: auto;
+    }
+    .tab-panel.active {
+      display: block;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead {
+      position: sticky;
+      top: 0;
+      background: var(--bg-card);
+    }
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+    }
+    tbody tr {
+      cursor: pointer;
+    }
+    tbody tr.selected {
+      background: rgba(105, 169, 255, 0.12);
+    }
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 18px;
+    }
+    .charts-grid img,
+    .montage-grid img {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #090d13;
+    }
+    .montage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .empty-state {
+      padding: 18px;
+      border-radius: 10px;
+      background: var(--bg-card);
+      border: 1px dashed var(--border);
+      color: var(--muted);
+      text-align: center;
+    }
+    .leaderboard-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      padding: 20px;
+    }
+    .lightbox.active {
+      display: flex;
+    }
+    .lightbox img {
+      max-width: 90vw;
+      max-height: 85vh;
+      border-radius: 12px;
+      border: 2px solid var(--border);
+    }
+    @media (max-width: 1100px) {
+      main {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div>
+        <h1>Federated Learning Gradient Inversion: Interactive Explorer</h1>
+        <div class="key-finding" id="keyFinding"></div>
+      </div>
+      <div class="meta">
+        <div id="buildDate"></div>
+        <div id="runCounts"></div>
+      </div>
+    </header>
+    <main>
+      <aside class="sidebar">
+        <div class="filter-block">
+          <h3>Search</h3>
+          <input type="search" id="searchInput" placeholder="Find path, client, or method" />
+        </div>
+        <div class="filter-block">
+          <h3>Group</h3>
+          <div id="groupFilters" class="filter-options"></div>
+        </div>
+        <div class="filter-block">
+          <h3>Method / Setting</h3>
+          <div id="methodFilters" class="filter-options"></div>
+        </div>
+        <div class="filter-block">
+          <h3>Client</h3>
+          <div id="clientFilters" class="filter-options"></div>
+        </div>
+        <div class="filter-block">
+          <h3>Sort</h3>
+          <select id="sortSelect">
+            <option value="best">Best (LPIPS asc, SSIM desc, PSNR desc)</option>
+            <option value="psnr">PSNR high to low</option>
+            <option value="ssim">SSIM high to low</option>
+            <option value="lpips">LPIPS low to high</option>
+            <option value="labelmatch">LabelMatch high to low</option>
+            <option value="path">Run path</option>
+          </select>
+        </div>
+        <div class="filter-block">
+          <h3>Quick actions</h3>
+          <div class="quick-actions">
+            <button id="btnBestOverall">Best overall</button>
+            <button id="btnBaselineBest">Baseline best</button>
+            <button id="btnBaselineWorst">Worst baseline</button>
+            <button id="btnDpSweep">DP sweep</button>
+            <button id="btnCompareToggle">Compare vs baseline</button>
+          </div>
+        </div>
+      </aside>
+      <section class="viewer">
+        <div class="viewer-panels">
+          <div class="panel" id="selectedPanel">
+            <div class="comparison-header">
+              <h2>Selected run</h2>
+              <div class="nav-buttons">
+                <button id="prevBtn" title="Previous run (Arrow Left)">Prev</button>
+                <button id="nextBtn" title="Next run (Arrow Right)">Next</button>
+              </div>
+            </div>
+            <img id="selectedImage" class="selected-image" alt="Selected run image" />
+            <div class="metrics-grid" id="selectedMetrics"></div>
+            <div class="run-path" id="runPath"></div>
+            <div class="metrics-text" id="metricsText">Metrics file not available.</div>
+          </div>
+          <div class="panel" id="comparisonPanel">
+            <div class="comparison-header">
+              <h2>Comparison</h2>
+              <div class="comparison-actions">
+                <span id="comparisonLabel">Comparison disabled</span>
+                <button id="lockBaselineBtn">Lock baseline</button>
+              </div>
+            </div>
+            <div class="comparison-grid">
+              <div>
+                <div style="font-size:14px; color:var(--muted); margin-bottom:6px;">Baseline</div>
+                <img id="comparisonBaseImage" alt="Baseline image" />
+              </div>
+              <div>
+                <div style="font-size:14px; color:var(--muted); margin-bottom:6px;">Selected</div>
+                <img id="comparisonTargetImage" alt="Selected image" />
+              </div>
+            </div>
+            <div class="metrics-grid" id="deltaMetrics"></div>
+          </div>
+        </div>
+        <section class="tabs">
+          <div class="tab-buttons">
+            <button data-tab="leaderboards" class="active">Leaderboards</button>
+            <button data-tab="distributions">Distributions</button>
+            <button data-tab="ablations">Ablations</button>
+            <button data-tab="montages">Montages</button>
+          </div>
+          <div id="tab-leaderboards" class="tab-panel active">
+            <div class="leaderboard-controls">
+              <div id="filteredCount"></div>
+              <div>Click any row to load that run.</div>
+            </div>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th data-sort="group">Group</th>
+                    <th data-sort="method">Method</th>
+                    <th data-sort="client">Client</th>
+                    <th data-sort="psnr">PSNR</th>
+                    <th data-sort="ssim">SSIM</th>
+                    <th data-sort="lpips">LPIPS</th>
+                    <th data-sort="labelmatch">LabelMatch</th>
+                    <th>Image</th>
+                  </tr>
+                </thead>
+                <tbody id="leaderboardBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div id="tab-distributions" class="tab-panel">
+            <div class="charts-grid" id="distributionCharts"></div>
+          </div>
+          <div id="tab-ablations" class="tab-panel">
+            <div class="charts-grid" id="ablationCharts"></div>
+            <div id="ablationTable"></div>
+          </div>
+          <div id="tab-montages" class="tab-panel">
+            <div class="montage-grid" id="montageGrid"></div>
+            <div class="empty-state" id="montageEmpty" style="display:none;">
+              No montages available. Provide montage PNGs in results/report/montages/.
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+  <div class="lightbox" id="lightbox">
+    <img id="lightboxImg" alt="Full view" />
+  </div>
+  <script>
+    const state = {
+      data: null,
+      runsById: {},
+      filters: {
+        groups: new Set(),
+        methods: new Set(),
+        clients: new Set(),
+      },
+      search: "",
+      sort: "best",
+      compareEnabled: false,
+      lockBaselineId: null,
+      selectedRunId: null,
+      filteredIds: [],
+      tableSort: { field: "psnr", dir: "desc" },
+    };
+
+    const METRIC_FIELDS = ["PSNR", "SSIM", "LPIPS", "MSE", "LabelMatch"];
+
+    fetch("data.json")
+      .then((res) => res.json())
+      .then(initDashboard)
+      .catch((err) => {
+        console.error(err);
+        document.body.innerHTML = "<pre style='padding:20px;color:#fff;'>Failed to load dashboard data.</pre>";
+      });
+
+    function initDashboard(data) {
+      state.data = data;
+      data.runs.forEach((run) => {
+        state.runsById[run.run_id] = run;
+      });
+      populateFilters(data.filter_values);
+      state.selectedRunId = data.best_overall_id || (data.runs[0] && data.runs[0].run_id);
+      updateMeta(data.meta);
+      wireEvents();
+      populateCharts(data.charts);
+      populateAblations(data.aggregates.ablations || []);
+      populateMontages(data.montages || []);
+      applyFilters();
+    }
+
+    function populateFilters(values) {
+      ["groups", "methods", "clients"].forEach((key) => {
+        state.filters[key] = new Set(values[key]);
+        const container = document.getElementById(`${key.slice(0, -1)}Filters`);
+        container.innerHTML = "";
+        values[key].forEach((value) => {
+          const btn = document.createElement("button");
+          btn.className = "chip active";
+          btn.textContent = value;
+          btn.dataset.value = value;
+          btn.addEventListener("click", () => toggleFilter(key, value, btn));
+          container.appendChild(btn);
+        });
+      });
+    }
+
+    function toggleFilter(key, value, btn) {
+      const set = state.filters[key];
+      if (set.has(value)) {
+        set.delete(value);
+        btn.classList.remove("active");
+      } else {
+        set.add(value);
+        btn.classList.add("active");
+      }
+      if (set.size === 0) {
+        setFilterSet(key, state.data.filter_values[key]);
+        return;
+      }
+      applyFilters();
+    }
+
+    function updateMeta(meta) {
+      document.getElementById("buildDate").textContent = `Build date: ${meta.build_time}`;
+      const counts = Object.entries(meta.groups || {})
+        .map(([group, count]) => `${group}: ${count}`)
+        .join("  ·  ");
+      document.getElementById("runCounts").textContent = `Total runs: ${meta.total_runs} (${counts})`;
+      document.getElementById("keyFinding").textContent = meta.key_finding || "";
+    }
+
+    function wireEvents() {
+      document.getElementById("searchInput").addEventListener("input", (ev) => {
+        state.search = ev.target.value.toLowerCase();
+        applyFilters();
+      });
+      document.getElementById("sortSelect").addEventListener("change", (ev) => {
+        state.sort = ev.target.value;
+        applyFilters();
+      });
+      document.getElementById("btnBestOverall").addEventListener("click", () => {
+        state.sort = "best";
+        document.getElementById("sortSelect").value = "best";
+        state.selectedRunId = state.data.best_overall_id;
+        clearFilterSelections();
+        applyFilters();
+      });
+      document.getElementById("btnBaselineBest").addEventListener("click", () => {
+        focusOnMethod("baseline");
+        const bestBaseline = state.data.best_baseline_id;
+        if (bestBaseline) {
+          state.selectedRunId = bestBaseline;
+        }
+        applyFilters();
+      });
+      document.getElementById("btnBaselineWorst").addEventListener("click", () => {
+        focusOnMethod("baseline");
+        const baselineRuns = getRuns().filter((run) => run.method.toLowerCase().includes("baseline"));
+        baselineRuns.sort((a, b) => worstSort(a, b));
+        state.selectedRunId = baselineRuns[0] ? baselineRuns[0].run_id : state.selectedRunId;
+        applyFilters();
+      });
+      document.getElementById("btnDpSweep").addEventListener("click", () => {
+        const dpMethods = state.data.filter_values.methods.filter((m) => m.toLowerCase().includes("dp"));
+        setFilterSet("methods", dpMethods);
+        applyFilters();
+      });
+      document.getElementById("btnCompareToggle").addEventListener("click", (ev) => {
+        state.compareEnabled = !state.compareEnabled;
+        ev.currentTarget.classList.toggle("active", state.compareEnabled);
+        updateComparison();
+      });
+      document.getElementById("lockBaselineBtn").addEventListener("click", () => {
+        if (!state.compareEnabled) return;
+        const baseline = getBaselineForSelection();
+        if (!baseline) return;
+        state.lockBaselineId = state.lockBaselineId === baseline.run_id ? null : baseline.run_id;
+        updateComparison();
+      });
+      document.getElementById("prevBtn").addEventListener("click", () => jumpSelection(-1));
+      document.getElementById("nextBtn").addEventListener("click", () => jumpSelection(1));
+      document.addEventListener("keydown", (ev) => {
+        if (ev.key === "ArrowLeft") jumpSelection(-1);
+        if (ev.key === "ArrowRight") jumpSelection(1);
+      });
+      document.querySelectorAll(".tab-buttons button").forEach((btn) => {
+        btn.addEventListener("click", () => activateTab(btn.dataset.tab));
+      });
+      document.getElementById("lightbox").addEventListener("click", () => {
+        document.getElementById("lightbox").classList.remove("active");
+      });
+      document.querySelectorAll("th[data-sort]").forEach((th) => {
+        th.addEventListener("click", () => {
+          const field = th.dataset.sort;
+          const dir = state.tableSort.field === field && state.tableSort.dir === "desc" ? "asc" : "desc";
+          state.tableSort = { field, dir };
+          renderLeaderboards();
+        });
+      });
+    }
+
+    function clearFilterSelections() {
+      ["groups", "methods", "clients"].forEach((key) => {
+        setFilterSet(key, state.data.filter_values[key]);
+      });
+    }
+
+    function focusOnMethod(name) {
+      const target = state.data.filter_values.methods.filter((m) => m.toLowerCase().includes(name));
+      if (target.length === 0) return;
+      setFilterSet("methods", target);
+    }
+
+    function setFilterSet(key, values) {
+      const arr = Array.isArray(values) ? values : Array.from(values);
+      state.filters[key] = new Set(arr);
+      const container = document.getElementById(`${key.slice(0, -1)}Filters`);
+      Array.from(container.children).forEach((chip) => {
+        chip.classList.toggle("active", arr.includes(chip.dataset.value));
+      });
+    }
+
+    function getRuns() {
+      return state.data.runs;
+    }
+
+    function applyFilters() {
+      let runs = getRuns().slice();
+      runs = runs.filter((run) => state.filters.groups.has(run.group));
+      runs = runs.filter((run) => state.filters.methods.has(run.method));
+      runs = runs.filter((run) => state.filters.clients.has(run.client));
+      if (state.search) {
+        runs = runs.filter((run) =>
+          run.search_text && run.search_text.indexOf(state.search) !== -1
+        );
+      }
+      runs.sort(sorterFor(state.sort));
+      state.filteredIds = runs.map((run) => run.run_id);
+      if (!state.filteredIds.includes(state.selectedRunId) && state.filteredIds.length > 0) {
+        state.selectedRunId = state.filteredIds[0];
+      }
+      renderLeaderboards();
+      renderSelectedRun();
+      updateComparison();
+    }
+
+    function sorterFor(key) {
+      switch (key) {
+        case "psnr":
+          return (a, b) => numeric(b.metrics.PSNR) - numeric(a.metrics.PSNR);
+        case "ssim":
+          return (a, b) => numeric(b.metrics.SSIM) - numeric(a.metrics.SSIM);
+        case "lpips":
+          return (a, b) => numeric(a.metrics.LPIPS) - numeric(b.metrics.LPIPS);
+        case "labelmatch":
+          return (a, b) => numeric(b.metrics.LabelMatch) - numeric(a.metrics.LabelMatch);
+        case "path":
+          return (a, b) => a.source_dir.localeCompare(b.source_dir);
+        default:
+          return (a, b) => bestSort(a, b);
+      }
+    }
+
+    function bestSort(a, b) {
+      const lp = numeric(a.metrics.LPIPS) - numeric(b.metrics.LPIPS);
+      if (lp !== 0) return lp;
+      const ssim = numeric(b.metrics.SSIM) - numeric(a.metrics.SSIM);
+      if (ssim !== 0) return ssim;
+      return numeric(b.metrics.PSNR) - numeric(a.metrics.PSNR);
+    }
+
+    function worstSort(a, b) {
+      const lp = numeric(b.metrics.LPIPS) - numeric(a.metrics.LPIPS);
+      if (lp !== 0) return lp;
+      return numeric(a.metrics.SSIM) - numeric(b.metrics.SSIM);
+    }
+
+    function numeric(value) {
+      if (value === null || value === undefined || Number.isNaN(value)) {
+        return 0;
+      }
+      return Number(value);
+    }
+
+    function renderLeaderboards() {
+      const tbody = document.getElementById("leaderboardBody");
+      tbody.innerHTML = "";
+      document.getElementById("filteredCount").textContent = `${state.filteredIds.length} runs match filters`;
+      const runs = state.filteredIds.map((id) => state.runsById[id]);
+      runs.sort((a, b) => {
+        const dir = state.tableSort.dir === "asc" ? 1 : -1;
+        switch (state.tableSort.field) {
+          case "group":
+            return a.group.localeCompare(b.group) * dir;
+          case "method":
+            return a.method.localeCompare(b.method) * dir;
+          case "client":
+            return a.client.localeCompare(b.client) * dir;
+          case "psnr":
+            return (numeric(a.metrics.PSNR) - numeric(b.metrics.PSNR)) * dir;
+          case "ssim":
+            return (numeric(a.metrics.SSIM) - numeric(b.metrics.SSIM)) * dir;
+          case "lpips":
+            return (numeric(a.metrics.LPIPS) - numeric(b.metrics.LPIPS)) * dir;
+          case "labelmatch":
+            return (numeric(a.metrics.LabelMatch) - numeric(b.metrics.LabelMatch)) * dir;
+          default:
+            return 0;
+        }
+      });
+      runs.forEach((run) => {
+        const tr = document.createElement("tr");
+        if (run.run_id === state.selectedRunId) {
+          tr.classList.add("selected");
+        }
+        tr.innerHTML = `
+          <td>${run.group}</td>
+          <td>${run.method}</td>
+          <td>${run.client}</td>
+          <td>${formatMetric(run.metrics.PSNR)}</td>
+          <td>${formatMetric(run.metrics.SSIM)}</td>
+          <td>${formatMetric(run.metrics.LPIPS)}</td>
+          <td>${formatMetric(run.metrics.LabelMatch)}</td>
+          <td>${run.image_path ? "image" : "n/a"}</td>
+        `;
+        tr.addEventListener("click", () => {
+          state.selectedRunId = run.run_id;
+          renderSelectedRun();
+          updateComparison();
+          renderLeaderboards();
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderSelectedRun() {
+      const run = state.runsById[state.selectedRunId];
+      if (!run) return;
+      document.getElementById("selectedImage").src = run.image_path;
+      document.getElementById("comparisonTargetImage").src = run.image_path;
+      document.getElementById("runPath").textContent = run.source_dir || "Path unavailable";
+      const metricsContainer = document.getElementById("selectedMetrics");
+      metricsContainer.innerHTML = "";
+      ["PSNR", "SSIM", "LPIPS", "MSE", "LabelMatch"].forEach((metric) => {
+        const div = document.createElement("div");
+        div.className = "metric-card";
+        div.innerHTML = `<div class="label">${metric}</div><div class="value">${formatMetric(run.metrics[metric])}</div>`;
+        metricsContainer.appendChild(div);
+      });
+      loadMetricsText(run);
+    }
+
+    function formatMetric(value) {
+      if (value === undefined || value === null || Number.isNaN(value)) {
+        return "—";
+      }
+      if (Math.abs(value) >= 100) {
+        return value.toFixed(1);
+      }
+      if (Math.abs(value) >= 10) {
+        return value.toFixed(2);
+      }
+      return value.toFixed(3);
+    }
+
+    const metricsCache = {};
+    function loadMetricsText(run) {
+      const box = document.getElementById("metricsText");
+      if (!run.metrics_path) {
+        box.textContent = "metrics.txt not available for this run.";
+        return;
+      }
+      if (metricsCache[run.metrics_path]) {
+        box.textContent = metricsCache[run.metrics_path];
+        return;
+      }
+      fetch(run.metrics_path)
+        .then((res) => res.text())
+        .then((text) => {
+          metricsCache[run.metrics_path] = text;
+          if (state.selectedRunId === run.run_id) {
+            box.textContent = text;
+          }
+        })
+        .catch(() => {
+          box.textContent = "Failed to load metrics.txt.";
+        });
+    }
+
+    function updateComparison() {
+      const label = document.getElementById("comparisonLabel");
+      const deltaContainer = document.getElementById("deltaMetrics");
+      const baseImg = document.getElementById("comparisonBaseImage");
+      if (!state.compareEnabled) {
+        label.textContent = "Comparison disabled";
+        deltaContainer.innerHTML = "";
+        baseImg.src = "";
+        return;
+      }
+      const baseline = getBaselineForSelection();
+      const selected = state.runsById[state.selectedRunId];
+      if (!baseline || !selected) {
+        label.textContent = "No baseline available";
+        deltaContainer.innerHTML = "";
+        baseImg.src = "";
+        return;
+      }
+      baseImg.src = baseline.image_path;
+      const lockedText = state.lockBaselineId ? " (locked)" : "";
+      label.textContent = `Comparing to ${baseline.method} / ${baseline.client}${lockedText}`;
+      deltaContainer.innerHTML = "";
+      [["PSNR", "dB"], ["SSIM", ""], ["LPIPS", ""], ["LabelMatch", ""]].forEach(([metric, suffix]) => {
+        const baseVal = baseline.metrics[metric];
+        const selVal = selected.metrics[metric];
+        const delta = selVal !== undefined && baseVal !== undefined ? selVal - baseVal : null;
+        const div = document.createElement("div");
+        div.className = "delta-card";
+        const deltaText = delta === null || Number.isNaN(delta) ? "—" : formatDelta(delta);
+        div.innerHTML = `<div class="label">${metric}</div><div class="delta-value">${deltaText}${suffix}</div>`;
+        deltaContainer.appendChild(div);
+      });
+    }
+
+    function formatDelta(value) {
+      const val = value;
+      if (val === null || Number.isNaN(val)) return "—";
+      const sign = val > 0 ? "+" : "";
+      if (Math.abs(val) >= 10) return `${sign}${val.toFixed(1)}`;
+      return `${sign}${val.toFixed(3)}`;
+    }
+
+    function getBaselineForSelection() {
+      if (!state.compareEnabled) return null;
+      const selected = state.runsById[state.selectedRunId];
+      if (!selected) return null;
+      if (state.lockBaselineId) {
+        return state.runsById[state.lockBaselineId];
+      }
+      const client = selected.client || "global";
+      const baselineId = state.data.baselines_by_client[client] || state.data.baselines_by_client.global;
+      return state.runsById[baselineId];
+    }
+
+    function jumpSelection(delta) {
+      const idx = state.filteredIds.indexOf(state.selectedRunId);
+      if (idx === -1) return;
+      const nextIdx = Math.min(Math.max(idx + delta, 0), state.filteredIds.length - 1);
+      state.selectedRunId = state.filteredIds[nextIdx];
+      renderSelectedRun();
+      updateComparison();
+      renderLeaderboards();
+    }
+
+    function activateTab(tabName) {
+      document.querySelectorAll(".tab-buttons button").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.tab === tabName);
+      });
+      document.querySelectorAll(".tab-panel").forEach((panel) => {
+        panel.classList.toggle("active", panel.id === `tab-${tabName}`);
+      });
+    }
+
+    function populateCharts(charts) {
+      const distContainer = document.getElementById("distributionCharts");
+      distContainer.innerHTML = "";
+      ["defenses_grouped_bars", "defenses_scatter_psnr_vs_lpips", "multiclient_boxplots"].forEach((key) => {
+        const path = charts[key];
+        const div = document.createElement("div");
+        if (path) {
+          div.innerHTML = `<div style="margin-bottom:8px;font-size:14px;color:var(--muted);">${key.replace(/_/g, " ")}</div><img src="${path}" alt="${key}" />`;
+        } else {
+          div.innerHTML = `<div class="empty-state">Chart ${key} unavailable.</div>`;
+        }
+        distContainer.appendChild(div);
+      });
+      const ablationContainer = document.getElementById("ablationCharts");
+      ablationContainer.innerHTML = "";
+      const ablationPath = charts["ablation_bars"];
+      if (ablationPath) {
+        const div = document.createElement("div");
+        div.innerHTML = `<div style="margin-bottom:8px;font-size:14px;color:var(--muted);">Ablation summary</div><img src="${ablationPath}" alt="Ablation chart" />`;
+        ablationContainer.appendChild(div);
+      }
+    }
+
+    function populateAblations(rows) {
+      const container = document.getElementById("ablationTable");
+      if (!rows || rows.length === 0) {
+        container.innerHTML = '<div class="empty-state">No ablation data.</div>';
+        return;
+      }
+      const table = document.createElement("table");
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>Client</th>
+            <th>PSNR</th>
+            <th>SSIM</th>
+            <th>LPIPS</th>
+          </tr>
+        </thead>
+      `;
+      const tbody = document.createElement("tbody");
+      rows.forEach((row) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.method}</td>
+          <td>${row.client}</td>
+          <td>${formatMetric(row.PSNR)}</td>
+          <td>${formatMetric(row.SSIM)}</td>
+          <td>${formatMetric(row.LPIPS)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      container.innerHTML = "";
+      container.appendChild(table);
+    }
+
+    function populateMontages(montages) {
+      const grid = document.getElementById("montageGrid");
+      const empty = document.getElementById("montageEmpty");
+      if (!montages || montages.length === 0) {
+        grid.innerHTML = "";
+        empty.style.display = "block";
+        return;
+      }
+      empty.style.display = "none";
+      grid.innerHTML = "";
+      montages.forEach((item) => {
+        const card = document.createElement("div");
+        card.innerHTML = `<div style="margin-bottom:6px;color:var(--muted);">${item.name}</div>`;
+        const img = document.createElement("img");
+        img.src = item.path;
+        img.alt = item.name;
+        img.addEventListener("click", () => openLightbox(item.path));
+        card.appendChild(img);
+        grid.appendChild(card);
+      });
+    }
+
+    function openLightbox(path) {
+      const modal = document.getElementById("lightbox");
+      document.getElementById("lightboxImg").src = path;
+      modal.classList.add("active");
+    }
+  </script>
+</body>
+</html>

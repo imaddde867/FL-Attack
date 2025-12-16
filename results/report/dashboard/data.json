@@ -1,0 +1,2061 @@
+{
+  "meta": {
+    "build_time": "2025-12-16 02:44 UTC",
+    "total_runs": 39,
+    "groups": {
+      "ablation": 21,
+      "defenses": 7,
+      "multi_client": 10,
+      "showcase": 1
+    },
+    "key_finding": "DP+HE reduces PSNR by 23.0 dB relative to baseline (29.4 -> 6.4).",
+    "build_source": "results/report/summary.csv"
+  },
+  "runs": [
+    {
+      "run_id": "run_0000_defenses-he-global",
+      "group": "defenses",
+      "setting": "he",
+      "method": "he",
+      "client": "global",
+      "source_dir": "results/defenses/he",
+      "metrics": {
+        "MSE": 0.6322916746139526,
+        "PSNR": 14.0320251916158,
+        "SSIM": 0.3433560729026794,
+        "LPIPS": 0.6345014572143555,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/defenses-he-global.png",
+      "metrics_path": "assets/metrics/defenses-he-global_metrics.txt",
+      "search_text": "defenses he global he results/defenses/he run_0000_defenses-he-global"
+    },
+    {
+      "run_id": "run_0001_defenses-dp-eps1-global",
+      "group": "defenses",
+      "setting": "dp_eps1",
+      "method": "dp_eps1",
+      "client": "global",
+      "source_dir": "results/defenses/dp_eps1",
+      "metrics": {
+        "MSE": 3.732619047164917,
+        "PSNR": 6.321063147646022,
+        "SSIM": -0.0007999734953045,
+        "LPIPS": 0.7466567158699036,
+        "LabelMatch": 0.0
+      },
+      "image_path": "assets/images/defenses-dp-eps1-global.png",
+      "metrics_path": "assets/metrics/defenses-dp-eps1-global_metrics.txt",
+      "search_text": "defenses dp_eps1 global dp_eps1 results/defenses/dp_eps1 run_0001_defenses-dp-eps1-global"
+    },
+    {
+      "run_id": "run_0002_defenses-dp-eps8-global",
+      "group": "defenses",
+      "setting": "dp_eps8",
+      "method": "dp_eps8",
+      "client": "global",
+      "source_dir": "results/defenses/dp_eps8",
+      "metrics": {
+        "MSE": 3.4113833904266357,
+        "PSNR": 6.711894520523959,
+        "SSIM": -0.0009008623310364,
+        "LPIPS": 0.807481050491333,
+        "LabelMatch": 0.0
+      },
+      "image_path": "assets/images/defenses-dp-eps8-global.png",
+      "metrics_path": "assets/metrics/defenses-dp-eps8-global_metrics.txt",
+      "search_text": "defenses dp_eps8 global dp_eps8 results/defenses/dp_eps8 run_0002_defenses-dp-eps8-global"
+    },
+    {
+      "run_id": "run_0003_defenses-baseline-global",
+      "group": "defenses",
+      "setting": "baseline",
+      "method": "baseline",
+      "client": "global",
+      "source_dir": "results/defenses/baseline",
+      "metrics": {
+        "MSE": 0.0184764117002487,
+        "PSNR": 29.375023518160894,
+        "SSIM": 0.9202892780303956,
+        "LPIPS": 0.1171874552965164,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/defenses-baseline-global.png",
+      "metrics_path": "assets/metrics/defenses-baseline-global_metrics.txt",
+      "search_text": "defenses baseline global baseline results/defenses/baseline run_0003_defenses-baseline-global"
+    },
+    {
+      "run_id": "run_0004_defenses-he-test-global",
+      "group": "defenses",
+      "setting": "he_test",
+      "method": "he_test",
+      "client": "global",
+      "source_dir": "results/defenses/he_test",
+      "metrics": {
+        "MSE": 0.1997629255056381,
+        "PSNR": 19.036050930720847,
+        "SSIM": 0.4094901084899902,
+        "LPIPS": null,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/defenses-he-test-global.png",
+      "metrics_path": "assets/metrics/defenses-he-test-global_metrics.txt",
+      "search_text": "defenses he_test global he_test results/defenses/he_test run_0004_defenses-he-test-global"
+    },
+    {
+      "run_id": "run_0005_defenses-dp-eps01-global",
+      "group": "defenses",
+      "setting": "dp_eps01",
+      "method": "dp_eps01",
+      "client": "global",
+      "source_dir": "results/defenses/dp_eps01",
+      "metrics": {
+        "MSE": 3.697254180908203,
+        "PSNR": 6.362406739353482,
+        "SSIM": -0.0013967172708362,
+        "LPIPS": 0.8060378432273865,
+        "LabelMatch": 0.0
+      },
+      "image_path": "assets/images/defenses-dp-eps01-global.png",
+      "metrics_path": "assets/metrics/defenses-dp-eps01-global_metrics.txt",
+      "search_text": "defenses dp_eps01 global dp_eps01 results/defenses/dp_eps01 run_0005_defenses-dp-eps01-global"
+    },
+    {
+      "run_id": "run_0006_defenses-dp-he-global",
+      "group": "defenses",
+      "setting": "dp_he",
+      "method": "dp_he",
+      "client": "global",
+      "source_dir": "results/defenses/dp_he",
+      "metrics": {
+        "MSE": 3.694187879562378,
+        "PSNR": 6.366010035759899,
+        "SSIM": -0.0027435757219791,
+        "LPIPS": 0.8242515325546265,
+        "LabelMatch": 0.0
+      },
+      "image_path": "assets/images/defenses-dp-he-global.png",
+      "metrics_path": "assets/metrics/defenses-dp-he-global_metrics.txt",
+      "search_text": "defenses dp_he global dp_he results/defenses/dp_he run_0006_defenses-dp-he-global"
+    },
+    {
+      "run_id": "run_0007_multi-client-bmk-c5-c5",
+      "group": "multi_client",
+      "setting": "bmk_c5",
+      "method": "bmk_c5",
+      "client": "c5",
+      "source_dir": "results/multi_client/bmk_c5",
+      "metrics": {
+        "MSE": 0.0342530347406864,
+        "PSNR": 26.69420927623166,
+        "SSIM": 0.9051096439361572,
+        "LPIPS": 0.1149412617087364,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/multi-client-bmk-c5-c5.png",
+      "metrics_path": "assets/metrics/multi-client-bmk-c5-c5_metrics.txt",
+      "search_text": "multi_client bmk_c5 c5 bmk_c5 results/multi_client/bmk_c5 run_0007_multi-client-bmk-c5-c5"
+    },
+    {
+      "run_id": "run_0008_multi-client-bmk-c2-c2",
+      "group": "multi_client",
+      "setting": "bmk_c2",
+      "method": "bmk_c2",
+      "client": "c2",
+      "source_dir": "results/multi_client/bmk_c2",
+      "metrics": {
+        "MSE": 0.0380069389939308,
+        "PSNR": 26.24257088890134,
+        "SSIM": 0.943874180316925,
+        "LPIPS": 0.1378685683012008,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/multi-client-bmk-c2-c2.png",
+      "metrics_path": "assets/metrics/multi-client-bmk-c2-c2_metrics.txt",
+      "search_text": "multi_client bmk_c2 c2 bmk_c2 results/multi_client/bmk_c2 run_0008_multi-client-bmk-c2-c2"
+    },
+    {
+      "run_id": "run_0009_multi-client-bmk-c3-c3",
+      "group": "multi_client",
+      "setting": "bmk_c3",
+      "method": "bmk_c3",
+      "client": "c3",
+      "source_dir": "results/multi_client/bmk_c3",
+      "metrics": {
+        "MSE": 0.0267654433846473,
+        "PSNR": 27.76545540544142,
+        "SSIM": 0.9345795512199402,
+        "LPIPS": 0.0817268341779708,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/multi-client-bmk-c3-c3.png",
+      "metrics_path": "assets/metrics/multi-client-bmk-c3-c3_metrics.txt",
+      "search_text": "multi_client bmk_c3 c3 bmk_c3 results/multi_client/bmk_c3 run_0009_multi-client-bmk-c3-c3"
+    },
+    {
+      "run_id": "run_0010_multi-client-bmk-c4-c4",
+      "group": "multi_client",
+      "setting": "bmk_c4",
+      "method": "bmk_c4",
+      "client": "c4",
+      "source_dir": "results/multi_client/bmk_c4",
+      "metrics": {
+        "MSE": 0.0360502302646636,
+        "PSNR": 26.4721193961009,
+        "SSIM": 0.9127002358436584,
+        "LPIPS": 0.1526597142219543,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/multi-client-bmk-c4-c4.png",
+      "metrics_path": "assets/metrics/multi-client-bmk-c4-c4_metrics.txt",
+      "search_text": "multi_client bmk_c4 c4 bmk_c4 results/multi_client/bmk_c4 run_0010_multi-client-bmk-c4-c4"
+    },
+    {
+      "run_id": "run_0011_multi-client-bmk-c1-c1",
+      "group": "multi_client",
+      "setting": "bmk_c1",
+      "method": "bmk_c1",
+      "client": "c1",
+      "source_dir": "results/multi_client/bmk_c1",
+      "metrics": {
+        "MSE": 0.0179045051336288,
+        "PSNR": 29.51157660698359,
+        "SSIM": 0.9220643043518066,
+        "LPIPS": 0.126238614320755,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/multi-client-bmk-c1-c1.png",
+      "metrics_path": "assets/metrics/multi-client-bmk-c1-c1_metrics.txt",
+      "search_text": "multi_client bmk_c1 c1 bmk_c1 results/multi_client/bmk_c1 run_0011_multi-client-bmk-c1-c1"
+    },
+    {
+      "run_id": "run_0012_multi-client-bmk-c6-c6",
+      "group": "multi_client",
+      "setting": "bmk_c6",
+      "method": "bmk_c6",
+      "client": "c6",
+      "source_dir": "results/multi_client/bmk_c6",
+      "metrics": {
+        "MSE": 0.0253826715052127,
+        "PSNR": 27.995826533561026,
+        "SSIM": 0.9121650457382202,
+        "LPIPS": 0.1237663999199867,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/multi-client-bmk-c6-c6.png",
+      "metrics_path": "assets/metrics/multi-client-bmk-c6-c6_metrics.txt",
+      "search_text": "multi_client bmk_c6 c6 bmk_c6 results/multi_client/bmk_c6 run_0012_multi-client-bmk-c6-c6"
+    },
+    {
+      "run_id": "run_0013_multi-client-bmk-c8-c8",
+      "group": "multi_client",
+      "setting": "bmk_c8",
+      "method": "bmk_c8",
+      "client": "c8",
+      "source_dir": "results/multi_client/bmk_c8",
+      "metrics": {
+        "MSE": 0.0516392588615417,
+        "PSNR": 24.91139982110584,
+        "SSIM": 0.8625586032867432,
+        "LPIPS": 0.1928191781044006,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/multi-client-bmk-c8-c8.png",
+      "metrics_path": "assets/metrics/multi-client-bmk-c8-c8_metrics.txt",
+      "search_text": "multi_client bmk_c8 c8 bmk_c8 results/multi_client/bmk_c8 run_0013_multi-client-bmk-c8-c8"
+    },
+    {
+      "run_id": "run_0014_multi-client-bmk-c9-c9",
+      "group": "multi_client",
+      "setting": "bmk_c9",
+      "method": "bmk_c9",
+      "client": "c9",
+      "source_dir": "results/multi_client/bmk_c9",
+      "metrics": {
+        "MSE": 0.0238712430000305,
+        "PSNR": 28.26244948902655,
+        "SSIM": 0.9466497898101808,
+        "LPIPS": 0.1083475798368454,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/multi-client-bmk-c9-c9.png",
+      "metrics_path": "assets/metrics/multi-client-bmk-c9-c9_metrics.txt",
+      "search_text": "multi_client bmk_c9 c9 bmk_c9 results/multi_client/bmk_c9 run_0014_multi-client-bmk-c9-c9"
+    },
+    {
+      "run_id": "run_0015_multi-client-bmk-c7-c7",
+      "group": "multi_client",
+      "setting": "bmk_c7",
+      "method": "bmk_c7",
+      "client": "c7",
+      "source_dir": "results/multi_client/bmk_c7",
+      "metrics": {
+        "MSE": 0.0310508459806442,
+        "PSNR": 27.120465456241448,
+        "SSIM": 0.9501248598098756,
+        "LPIPS": 0.1008206978440284,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/multi-client-bmk-c7-c7.png",
+      "metrics_path": "assets/metrics/multi-client-bmk-c7-c7_metrics.txt",
+      "search_text": "multi_client bmk_c7 c7 bmk_c7 results/multi_client/bmk_c7 run_0015_multi-client-bmk-c7-c7"
+    },
+    {
+      "run_id": "run_0016_multi-client-bmk-c0-c0",
+      "group": "multi_client",
+      "setting": "bmk_c0",
+      "method": "bmk_c0",
+      "client": "c0",
+      "source_dir": "results/multi_client/bmk_c0",
+      "metrics": {
+        "MSE": 0.026066992431879,
+        "PSNR": 27.880290568035875,
+        "SSIM": 0.940865695476532,
+        "LPIPS": 0.1141297817230224,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/multi-client-bmk-c0-c0.png",
+      "metrics_path": "assets/metrics/multi-client-bmk-c0-c0_metrics.txt",
+      "search_text": "multi_client bmk_c0 c0 bmk_c0 results/multi_client/bmk_c0 run_0016_multi-client-bmk-c0-c0"
+    },
+    {
+      "run_id": "run_0017_ablation-metric-sim-c7-c7",
+      "group": "ablation",
+      "setting": "metric_sim/c7",
+      "method": "metric_sim",
+      "client": "c7",
+      "source_dir": "results/ablation/metric_sim/c7",
+      "metrics": {
+        "MSE": 0.2592416405677795,
+        "PSNR": 17.904152215054264,
+        "SSIM": 0.5571465492248535,
+        "LPIPS": 0.4927181005477905,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-metric-sim-c7-c7.png",
+      "metrics_path": "assets/metrics/ablation-metric-sim-c7-c7_metrics.txt",
+      "search_text": "ablation metric_sim c7 metric_sim/c7 results/ablation/metric_sim/c7 run_0017_ablation-metric-sim-c7-c7"
+    },
+    {
+      "run_id": "run_0018_ablation-metric-sim-c0-c0",
+      "group": "ablation",
+      "setting": "metric_sim/c0",
+      "method": "metric_sim",
+      "client": "c0",
+      "source_dir": "results/ablation/metric_sim/c0",
+      "metrics": {
+        "MSE": 0.2188466489315033,
+        "PSNR": 18.63980081748825,
+        "SSIM": 0.6735295057296753,
+        "LPIPS": 0.5126175880432129,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-metric-sim-c0-c0.png",
+      "metrics_path": "assets/metrics/ablation-metric-sim-c0-c0_metrics.txt",
+      "search_text": "ablation metric_sim c0 metric_sim/c0 results/ablation/metric_sim/c0 run_0018_ablation-metric-sim-c0-c0"
+    },
+    {
+      "run_id": "run_0019_ablation-metric-sim-c3-c3",
+      "group": "ablation",
+      "setting": "metric_sim/c3",
+      "method": "metric_sim",
+      "client": "c3",
+      "source_dir": "results/ablation/metric_sim/c3",
+      "metrics": {
+        "MSE": 0.1395352780818939,
+        "PSNR": 20.594359604272707,
+        "SSIM": 0.7673583626747131,
+        "LPIPS": 0.4378290176391601,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-metric-sim-c3-c3.png",
+      "metrics_path": "assets/metrics/ablation-metric-sim-c3-c3_metrics.txt",
+      "search_text": "ablation metric_sim c3 metric_sim/c3 results/ablation/metric_sim/c3 run_0019_ablation-metric-sim-c3-c3"
+    },
+    {
+      "run_id": "run_0020_ablation-init-fft-c7-c7",
+      "group": "ablation",
+      "setting": "init_fft/c7",
+      "method": "init_fft",
+      "client": "c7",
+      "source_dir": "results/ablation/init_fft/c7",
+      "metrics": {
+        "MSE": 0.0347348749637603,
+        "PSNR": 26.633542427864647,
+        "SSIM": 0.945316195487976,
+        "LPIPS": 0.1457078158855438,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-init-fft-c7-c7.png",
+      "metrics_path": "assets/metrics/ablation-init-fft-c7-c7_metrics.txt",
+      "search_text": "ablation init_fft c7 init_fft/c7 results/ablation/init_fft/c7 run_0020_ablation-init-fft-c7-c7"
+    },
+    {
+      "run_id": "run_0021_ablation-init-fft-c0-c0",
+      "group": "ablation",
+      "setting": "init_fft/c0",
+      "method": "init_fft",
+      "client": "c0",
+      "source_dir": "results/ablation/init_fft/c0",
+      "metrics": {
+        "MSE": 0.0265724249184131,
+        "PSNR": 27.796887940479888,
+        "SSIM": 0.9400237202644348,
+        "LPIPS": 0.1080254688858985,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-init-fft-c0-c0.png",
+      "metrics_path": "assets/metrics/ablation-init-fft-c0-c0_metrics.txt",
+      "search_text": "ablation init_fft c0 init_fft/c0 results/ablation/init_fft/c0 run_0021_ablation-init-fft-c0-c0"
+    },
+    {
+      "run_id": "run_0022_ablation-init-fft-c3-c3",
+      "group": "ablation",
+      "setting": "init_fft/c3",
+      "method": "init_fft",
+      "client": "c3",
+      "source_dir": "results/ablation/init_fft/c3",
+      "metrics": {
+        "MSE": 0.0274421758949756,
+        "PSNR": 27.6570143896974,
+        "SSIM": 0.9329609274864196,
+        "LPIPS": 0.0925759673118591,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-init-fft-c3-c3.png",
+      "metrics_path": "assets/metrics/ablation-init-fft-c3-c3_metrics.txt",
+      "search_text": "ablation init_fft c3 init_fft/c3 results/ablation/init_fft/c3 run_0022_ablation-init-fft-c3-c3"
+    },
+    {
+      "run_id": "run_0023_ablation-tv-1e-4-c7-c7",
+      "group": "ablation",
+      "setting": "tv_1e-4/c7",
+      "method": "tv_1e-4",
+      "client": "c7",
+      "source_dir": "results/ablation/tv_1e-4/c7",
+      "metrics": {
+        "MSE": 0.0648356974124908,
+        "PSNR": 23.923057959120953,
+        "SSIM": 0.8991386294364929,
+        "LPIPS": 0.1751431822776794,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-tv-1e-4-c7-c7.png",
+      "metrics_path": "assets/metrics/ablation-tv-1e-4-c7-c7_metrics.txt",
+      "search_text": "ablation tv_1e-4 c7 tv_1e-4/c7 results/ablation/tv_1e-4/c7 run_0023_ablation-tv-1e-4-c7-c7"
+    },
+    {
+      "run_id": "run_0024_ablation-tv-1e-4-c0-c0",
+      "group": "ablation",
+      "setting": "tv_1e-4/c0",
+      "method": "tv_1e-4",
+      "client": "c0",
+      "source_dir": "results/ablation/tv_1e-4/c0",
+      "metrics": {
+        "MSE": 0.0414873659610748,
+        "PSNR": 25.862041203717645,
+        "SSIM": 0.9113476276397704,
+        "LPIPS": 0.3142679631710052,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-tv-1e-4-c0-c0.png",
+      "metrics_path": "assets/metrics/ablation-tv-1e-4-c0-c0_metrics.txt",
+      "search_text": "ablation tv_1e-4 c0 tv_1e-4/c0 results/ablation/tv_1e-4/c0 run_0024_ablation-tv-1e-4-c0-c0"
+    },
+    {
+      "run_id": "run_0025_ablation-tv-1e-4-c3-c3",
+      "group": "ablation",
+      "setting": "tv_1e-4/c3",
+      "method": "tv_1e-4",
+      "client": "c3",
+      "source_dir": "results/ablation/tv_1e-4/c3",
+      "metrics": {
+        "MSE": 0.0410872772336006,
+        "PSNR": 25.904126202113375,
+        "SSIM": 0.8988856077194214,
+        "LPIPS": 0.2520476579666137,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-tv-1e-4-c3-c3.png",
+      "metrics_path": "assets/metrics/ablation-tv-1e-4-c3-c3_metrics.txt",
+      "search_text": "ablation tv_1e-4 c3 tv_1e-4/c3 results/ablation/tv_1e-4/c3 run_0025_ablation-tv-1e-4-c3-c3"
+    },
+    {
+      "run_id": "run_0026_ablation-metric-both-c7-c7",
+      "group": "ablation",
+      "setting": "metric_both/c7",
+      "method": "metric_both",
+      "client": "c7",
+      "source_dir": "results/ablation/metric_both/c7",
+      "metrics": {
+        "MSE": 0.1529265940189361,
+        "PSNR": 20.19636966626382,
+        "SSIM": 0.7350776791572571,
+        "LPIPS": 0.4740031659603119,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-metric-both-c7-c7.png",
+      "metrics_path": "assets/metrics/ablation-metric-both-c7-c7_metrics.txt",
+      "search_text": "ablation metric_both c7 metric_both/c7 results/ablation/metric_both/c7 run_0026_ablation-metric-both-c7-c7"
+    },
+    {
+      "run_id": "run_0027_ablation-metric-both-c0-c0",
+      "group": "ablation",
+      "setting": "metric_both/c0",
+      "method": "metric_both",
+      "client": "c0",
+      "source_dir": "results/ablation/metric_both/c0",
+      "metrics": {
+        "MSE": 0.1417289823293686,
+        "PSNR": 20.526613139280258,
+        "SSIM": 0.706959068775177,
+        "LPIPS": 0.5243900418281555,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-metric-both-c0-c0.png",
+      "metrics_path": "assets/metrics/ablation-metric-both-c0-c0_metrics.txt",
+      "search_text": "ablation metric_both c0 metric_both/c0 results/ablation/metric_both/c0 run_0027_ablation-metric-both-c0-c0"
+    },
+    {
+      "run_id": "run_0028_ablation-metric-both-c3-c3",
+      "group": "ablation",
+      "setting": "metric_both/c3",
+      "method": "metric_both",
+      "client": "c3",
+      "source_dir": "results/ablation/metric_both/c3",
+      "metrics": {
+        "MSE": 0.0897410959005355,
+        "PSNR": 22.51128613908065,
+        "SSIM": 0.8127838969230652,
+        "LPIPS": 0.4522834122180938,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-metric-both-c3-c3.png",
+      "metrics_path": "assets/metrics/ablation-metric-both-c3-c3_metrics.txt",
+      "search_text": "ablation metric_both c3 metric_both/c3 results/ablation/metric_both/c3 run_0028_ablation-metric-both-c3-c3"
+    },
+    {
+      "run_id": "run_0029_ablation-baseline-c7-c7",
+      "group": "ablation",
+      "setting": "baseline/c7",
+      "method": "baseline",
+      "client": "c7",
+      "source_dir": "results/ablation/baseline/c7",
+      "metrics": {
+        "MSE": 0.0309947431087493,
+        "PSNR": 27.12831941481639,
+        "SSIM": 0.9501805305480956,
+        "LPIPS": 0.0972530990839004,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-baseline-c7-c7.png",
+      "metrics_path": "assets/metrics/ablation-baseline-c7-c7_metrics.txt",
+      "search_text": "ablation baseline c7 baseline/c7 results/ablation/baseline/c7 run_0029_ablation-baseline-c7-c7"
+    },
+    {
+      "run_id": "run_0030_ablation-baseline-c0-c0",
+      "group": "ablation",
+      "setting": "baseline/c0",
+      "method": "baseline",
+      "client": "c0",
+      "source_dir": "results/ablation/baseline/c0",
+      "metrics": {
+        "MSE": 0.0263303276151418,
+        "PSNR": 27.836637198064793,
+        "SSIM": 0.9404812455177308,
+        "LPIPS": 0.1031123995780944,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-baseline-c0-c0.png",
+      "metrics_path": "assets/metrics/ablation-baseline-c0-c0_metrics.txt",
+      "search_text": "ablation baseline c0 baseline/c0 results/ablation/baseline/c0 run_0030_ablation-baseline-c0-c0"
+    },
+    {
+      "run_id": "run_0031_ablation-baseline-c3-c3",
+      "group": "ablation",
+      "setting": "baseline/c3",
+      "method": "baseline",
+      "client": "c3",
+      "source_dir": "results/ablation/baseline/c3",
+      "metrics": {
+        "MSE": 0.0277127511799335,
+        "PSNR": 27.61440340202672,
+        "SSIM": 0.9321112036705016,
+        "LPIPS": 0.0929749608039856,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-baseline-c3-c3.png",
+      "metrics_path": "assets/metrics/ablation-baseline-c3-c3_metrics.txt",
+      "search_text": "ablation baseline c3 baseline/c3 results/ablation/baseline/c3 run_0031_ablation-baseline-c3-c3"
+    },
+    {
+      "run_id": "run_0032_ablation-metric-cosine-c7-c7",
+      "group": "ablation",
+      "setting": "metric_cosine/c7",
+      "method": "metric_cosine",
+      "client": "c7",
+      "source_dir": "results/ablation/metric_cosine/c7",
+      "metrics": {
+        "MSE": 0.2876369953155517,
+        "PSNR": 17.452752392339818,
+        "SSIM": 0.5349216461181641,
+        "LPIPS": 0.5225695967674255,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-metric-cosine-c7-c7.png",
+      "metrics_path": "assets/metrics/ablation-metric-cosine-c7-c7_metrics.txt",
+      "search_text": "ablation metric_cosine c7 metric_cosine/c7 results/ablation/metric_cosine/c7 run_0032_ablation-metric-cosine-c7-c7"
+    },
+    {
+      "run_id": "run_0033_ablation-metric-cosine-c0-c0",
+      "group": "ablation",
+      "setting": "metric_cosine/c0",
+      "method": "metric_cosine",
+      "client": "c0",
+      "source_dir": "results/ablation/metric_cosine/c0",
+      "metrics": {
+        "MSE": 0.228167176246643,
+        "PSNR": 18.458668149675592,
+        "SSIM": 0.6473600268363953,
+        "LPIPS": 0.4801787137985229,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-metric-cosine-c0-c0.png",
+      "metrics_path": "assets/metrics/ablation-metric-cosine-c0-c0_metrics.txt",
+      "search_text": "ablation metric_cosine c0 metric_cosine/c0 results/ablation/metric_cosine/c0 run_0033_ablation-metric-cosine-c0-c0"
+    },
+    {
+      "run_id": "run_0034_ablation-metric-cosine-c3-c3",
+      "group": "ablation",
+      "setting": "metric_cosine/c3",
+      "method": "metric_cosine",
+      "client": "c3",
+      "source_dir": "results/ablation/metric_cosine/c3",
+      "metrics": {
+        "MSE": 0.1477233171463012,
+        "PSNR": 20.346709314284084,
+        "SSIM": 0.744814395904541,
+        "LPIPS": 0.4765522480010986,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-metric-cosine-c3-c3.png",
+      "metrics_path": "assets/metrics/ablation-metric-cosine-c3-c3_metrics.txt",
+      "search_text": "ablation metric_cosine c3 metric_cosine/c3 results/ablation/metric_cosine/c3 run_0034_ablation-metric-cosine-c3-c3"
+    },
+    {
+      "run_id": "run_0035_ablation-tv-1e-6-c7-c7",
+      "group": "ablation",
+      "setting": "tv_1e-6/c7",
+      "method": "tv_1e-6",
+      "client": "c7",
+      "source_dir": "results/ablation/tv_1e-6/c7",
+      "metrics": {
+        "MSE": 0.0420362763106823,
+        "PSNR": 25.804957445991473,
+        "SSIM": 0.9286654591560364,
+        "LPIPS": 0.2109702378511428,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-tv-1e-6-c7-c7.png",
+      "metrics_path": "assets/metrics/ablation-tv-1e-6-c7-c7_metrics.txt",
+      "search_text": "ablation tv_1e-6 c7 tv_1e-6/c7 results/ablation/tv_1e-6/c7 run_0035_ablation-tv-1e-6-c7-c7"
+    },
+    {
+      "run_id": "run_0036_ablation-tv-1e-6-c0-c0",
+      "group": "ablation",
+      "setting": "tv_1e-6/c0",
+      "method": "tv_1e-6",
+      "client": "c0",
+      "source_dir": "results/ablation/tv_1e-6/c0",
+      "metrics": {
+        "MSE": 0.0377878099679946,
+        "PSNR": 26.267682599999876,
+        "SSIM": 0.912568747997284,
+        "LPIPS": 0.2374648749828338,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-tv-1e-6-c0-c0.png",
+      "metrics_path": "assets/metrics/ablation-tv-1e-6-c0-c0_metrics.txt",
+      "search_text": "ablation tv_1e-6 c0 tv_1e-6/c0 results/ablation/tv_1e-6/c0 run_0036_ablation-tv-1e-6-c0-c0"
+    },
+    {
+      "run_id": "run_0037_ablation-tv-1e-6-c3-c3",
+      "group": "ablation",
+      "setting": "tv_1e-6/c3",
+      "method": "tv_1e-6",
+      "client": "c3",
+      "source_dir": "results/ablation/tv_1e-6/c3",
+      "metrics": {
+        "MSE": 0.0405740588903427,
+        "PSNR": 25.958715274409844,
+        "SSIM": 0.9071646332740784,
+        "LPIPS": 0.30914506316185,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/ablation-tv-1e-6-c3-c3.png",
+      "metrics_path": "assets/metrics/ablation-tv-1e-6-c3-c3_metrics.txt",
+      "search_text": "ablation tv_1e-6 c3 tv_1e-6/c3 results/ablation/tv_1e-6/c3 run_0037_ablation-tv-1e-6-c3-c3"
+    },
+    {
+      "run_id": "run_0038_showcase-showcase-global",
+      "group": "showcase",
+      "setting": "showcase",
+      "method": "showcase",
+      "client": "global",
+      "source_dir": "results/showcase",
+      "metrics": {
+        "MSE": 0.0184764117002487,
+        "PSNR": 29.375023518160894,
+        "SSIM": 0.9202892780303956,
+        "LPIPS": 0.1171874552965164,
+        "LabelMatch": 1.0
+      },
+      "image_path": "assets/images/showcase-showcase-global.png",
+      "metrics_path": "assets/metrics/showcase-showcase-global_metrics.txt",
+      "search_text": "showcase showcase global showcase results/showcase run_0038_showcase-showcase-global"
+    }
+  ],
+  "aggregates": {
+    "by_group_setting": [
+      {
+        "group": "ablation",
+        "method": "baseline",
+        "count": 3,
+        "MSE": {
+          "mean": 0.0283459406346082,
+          "std": 0.0019561679611568563
+        },
+        "PSNR": {
+          "mean": 27.526453338302634,
+          "std": 0.2957813728621039
+        },
+        "SSIM": {
+          "mean": 0.940924326578776,
+          "std": 0.007383422154725087
+        },
+        "LPIPS": {
+          "mean": 0.0977801531553268,
+          "std": 0.0041553383913833465
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "ablation",
+        "method": "init_fft",
+        "count": 3,
+        "MSE": {
+          "mean": 0.029583158592383002,
+          "std": 0.0036600776739158167
+        },
+        "PSNR": {
+          "mean": 27.362481586013974,
+          "std": 0.5185912807884564
+        },
+        "SSIM": {
+          "mean": 0.9394336144129435,
+          "std": 0.005061246917150233
+        },
+        "LPIPS": {
+          "mean": 0.11543641736110048,
+          "std": 0.022315016635901092
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "ablation",
+        "method": "metric_both",
+        "count": 3,
+        "MSE": {
+          "mean": 0.12813222408294675,
+          "std": 0.02752884147249126
+        },
+        "PSNR": {
+          "mean": 21.078089648208245,
+          "std": 1.022351643338118
+        },
+        "SSIM": {
+          "mean": 0.7516068816184998,
+          "std": 0.0447558894719349
+        },
+        "LPIPS": {
+          "mean": 0.48355887333552044,
+          "std": 0.030202926635356796
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "ablation",
+        "method": "metric_cosine",
+        "count": 3,
+        "MSE": {
+          "mean": 0.22117582956949863,
+          "std": 0.05733305347401948
+        },
+        "PSNR": {
+          "mean": 18.75270995209983,
+          "std": 1.1996088536677152
+        },
+        "SSIM": {
+          "mean": 0.6423653562863668,
+          "std": 0.085761108721258
+        },
+        "LPIPS": {
+          "mean": 0.4931001861890157,
+          "std": 0.020890547039656378
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "ablation",
+        "method": "metric_sim",
+        "count": 3,
+        "MSE": {
+          "mean": 0.20587452252705887,
+          "std": 0.04972330340655323
+        },
+        "PSNR": {
+          "mean": 19.046104212271743,
+          "std": 1.1352285484168139
+        },
+        "SSIM": {
+          "mean": 0.6660114725430807,
+          "std": 0.08598310782053142
+        },
+        "LPIPS": {
+          "mean": 0.4810549020767212,
+          "std": 0.03162652067176276
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "ablation",
+        "method": "tv_1e-4",
+        "count": 3,
+        "MSE": {
+          "mean": 0.049136780202388736,
+          "std": 0.011102012397900126
+        },
+        "PSNR": {
+          "mean": 25.229741788317323,
+          "std": 0.9241247242246616
+        },
+        "SSIM": {
+          "mean": 0.9031239549318949,
+          "std": 0.005815932118013969
+        },
+        "LPIPS": {
+          "mean": 0.2471529344717661,
+          "std": 0.0569028113143937
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "ablation",
+        "method": "tv_1e-6",
+        "count": 3,
+        "MSE": {
+          "mean": 0.04013271505633987,
+          "std": 0.001762281636798686
+        },
+        "PSNR": {
+          "mean": 26.010451773467064,
+          "std": 0.19241645986253955
+        },
+        "SSIM": {
+          "mean": 0.9161329468091329,
+          "std": 0.00913232402985343
+        },
+        "LPIPS": {
+          "mean": 0.2525267253319422,
+          "std": 0.04147062079071697
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "defenses",
+        "method": "baseline",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0184764117002487,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 29.375023518160894,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.9202892780303956,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1171874552965164,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "defenses",
+        "method": "dp_eps01",
+        "count": 1,
+        "MSE": {
+          "mean": 3.697254180908203,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 6.362406739353482,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": -0.0013967172708362,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.8060378432273865,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 0.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "defenses",
+        "method": "dp_eps1",
+        "count": 1,
+        "MSE": {
+          "mean": 3.732619047164917,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 6.321063147646022,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": -0.0007999734953045,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.7466567158699036,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 0.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "defenses",
+        "method": "dp_eps8",
+        "count": 1,
+        "MSE": {
+          "mean": 3.4113833904266357,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 6.711894520523959,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": -0.0009008623310364,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.807481050491333,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 0.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "defenses",
+        "method": "dp_he",
+        "count": 1,
+        "MSE": {
+          "mean": 3.694187879562378,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 6.366010035759899,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": -0.0027435757219791,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.8242515325546265,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 0.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "defenses",
+        "method": "he",
+        "count": 1,
+        "MSE": {
+          "mean": 0.6322916746139526,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 14.0320251916158,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.3433560729026794,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.6345014572143555,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "defenses",
+        "method": "he_test",
+        "count": 1,
+        "MSE": {
+          "mean": 0.1997629255056381,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 19.036050930720847,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.4094901084899902,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "multi_client",
+        "method": "bmk_c0",
+        "count": 1,
+        "MSE": {
+          "mean": 0.026066992431879,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 27.880290568035875,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.940865695476532,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1141297817230224,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "multi_client",
+        "method": "bmk_c1",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0179045051336288,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 29.51157660698359,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.9220643043518066,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.126238614320755,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "multi_client",
+        "method": "bmk_c2",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0380069389939308,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 26.24257088890134,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.943874180316925,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1378685683012008,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "multi_client",
+        "method": "bmk_c3",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0267654433846473,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 27.76545540544142,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.9345795512199402,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.0817268341779708,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "multi_client",
+        "method": "bmk_c4",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0360502302646636,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 26.4721193961009,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.9127002358436584,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1526597142219543,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "multi_client",
+        "method": "bmk_c5",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0342530347406864,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 26.69420927623166,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.9051096439361572,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1149412617087364,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "multi_client",
+        "method": "bmk_c6",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0253826715052127,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 27.995826533561026,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.9121650457382202,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1237663999199867,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "multi_client",
+        "method": "bmk_c7",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0310508459806442,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 27.120465456241448,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.9501248598098756,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1008206978440284,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "multi_client",
+        "method": "bmk_c8",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0516392588615417,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 24.91139982110584,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.8625586032867432,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1928191781044006,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "multi_client",
+        "method": "bmk_c9",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0238712430000305,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 28.26244948902655,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.9466497898101808,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1083475798368454,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "group": "showcase",
+        "method": "showcase",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0184764117002487,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 29.375023518160894,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.9202892780303956,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1171874552965164,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      }
+    ],
+    "by_setting": [
+      {
+        "method": "baseline",
+        "count": 4,
+        "MSE": {
+          "mean": 0.025878558401018326,
+          "std": 0.004597158913839863
+        },
+        "PSNR": {
+          "mean": 27.988595883267198,
+          "std": 0.840441646396773
+        },
+        "SSIM": {
+          "mean": 0.9357655644416809,
+          "std": 0.010987477981663574
+        },
+        "LPIPS": {
+          "mean": 0.10263197869062421,
+          "std": 0.009141704487406603
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "bmk_c0",
+        "count": 1,
+        "MSE": {
+          "mean": 0.026066992431879,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 27.880290568035875,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.940865695476532,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1141297817230224,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "bmk_c1",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0179045051336288,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 29.51157660698359,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.9220643043518066,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.126238614320755,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "bmk_c2",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0380069389939308,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 26.24257088890134,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.943874180316925,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1378685683012008,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "bmk_c3",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0267654433846473,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 27.76545540544142,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.9345795512199402,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.0817268341779708,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "bmk_c4",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0360502302646636,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 26.4721193961009,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.9127002358436584,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1526597142219543,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "bmk_c5",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0342530347406864,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 26.69420927623166,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.9051096439361572,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1149412617087364,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "bmk_c6",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0253826715052127,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 27.995826533561026,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.9121650457382202,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1237663999199867,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "bmk_c7",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0310508459806442,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 27.120465456241448,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.9501248598098756,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1008206978440284,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "bmk_c8",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0516392588615417,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 24.91139982110584,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.8625586032867432,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1928191781044006,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "bmk_c9",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0238712430000305,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 28.26244948902655,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.9466497898101808,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1083475798368454,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "dp_eps01",
+        "count": 1,
+        "MSE": {
+          "mean": 3.697254180908203,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 6.362406739353482,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": -0.0013967172708362,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.8060378432273865,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 0.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "dp_eps1",
+        "count": 1,
+        "MSE": {
+          "mean": 3.732619047164917,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 6.321063147646022,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": -0.0007999734953045,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.7466567158699036,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 0.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "dp_eps8",
+        "count": 1,
+        "MSE": {
+          "mean": 3.4113833904266357,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 6.711894520523959,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": -0.0009008623310364,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.807481050491333,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 0.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "dp_he",
+        "count": 1,
+        "MSE": {
+          "mean": 3.694187879562378,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 6.366010035759899,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": -0.0027435757219791,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.8242515325546265,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 0.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "he",
+        "count": 1,
+        "MSE": {
+          "mean": 0.6322916746139526,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 14.0320251916158,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.3433560729026794,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.6345014572143555,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "he_test",
+        "count": 1,
+        "MSE": {
+          "mean": 0.1997629255056381,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 19.036050930720847,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.4094901084899902,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "init_fft",
+        "count": 3,
+        "MSE": {
+          "mean": 0.029583158592383002,
+          "std": 0.0036600776739158167
+        },
+        "PSNR": {
+          "mean": 27.362481586013974,
+          "std": 0.5185912807884564
+        },
+        "SSIM": {
+          "mean": 0.9394336144129435,
+          "std": 0.005061246917150233
+        },
+        "LPIPS": {
+          "mean": 0.11543641736110048,
+          "std": 0.022315016635901092
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "metric_both",
+        "count": 3,
+        "MSE": {
+          "mean": 0.12813222408294675,
+          "std": 0.02752884147249126
+        },
+        "PSNR": {
+          "mean": 21.078089648208245,
+          "std": 1.022351643338118
+        },
+        "SSIM": {
+          "mean": 0.7516068816184998,
+          "std": 0.0447558894719349
+        },
+        "LPIPS": {
+          "mean": 0.48355887333552044,
+          "std": 0.030202926635356796
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "metric_cosine",
+        "count": 3,
+        "MSE": {
+          "mean": 0.22117582956949863,
+          "std": 0.05733305347401948
+        },
+        "PSNR": {
+          "mean": 18.75270995209983,
+          "std": 1.1996088536677152
+        },
+        "SSIM": {
+          "mean": 0.6423653562863668,
+          "std": 0.085761108721258
+        },
+        "LPIPS": {
+          "mean": 0.4931001861890157,
+          "std": 0.020890547039656378
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "metric_sim",
+        "count": 3,
+        "MSE": {
+          "mean": 0.20587452252705887,
+          "std": 0.04972330340655323
+        },
+        "PSNR": {
+          "mean": 19.046104212271743,
+          "std": 1.1352285484168139
+        },
+        "SSIM": {
+          "mean": 0.6660114725430807,
+          "std": 0.08598310782053142
+        },
+        "LPIPS": {
+          "mean": 0.4810549020767212,
+          "std": 0.03162652067176276
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "showcase",
+        "count": 1,
+        "MSE": {
+          "mean": 0.0184764117002487,
+          "std": 0.0
+        },
+        "PSNR": {
+          "mean": 29.375023518160894,
+          "std": 0.0
+        },
+        "SSIM": {
+          "mean": 0.9202892780303956,
+          "std": 0.0
+        },
+        "LPIPS": {
+          "mean": 0.1171874552965164,
+          "std": 0.0
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "tv_1e-4",
+        "count": 3,
+        "MSE": {
+          "mean": 0.049136780202388736,
+          "std": 0.011102012397900126
+        },
+        "PSNR": {
+          "mean": 25.229741788317323,
+          "std": 0.9241247242246616
+        },
+        "SSIM": {
+          "mean": 0.9031239549318949,
+          "std": 0.005815932118013969
+        },
+        "LPIPS": {
+          "mean": 0.2471529344717661,
+          "std": 0.0569028113143937
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      },
+      {
+        "method": "tv_1e-6",
+        "count": 3,
+        "MSE": {
+          "mean": 0.04013271505633987,
+          "std": 0.001762281636798686
+        },
+        "PSNR": {
+          "mean": 26.010451773467064,
+          "std": 0.19241645986253955
+        },
+        "SSIM": {
+          "mean": 0.9161329468091329,
+          "std": 0.00913232402985343
+        },
+        "LPIPS": {
+          "mean": 0.2525267253319422,
+          "std": 0.04147062079071697
+        },
+        "LabelMatch": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      }
+    ],
+    "ablations": [
+      {
+        "method": "baseline",
+        "client": "c3",
+        "PSNR": 27.61440340202672,
+        "SSIM": 0.9321112036705016,
+        "LPIPS": 0.0929749608039856
+      },
+      {
+        "method": "init_fft",
+        "client": "c3",
+        "PSNR": 27.6570143896974,
+        "SSIM": 0.9329609274864196,
+        "LPIPS": 0.0925759673118591
+      },
+      {
+        "method": "metric_both",
+        "client": "c3",
+        "PSNR": 22.51128613908065,
+        "SSIM": 0.8127838969230652,
+        "LPIPS": 0.4522834122180938
+      },
+      {
+        "method": "metric_cosine",
+        "client": "c3",
+        "PSNR": 20.346709314284084,
+        "SSIM": 0.744814395904541,
+        "LPIPS": 0.4765522480010986
+      },
+      {
+        "method": "metric_sim",
+        "client": "c3",
+        "PSNR": 20.594359604272707,
+        "SSIM": 0.7673583626747131,
+        "LPIPS": 0.4378290176391601
+      },
+      {
+        "method": "tv_1e-4",
+        "client": "c7",
+        "PSNR": 23.923057959120953,
+        "SSIM": 0.8991386294364929,
+        "LPIPS": 0.1751431822776794
+      },
+      {
+        "method": "tv_1e-6",
+        "client": "c7",
+        "PSNR": 25.804957445991473,
+        "SSIM": 0.9286654591560364,
+        "LPIPS": 0.2109702378511428
+      }
+    ]
+  },
+  "baselines_by_client": {
+    "global": "run_0031_ablation-baseline-c3-c3",
+    "c7": "run_0029_ablation-baseline-c7-c7",
+    "c0": "run_0030_ablation-baseline-c0-c0",
+    "c3": "run_0031_ablation-baseline-c3-c3"
+  },
+  "best_overall_id": "run_0009_multi-client-bmk-c3-c3",
+  "best_baseline_id": "run_0031_ablation-baseline-c3-c3",
+  "best_per_setting": {
+    "he": "run_0000_defenses-he-global",
+    "dp_eps1": "run_0001_defenses-dp-eps1-global",
+    "dp_eps8": "run_0002_defenses-dp-eps8-global",
+    "baseline": "run_0031_ablation-baseline-c3-c3",
+    "he_test": "run_0004_defenses-he-test-global",
+    "dp_eps01": "run_0005_defenses-dp-eps01-global",
+    "dp_he": "run_0006_defenses-dp-he-global",
+    "bmk_c5": "run_0007_multi-client-bmk-c5-c5",
+    "bmk_c2": "run_0008_multi-client-bmk-c2-c2",
+    "bmk_c3": "run_0009_multi-client-bmk-c3-c3",
+    "bmk_c4": "run_0010_multi-client-bmk-c4-c4",
+    "bmk_c1": "run_0011_multi-client-bmk-c1-c1",
+    "bmk_c6": "run_0012_multi-client-bmk-c6-c6",
+    "bmk_c8": "run_0013_multi-client-bmk-c8-c8",
+    "bmk_c9": "run_0014_multi-client-bmk-c9-c9",
+    "bmk_c7": "run_0015_multi-client-bmk-c7-c7",
+    "bmk_c0": "run_0016_multi-client-bmk-c0-c0",
+    "metric_sim": "run_0019_ablation-metric-sim-c3-c3",
+    "init_fft": "run_0022_ablation-init-fft-c3-c3",
+    "tv_1e-4": "run_0023_ablation-tv-1e-4-c7-c7",
+    "metric_both": "run_0028_ablation-metric-both-c3-c3",
+    "metric_cosine": "run_0034_ablation-metric-cosine-c3-c3",
+    "tv_1e-6": "run_0035_ablation-tv-1e-6-c7-c7",
+    "showcase": "run_0038_showcase-showcase-global"
+  },
+  "filter_values": {
+    "groups": [
+      "ablation",
+      "defenses",
+      "multi_client",
+      "showcase"
+    ],
+    "methods": [
+      "baseline",
+      "bmk_c0",
+      "bmk_c1",
+      "bmk_c2",
+      "bmk_c3",
+      "bmk_c4",
+      "bmk_c5",
+      "bmk_c6",
+      "bmk_c7",
+      "bmk_c8",
+      "bmk_c9",
+      "dp_eps01",
+      "dp_eps1",
+      "dp_eps8",
+      "dp_he",
+      "he",
+      "he_test",
+      "init_fft",
+      "metric_both",
+      "metric_cosine",
+      "metric_sim",
+      "showcase",
+      "tv_1e-4",
+      "tv_1e-6"
+    ],
+    "clients": [
+      "c0",
+      "c1",
+      "c2",
+      "c3",
+      "c4",
+      "c5",
+      "c6",
+      "c7",
+      "c8",
+      "c9",
+      "global"
+    ]
+  },
+  "charts": {
+    "defenses_grouped_bars": "assets/charts/defenses_grouped_bars.png",
+    "defenses_scatter_psnr_vs_lpips": "assets/charts/defenses_scatter_psnr_vs_lpips.png",
+    "multiclient_boxplots": "assets/charts/multiclient_boxplots.png",
+    "ablation_bars": "assets/charts/ablation_bars.png"
+  },
+  "montages": [
+    {
+      "name": "Top reconstructions",
+      "path": "assets/montages/top_ranked.png"
+    }
+  ]
+}
