@@ -3,21 +3,34 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Federated Learning Privacy Analysis | Interactive Dashboard</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231a237e'/%3E%3Cpath d='M32 12L16 22v20l16 10 16-10V22L32 12z' fill='none' stroke='%2369a9ff' stroke-width='2'/%3E%3Ccircle cx='32' cy='32' r='8' fill='%2369a9ff'/%3E%3C/svg%3E" />
+  <title>Gradient Inversion Attack Analysis | Federated Learning Security Research</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230d1117'/%3E%3Cpath d='M32 12L16 22v20l16 10 16-10V22L32 12z' fill='none' stroke='%2358a6ff' stroke-width='2.5'/%3E%3Ccircle cx='32' cy='32' r='6' fill='%2358a6ff'/%3E%3Ccircle cx='22' cy='24' r='3' fill='%2356d364'/%3E%3Ccircle cx='42' cy='24' r='3' fill='%23f78166'/%3E%3Ccircle cx='32' cy='44' r='3' fill='%23db61a2'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0f131c;
-      --bg-card: #171d2a;
-      --bg-panel: #1f2636;
-      --border: #2e3548;
-      --text: #f5f6fa;
-      --muted: #c7cddf;
-      --accent: #69a9ff;
-      --accent-strong: #f5d742;
-      --danger: #ff7676;
-      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+      --bg: #0d1117;
+      --bg-card: #161b22;
+      --bg-panel: #21262d;
+      --bg-elevated: #30363d;
+      --border: #30363d;
+      --border-subtle: #21262d;
+      --text: #e6edf3;
+      --text-secondary: #8b949e;
+      --muted: #6e7681;
+      --accent: #58a6ff;
+      --accent-emphasis: #1f6feb;
+      --success: #3fb950;
+      --success-subtle: rgba(63, 185, 80, 0.15);
+      --warning: #d29922;
+      --warning-subtle: rgba(210, 153, 34, 0.15);
+      --danger: #f85149;
+      --danger-subtle: rgba(248, 81, 73, 0.15);
+      --purple: #a371f7;
+      --pink: #db61a2;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
     * { box-sizing: border-box; }
     body {
@@ -26,7 +39,9 @@
       background: var(--bg);
       color: var(--text);
       font-family: inherit;
-      line-height: 1.4;
+      line-height: 1.5;
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
     }
     .page {
       display: flex;
@@ -34,41 +49,77 @@
       min-height: 100vh;
     }
     header {
-      background: linear-gradient(135deg, #0b0e15 0%, #131825 100%);
-      padding: 24px 32px;
+      background: linear-gradient(180deg, #161b22 0%, #0d1117 100%);
+      padding: 18px 36px;
       display: flex;
       flex-wrap: wrap;
-      align-items: flex-end;
+      align-items: flex-start;
       justify-content: space-between;
       border-bottom: 1px solid var(--border);
+      gap: 12px;
     }
     header h1 {
       margin: 0;
-      font-size: 24px;
+      font-size: 20px;
       font-weight: 600;
-      letter-spacing: 0.01em;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    header h1::before {
+      content: "";
+      display: inline-block;
+      width: 3px;
+      height: 20px;
+      background: linear-gradient(180deg, var(--accent) 0%, var(--purple) 100%);
+      border-radius: 2px;
     }
     header .subtitle {
       margin-top: 4px;
-      font-size: 14px;
-      color: var(--accent);
-      font-weight: 500;
-      letter-spacing: 0.02em;
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 400;
+      letter-spacing: 0;
     }
     header .meta {
       text-align: right;
-      font-size: 13px;
+      font-size: 12px;
       color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    header .meta-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
     }
     header .key-finding {
       margin-top: 8px;
-      font-size: 14px;
-      color: var(--accent-strong);
+      font-size: 12px;
+      color: var(--success);
       font-weight: 500;
-      padding: 6px 12px;
-      background: rgba(245, 215, 66, 0.1);
+      padding: 8px 12px;
+      background: var(--success-subtle);
       border-radius: 6px;
-      border-left: 3px solid var(--accent-strong);
+      border-left: 3px solid var(--success);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    header .key-finding::before {
+      content: "✓";
+      font-weight: 700;
+      font-size: 12px;
     }
     main {
       display: flex;
@@ -83,23 +134,23 @@
     }
     .viewer-panels {
       display: grid;
-      grid-template-columns: minmax(420px, 0.65fr) minmax(360px, 0.35fr);
-      gap: 24px;
-      padding: 24px 28px 12px;
-      border-bottom: 1px solid var(--border);
+      grid-template-columns: minmax(400px, 0.6fr) minmax(340px, 0.4fr);
+      gap: 20px;
+      padding: 20px 36px 16px;
+      border-bottom: 1px solid var(--border-subtle);
       align-items: stretch;
-      max-height: 650px;
     }
     .panel {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 16px 18px;
+      padding: 14px 16px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
       min-height: 0;
       overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
     }
     .carousel-panel,
     .details-panel {
@@ -108,99 +159,113 @@
     }
     .panel h2 {
       margin: 0;
-      font-size: 16px;
+      font-size: 13px;
       font-weight: 600;
-      letter-spacing: 0.02em;
-      color: var(--text);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
     }
     .carousel-frame {
       flex: 1;
       position: relative;
-      border-radius: 8px;
+      border-radius: 10px;
       border: 1px solid var(--border);
-      background: #ffffff;
+      background: linear-gradient(145deg, #fafbfc 0%, #f6f8fa 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 0;
+      min-height: 280px;
+      max-height: 400px;
       overflow: hidden;
-      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
     }
     .autoplay-image {
       max-width: 100%;
       max-height: 100%;
       object-fit: contain;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: zoom-in;
-      transition: transform 0.2s ease;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
     }
     .autoplay-image:hover {
-      transform: scale(1.02);
+      transform: scale(1.015);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     .carousel-badge {
       display: none;
     }
     .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
       gap: 8px;
     }
     .metric-card {
       background: var(--bg-panel);
       border-radius: 8px;
-      padding: 10px 8px;
+      padding: 8px 6px;
       border: 1px solid var(--border);
       text-align: center;
-      transition: border-color 0.2s ease;
+      transition: all 0.2s ease;
+      position: relative;
     }
     .metric-card:hover {
       border-color: var(--accent);
+      background: var(--bg-elevated);
     }
     .metric-card .label {
       font-size: 10px;
       text-transform: uppercase;
       color: var(--muted);
-      letter-spacing: 0.05em;
-      margin-bottom: 2px;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+      font-weight: 500;
     }
     .metric-card .value {
-      font-size: 18px;
+      font-size: 15px;
       font-weight: 600;
       font-variant-numeric: tabular-nums;
+      font-family: "JetBrains Mono", "SF Mono", monospace;
     }
     .metric-card .value.good {
-      color: #4ade80;
+      color: var(--success);
     }
     .metric-card .value.bad {
       color: var(--danger);
     }
+    .metric-card .value.neutral {
+      color: var(--text-secondary);
+    }
     .run-summary {
-      font-size: 15px;
+      font-size: 13px;
       font-weight: 600;
       color: var(--text);
+      padding: 6px 10px;
+      background: var(--bg-panel);
+      border-radius: 6px;
+      border-left: 3px solid var(--accent);
     }
     .run-path {
-      font-family: "SF Mono", "Consolas", "Monaco", monospace;
+      font-family: "JetBrains Mono", "SF Mono", "Consolas", monospace;
       font-size: 11px;
       color: var(--muted);
-      background: rgba(0, 0, 0, 0.3);
-      padding: 8px 10px;
-      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 10px 12px;
+      border-radius: 8px;
       overflow-x: auto;
-      border: 1px solid var(--border);
+      border: 1px solid var(--border-subtle);
     }
     .section-label {
-      font-size: 11px;
+      font-size: 10px;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.1em;
       color: var(--muted);
       margin-bottom: 6px;
-      font-weight: 500;
+      font-weight: 600;
     }
     .details-stack {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
       flex: 1;
       min-height: 0;
     }
@@ -211,77 +276,79 @@
       min-height: 0;
     }
     .metrics-text {
-      background: rgba(0, 0, 0, 0.25);
-      border: 1px solid var(--border);
+      background: var(--bg);
+      border: 1px solid var(--border-subtle);
       border-radius: 6px;
-      padding: 12px;
+      padding: 10px;
       flex: 1;
-      min-height: 80px;
+      min-height: 60px;
       overflow-y: auto;
-      font-family: "SF Mono", "Consolas", "Monaco", monospace;
-      font-size: 11px;
+      font-family: "JetBrains Mono", "SF Mono", "Consolas", monospace;
+      font-size: 10px;
       line-height: 1.5;
       white-space: pre-wrap;
       margin: 0;
-      color: var(--muted);
+      color: var(--text-secondary);
     }
     .nav-buttons {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       justify-content: flex-end;
     }
     .nav-buttons button {
-      padding: 6px 12px;
-      border-radius: 6px;
+      padding: 6px 14px;
+      border-radius: 8px;
       border: 1px solid var(--border);
       background: var(--bg-panel);
-      color: var(--text);
+      color: var(--text-secondary);
       cursor: pointer;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 500;
-      transition: all 0.2s ease;
+      transition: all 0.15s ease;
     }
     .nav-buttons button:hover {
       border-color: var(--accent);
-      background: rgba(105, 169, 255, 0.1);
+      background: var(--accent-emphasis);
+      color: var(--text);
     }
     .comparison-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       flex-wrap: wrap;
     }
     .autoplay-controls {
       display: flex;
-      gap: 4px;
+      gap: 6px;
       align-items: center;
     }
     .circle-button {
-      width: 34px;
-      height: 34px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
-      border: none;
-      background: transparent;
+      border: 1px solid var(--border);
+      background: var(--bg-panel);
       color: var(--muted);
       display: inline-flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       padding: 0;
-      transition: all 0.2s ease;
+      transition: all 0.15s ease;
     }
     .circle-button:hover:not(:disabled) {
       color: var(--text);
-      background: rgba(255,255,255,0.1);
+      background: var(--accent-emphasis);
+      border-color: var(--accent);
     }
     .circle-button:disabled {
-      opacity: 0.3;
+      opacity: 0.35;
       cursor: not-allowed;
     }
     .circle-button svg {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       fill: currentColor;
     }
     .circle-button .icon-pause {
@@ -294,25 +361,27 @@
       display: block;
     }
     .autoplay-speed {
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      font-size: 13px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-panel);
+      color: var(--text-secondary);
+      font-size: 11px;
       font-weight: 500;
-      padding: 4px 18px 4px 8px;
+      padding: 5px 22px 5px 10px;
       appearance: none;
       cursor: pointer;
-      background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236e7681' d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E");
       background-position: right 6px center;
-      background-size: 5px 5px;
+      background-size: 12px;
       background-repeat: no-repeat;
-      transition: color 0.2s ease;
+      transition: all 0.15s ease;
     }
     .autoplay-speed:hover:not(:disabled) {
+      border-color: var(--accent);
       color: var(--text);
     }
     .autoplay-speed:disabled {
-      opacity: 0.3;
+      opacity: 0.35;
       cursor: not-allowed;
     }
     .sr-only {
@@ -330,28 +399,30 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      padding: 0 28px 28px;
+      padding: 0 36px 24px;
+      min-height: 0;
     }
     .tab-buttons {
       display: flex;
-      gap: 24px;
-      margin-top: 16px;
-      border-bottom: 2px solid var(--border);
+      gap: 28px;
+      margin-top: 12px;
+      border-bottom: 1px solid var(--border);
     }
     .tab-buttons button {
       border: none;
       background: none;
       color: var(--muted);
-      padding: 12px 4px;
+      padding: 10px 2px;
       cursor: pointer;
       border-bottom: 2px solid transparent;
-      margin-bottom: -2px;
-      font-size: 14px;
+      margin-bottom: -1px;
+      font-size: 13px;
       font-weight: 500;
-      transition: all 0.2s ease;
+      transition: all 0.15s ease;
+      letter-spacing: 0.01em;
     }
     .tab-buttons button:hover {
-      color: var(--text);
+      color: var(--text-secondary);
     }
     .tab-buttons button.active {
       color: var(--accent);
@@ -359,7 +430,7 @@
     }
     .tab-panel {
       display: none;
-      padding: 18px 0;
+      padding: 20px 0;
       flex: 1;
       overflow-y: auto;
     }
@@ -368,7 +439,8 @@
     }
     table {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
       font-size: 13px;
     }
     thead {
@@ -378,106 +450,129 @@
       z-index: 1;
     }
     th {
-      border-bottom: 2px solid var(--border);
-      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
+      padding: 12px 10px;
       text-align: left;
       font-weight: 600;
-      font-size: 12px;
+      font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.05em;
       color: var(--muted);
       cursor: pointer;
-      transition: color 0.2s ease;
+      transition: color 0.15s ease;
+      white-space: nowrap;
     }
     th:hover {
-      color: var(--text);
+      color: var(--text-secondary);
     }
     td {
-      border-bottom: 1px solid var(--border);
-      padding: 10px 8px;
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 12px 10px;
       text-align: left;
       font-variant-numeric: tabular-nums;
+      font-family: "JetBrains Mono", "SF Mono", monospace;
+      font-size: 12px;
+    }
+    td:first-child {
+      font-family: inherit;
     }
     .table-thumb {
-      width: 56px;
-      height: 36px;
+      width: 52px;
+      height: 34px;
       object-fit: cover;
-      border-radius: 4px;
+      border-radius: 6px;
       border: 1px solid var(--border);
       background: #fff;
+      transition: transform 0.15s ease;
+    }
+    .table-thumb:hover {
+      transform: scale(1.1);
     }
     tbody tr {
       cursor: pointer;
-      transition: background 0.15s ease;
+      transition: background 0.1s ease;
     }
     tbody tr:hover {
-      background: rgba(105, 169, 255, 0.06);
+      background: rgba(88, 166, 255, 0.04);
     }
     tbody tr.selected {
-      background: rgba(105, 169, 255, 0.15);
+      background: rgba(88, 166, 255, 0.1);
+      border-left: 2px solid var(--accent);
     }
     .charts-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 24px;
     }
     .charts-grid img,
     .montage-grid img {
       width: 100%;
-      border-radius: 8px;
+      border-radius: 10px;
       border: 1px solid var(--border);
-      background: #fff;
+      background: linear-gradient(145deg, #fafbfc 0%, #f6f8fa 100%);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
+      cursor: pointer;
     }
     .charts-grid img:hover,
     .montage-grid img:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
     }
     .montage-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+    .chart-title {
+      margin-bottom: 10px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
     }
     .empty-state {
-      padding: 32px;
-      border-radius: 10px;
+      padding: 40px;
+      border-radius: 12px;
       background: var(--bg-card);
       border: 1px dashed var(--border);
       color: var(--muted);
       text-align: center;
-      font-size: 14px;
+      font-size: 13px;
     }
     .leaderboard-controls {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
       padding-bottom: 12px;
-      font-size: 13px;
+      font-size: 12px;
       color: var(--muted);
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .leaderboard-controls strong {
+      color: var(--text-secondary);
+      font-weight: 600;
     }
     .lightbox {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.9);
+      background: rgba(1, 4, 9, 0.92);
       display: none;
       align-items: center;
       justify-content: center;
       z-index: 999;
-      padding: 24px;
+      padding: 32px;
       cursor: zoom-out;
-      backdrop-filter: blur(4px);
+      backdrop-filter: blur(8px);
     }
     .lightbox.active {
       display: flex;
     }
     .lightbox img {
-      max-width: 90vw;
-      max-height: 90vh;
-      border-radius: 8px;
-      box-shadow: 0 16px 64px rgba(0, 0, 0, 0.5);
+      max-width: 92vw;
+      max-height: 92vh;
+      border-radius: 12px;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+      border: 1px solid var(--border);
     }
     @media (max-width: 1100px) {
       main {
@@ -487,19 +582,98 @@
         grid-template-columns: 1fr;
       }
     }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--bg-elevated);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--muted);
+    }
+    /* Footer */
+    footer {
+      padding: 16px 36px;
+      border-top: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--muted);
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+    .footer-links {
+      display: flex;
+      gap: 20px;
+    }
+    .footer-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    .github-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+    }
+    .github-link:hover {
+      background: var(--bg-elevated);
+      border-color: var(--accent);
+      color: var(--text);
+    }
+    .github-link svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
   </style>
 </head>
 <body>
   <div class="page">
     <header>
       <div>
-        <h1>Federated Learning Privacy Analysis</h1>
-        <div class="subtitle">How Well Can Private Data Be Recovered from Shared Models?</div>
+        <h1>Privacy Leakage in Federated Learning</h1>
+        <div class="subtitle">Gradient Inversion Attacks & Defense Mechanisms — Experimental Analysis</div>
         <div class="key-finding" id="keyFinding"></div>
       </div>
       <div class="meta">
-        <div id="buildDate"></div>
-        <div id="runCounts"></div>
+        <a href="https://github.com/imaddde867/main" target="_blank" rel="noopener" class="github-link" title="View source on GitHub">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+        <div class="meta-badge" id="buildDate"></div>
+        <div id="runCounts" style="margin-top:6px;"></div>
       </div>
     </header>
     <main>
@@ -507,7 +681,7 @@
         <div class="viewer-panels">
           <div class="panel carousel-panel" id="autoplayPanel">
             <div class="comparison-header">
-              <h2>Recovered Image</h2>
+              <h2>Reconstructed Image Preview</h2>
               <div class="autoplay-controls">
                 <button id="autoplayToggle" class="circle-button" aria-label="Start autoplay" title="Start autoplay" aria-pressed="false">
                   <span class="sr-only">Start autoplay</span>
@@ -533,50 +707,50 @@
           </div>
           <div class="panel details-panel" id="selectedPanel">
             <div class="comparison-header">
-              <h2>Test Details</h2>
+              <h2>Experiment Configuration</h2>
               <div class="nav-buttons">
-                <button id="prevBtn" title="Previous (←)">← Prev</button>
-                <button id="nextBtn" title="Next (→)">Next →</button>
+                <button id="prevBtn" title="Previous experiment (←)">◀ Previous</button>
+                <button id="nextBtn" title="Next experiment (→)">Next ▶</button>
               </div>
             </div>
-            <div class="run-summary" id="runSummary">Select a test to view details</div>
+            <div class="run-summary" id="runSummary">Select an experiment to view configuration details</div>
             <div class="metrics-grid" id="selectedMetrics"></div>
             <div class="details-stack">
               <div>
-                <div class="section-label">File Location</div>
+                <div class="section-label">Source Directory</div>
                 <div class="run-path" id="runPath"></div>
               </div>
               <div>
-                <div class="section-label">Full Results</div>
-                <pre class="metrics-text" id="metricsText">No data available.</pre>
+                <div class="section-label">Raw Metrics Output</div>
+                <pre class="metrics-text" id="metricsText">No experiment selected.</pre>
               </div>
             </div>
           </div>
         </div>
         <section class="tabs">
           <div class="tab-buttons">
-            <button data-tab="leaderboards" class="active">All Results</button>
-            <button data-tab="distributions">Charts</button>
-            <button data-tab="ablations">Component Analysis</button>
-            <button data-tab="montages">Side-by-Side</button>
+            <button data-tab="leaderboards" class="active">Experiment Results</button>
+            <button data-tab="distributions">Statistical Analysis</button>
+            <button data-tab="ablations">Ablation Study</button>
+            <button data-tab="montages">Visual Comparison</button>
           </div>
           <div id="tab-leaderboards" class="tab-panel active">
             <div class="leaderboard-controls">
               <div id="filteredCount"></div>
-              <div>Select any row to view details</div>
+              <div>Click any row to view detailed results</div>
             </div>
             <div class="table-wrapper">
               <table>
                 <thead>
                   <tr>
-                    <th data-sort="group">Test Type</th>
-                    <th data-sort="method">Protection</th>
-                    <th data-sort="client">User</th>
-                    <th data-sort="psnr">Quality ↑</th>
-                    <th data-sort="ssim">Similarity ↑</th>
-                    <th data-sort="lpips">Difference ↓</th>
-                    <th data-sort="labelmatch">Label</th>
-                    <th>Preview</th>
+                    <th data-sort="group">Experiment</th>
+                    <th data-sort="method">Defense Method</th>
+                    <th data-sort="client">Client ID</th>
+                    <th data-sort="psnr">PSNR (dB) ↑</th>
+                    <th data-sort="ssim">SSIM ↑</th>
+                    <th data-sort="lpips">LPIPS ↓</th>
+                    <th data-sort="labelmatch">Label Acc.</th>
+                    <th>Reconstruction</th>
                   </tr>
                 </thead>
                 <tbody id="leaderboardBody"></tbody>
@@ -599,6 +773,17 @@
         </section>
       </section>
     </main>
+    <footer>
+      <div>
+        <span class="footer-badge">🔬 Research Dashboard</span>
+        <span style="margin-left:12px;">Federated Learning Privacy & Security Analysis</span>
+      </div>
+      <div class="footer-links">
+        <span>PSNR: Peak Signal-to-Noise Ratio</span>
+        <span>SSIM: Structural Similarity Index</span>
+        <span>LPIPS: Learned Perceptual Image Patch Similarity</span>
+      </div>
+    </footer>
   </div>
   <div class="lightbox" id="lightbox">
     <img id="lightboxImg" alt="Full view" />
@@ -743,12 +928,18 @@
     }
 
     function updateMeta(meta) {
-      document.getElementById("buildDate").textContent = `Generated: ${meta.build_time}`;
+      document.getElementById("buildDate").textContent = `⏱ ${meta.build_time}`;
       const counts = Object.entries(meta.groups || {})
-        .map(([group, count]) => `${group}: ${count}`)
+        .map(([group, count]) => `${formatGroup(group)}: ${count}`)
         .join("  ·  ");
-      document.getElementById("runCounts").textContent = `${meta.total_runs} Experiments (${counts})`;
-      document.getElementById("keyFinding").textContent = meta.key_finding || "";
+      document.getElementById("runCounts").textContent = `${meta.total_runs} experiments across ${Object.keys(meta.groups).length} categories`;
+      const keyFindingEl = document.getElementById("keyFinding");
+      if (meta.key_finding) {
+        keyFindingEl.textContent = meta.key_finding;
+        keyFindingEl.style.display = "flex";
+      } else {
+        keyFindingEl.style.display = "none";
+      }
     }
 
     function wireEvents() {
@@ -949,7 +1140,7 @@
       const tbody = document.getElementById("leaderboardBody");
       tbody.innerHTML = "";
       const filteredCountEl = document.getElementById("filteredCount");
-      if (filteredCountEl) filteredCountEl.textContent = `${state.filteredIds.length} results`;
+      if (filteredCountEl) filteredCountEl.innerHTML = `<strong>${state.filteredIds.length}</strong> experiments displayed`;
       const runs = state.filteredIds.map((id) => state.runsById[id]);
       runs.sort((a, b) => {
         const dir = state.tableSort.dir === "asc" ? 1 : -1;
@@ -1009,43 +1200,43 @@
 
     function formatGroup(group) {
       const labels = {
-        "ablation": "Component Test",
-        "defenses": "Defense Test",
-        "multi_client": "Multi-User",
-        "showcase": "Demo"
+        "ablation": "Ablation Study",
+        "defenses": "Defense Evaluation",
+        "multi_client": "Multi-Client Analysis",
+        "showcase": "Demonstration"
       };
       return labels[group] || group.charAt(0).toUpperCase() + group.slice(1).replace(/_/g, ' ');
     }
 
     function formatMethod(method) {
       const labels = {
-        "baseline": "No Protection",
-        "dp_eps01": "Strong Privacy (ε=0.1)",
-        "dp_eps1": "Medium Privacy (ε=1)",
-        "dp_eps8": "Light Privacy (ε=8)",
-        "dp_he": "Privacy + Encryption",
-        "he": "Encryption Only",
-        "he_test": "Encryption (Test)",
+        "baseline": "No Defense (Baseline)",
+        "dp_eps01": "DP (ε=0.1)",
+        "dp_eps1": "DP (ε=1.0)",
+        "dp_eps8": "DP (ε=8.0)",
+        "dp_he": "DP + HE Combined",
+        "he": "Homomorphic Encryption",
+        "he_test": "HE (Validation)",
         "init_fft": "FFT Initialization",
-        "metric_both": "Combined Metric",
-        "metric_cosine": "Cosine Metric",
-        "metric_sim": "Similarity Metric",
-        "tv_1e-4": "Smoothing (1e-4)",
-        "tv_1e-6": "Smoothing (1e-6)",
-        "showcase": "Demo Run"
+        "metric_both": "Dual Metric Loss",
+        "metric_cosine": "Cosine Similarity Loss",
+        "metric_sim": "Perceptual Similarity",
+        "tv_1e-4": "TV Reg. (λ=1e-4)",
+        "tv_1e-6": "TV Reg. (λ=1e-6)",
+        "showcase": "Featured Result"
       };
       if (labels[method]) return labels[method];
       // Handle bmk_c* patterns
       if (method.startsWith("bmk_c")) {
-        return "Benchmark " + method.slice(4).toUpperCase();
+        return "Client " + method.slice(5);
       }
       return method.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     }
 
     function formatClient(client) {
-      if (client === "global") return "All Users";
+      if (client === "global") return "Aggregated";
       if (client.match(/^c\d+$/)) {
-        return "User " + client.slice(1);
+        return "Client " + client.slice(1);
       }
       return client.charAt(0).toUpperCase() + client.slice(1);
     }
@@ -1057,13 +1248,13 @@
       const metricsContainer = document.getElementById("selectedMetrics");
       const metricsBox = document.getElementById("metricsText");
       if (!run) {
-        if (summaryEl) summaryEl.textContent = "Select a test to view details";
+        if (summaryEl) summaryEl.textContent = "Select an experiment to view configuration details";
         if (pathEl) pathEl.textContent = "—";
         if (metricsContainer) metricsContainer.innerHTML = "";
         if (metricsBox) {
           metricsBox.textContent = state.filteredIds.length
-            ? "Select a row from the table below."
-            : "No matching results found.";
+            ? "Click any row from the experiment results table below."
+            : "No experiments match the current filter criteria.";
         }
         updateUrlState();
         syncAutoplayDisplay();
@@ -1079,15 +1270,23 @@
       if (metricsContainer) {
         metricsContainer.innerHTML = "";
         const metricLabels = {
-          "PSNR": "Quality",
-          "SSIM": "Similarity", 
-          "LPIPS": "Difference",
-          "MSE": "Error",
-          "LabelMatch": "Label Match"
+          "PSNR": "PSNR (dB)",
+          "SSIM": "SSIM", 
+          "LPIPS": "LPIPS",
+          "MSE": "MSE",
+          "LabelMatch": "Label Acc."
+        };
+        const metricDescriptions = {
+          "PSNR": "Peak Signal-to-Noise Ratio",
+          "SSIM": "Structural Similarity Index",
+          "LPIPS": "Learned Perceptual Similarity",
+          "MSE": "Mean Squared Error",
+          "LabelMatch": "Label Recovery Accuracy"
         };
         ["PSNR", "SSIM", "LPIPS", "MSE", "LabelMatch"].forEach((metric) => {
           const div = document.createElement("div");
           div.className = "metric-card";
+          div.title = metricDescriptions[metric];
           div.innerHTML = `<div class="label">${metricLabels[metric]}</div><div class="value">${formatMetric(run.metrics[metric])}</div>`;
           metricsContainer.appendChild(div);
         });
@@ -1256,13 +1455,24 @@
     function populateCharts(charts) {
       const distContainer = document.getElementById("distributionCharts");
       distContainer.innerHTML = "";
+      const chartLabels = {
+        "defenses_grouped_bars": "Defense Mechanism Comparison",
+        "defenses_scatter_psnr_vs_lpips": "PSNR vs LPIPS Correlation",
+        "multiclient_boxplots": "Multi-Client Performance Distribution"
+      };
       ["defenses_grouped_bars", "defenses_scatter_psnr_vs_lpips", "multiclient_boxplots"].forEach((key) => {
         const path = charts[key];
         const div = document.createElement("div");
+        const title = chartLabels[key] || key.replace(/_/g, " ");
         if (path) {
-          div.innerHTML = `<div style="margin-bottom:8px;font-size:14px;color:var(--muted);">${key.replace(/_/g, " ")}</div><img src="${path}" alt="${key}" />`;
+          div.innerHTML = `<div class="chart-title">${title}</div>`;
+          const img = document.createElement("img");
+          img.src = path;
+          img.alt = title;
+          img.addEventListener("click", () => openLightbox(path));
+          div.appendChild(img);
         } else {
-          div.innerHTML = `<div class="empty-state">Chart ${key} unavailable.</div>`;
+          div.innerHTML = `<div class="empty-state">Chart unavailable: ${title}</div>`;
         }
         distContainer.appendChild(div);
       });
@@ -1271,7 +1481,12 @@
       const ablationPath = charts["ablation_bars"];
       if (ablationPath) {
         const div = document.createElement("div");
-        div.innerHTML = `<div style="margin-bottom:8px;font-size:14px;color:var(--muted);">Ablation summary</div><img src="${ablationPath}" alt="Ablation chart" />`;
+        div.innerHTML = `<div class="chart-title">Ablation Study: Component Impact Analysis</div>`;
+        const img = document.createElement("img");
+        img.src = ablationPath;
+        img.alt = "Ablation study chart";
+        img.addEventListener("click", () => openLightbox(ablationPath));
+        div.appendChild(img);
         ablationContainer.appendChild(div);
       }
     }
@@ -1279,16 +1494,16 @@
     function populateAblations(rows) {
       const container = document.getElementById("ablationTable");
       if (!rows || rows.length === 0) {
-        container.innerHTML = '<div class="empty-state">No ablation data.</div>';
+        container.innerHTML = '<div class="empty-state">No ablation study data available.</div>';
         return;
       }
       const table = document.createElement("table");
       table.innerHTML = `
         <thead>
           <tr>
-            <th>Method</th>
+            <th>Configuration</th>
             <th>Client</th>
-            <th>PSNR</th>
+            <th>PSNR (dB)</th>
             <th>SSIM</th>
             <th>LPIPS</th>
           </tr>
@@ -1298,8 +1513,8 @@
       rows.forEach((row) => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${row.method}</td>
-          <td>${row.client}</td>
+          <td style="font-family:inherit;">${formatMethod(row.method)}</td>
+          <td>${formatClient(row.client)}</td>
           <td>${formatMetric(row.PSNR)}</td>
           <td>${formatMetric(row.SSIM)}</td>
           <td>${formatMetric(row.LPIPS)}</td>
@@ -1307,7 +1522,7 @@
         tbody.appendChild(tr);
       });
       table.appendChild(tbody);
-      container.innerHTML = "";
+      container.innerHTML = "<div class='chart-title' style='margin-top:24px;'>Detailed Ablation Results</div>";
       container.appendChild(table);
     }
 
@@ -1317,16 +1532,21 @@
       if (!montages || montages.length === 0) {
         grid.innerHTML = "";
         empty.style.display = "block";
+        empty.textContent = "No visual comparison images available for this experiment set.";
         return;
       }
       empty.style.display = "none";
       grid.innerHTML = "";
       montages.forEach((item) => {
         const card = document.createElement("div");
-        card.innerHTML = `<div style="margin-bottom:6px;color:var(--muted);">${item.name}</div>`;
+        const prettyName = item.name
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, c => c.toUpperCase())
+          .replace("Montage", "Comparison");
+        card.innerHTML = `<div class="chart-title">${prettyName}</div>`;
         const img = document.createElement("img");
         img.src = item.path;
-        img.alt = item.name;
+        img.alt = prettyName;
         img.addEventListener("click", () => openLightbox(item.path));
         card.appendChild(img);
         grid.appendChild(card);
