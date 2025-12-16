@@ -1103,20 +1103,6 @@ DASHBOARD_HTML = """
       color: var(--text);
       cursor: pointer;
     }
-    .comparison-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 10px;
-    }
-    .comparison-grid img {
-      width: 100%;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: #090d13;
-      max-height: 220px;
-      object-fit: contain;
-      cursor: zoom-in;
-    }
     .comparison-header {
       display: flex;
       justify-content: space-between;
@@ -1124,33 +1110,35 @@ DASHBOARD_HTML = """
       gap: 10px;
       flex-wrap: wrap;
     }
-    .comparison-actions button {
-      margin-left: 6px;
+    .autoplay-image {
+      width: 100%;
+      max-height: 320px;
+      object-fit: contain;
+      background: #090d13;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .autoplay-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .autoplay-controls button,
+    .autoplay-controls select {
       padding: 6px 12px;
       border-radius: 6px;
       border: 1px solid var(--border);
-      background: transparent;
+      background: var(--bg-panel);
       color: var(--text);
       cursor: pointer;
-      font-size: 12px;
     }
-    .delta-card {
-      padding: 8px;
-      background: var(--bg-panel);
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      text-align: center;
+    .autoplay-controls select {
+      padding: 6px 8px;
     }
-    .delta-value {
-      font-size: 16px;
-      font-weight: bold;
-    }
-    .comparison-note {
-      font-size: 12px;
+    .autoplay-status {
+      font-size: 13px;
       color: var(--muted);
-      border-top: 1px solid var(--border);
-      padding-top: 8px;
-      margin-top: 4px;
       line-height: 1.4;
     }
     .tabs {
@@ -1339,7 +1327,6 @@ DASHBOARD_HTML = """
             <button id="btnBaselineBest">Baseline best</button>
             <button id="btnBaselineWorst">Worst baseline</button>
             <button id="btnDpSweep">DP sweep</button>
-            <button id="btnCompareToggle">Compare vs baseline</button>
           </div>
         </div>
       </aside>
@@ -1358,29 +1345,27 @@ DASHBOARD_HTML = """
             <div class="run-path" id="runPath"></div>
             <div class="metrics-text" id="metricsText">Metrics file not available.</div>
           </div>
-          <div class="panel" id="comparisonPanel">
+          <div class="panel" id="autoplayPanel">
             <div class="comparison-header">
-              <h2>Comparison</h2>
-              <div class="comparison-actions">
-                <span id="comparisonLabel">Comparison disabled</span>
-                <button id="lockBaselineBtn">Lock baseline</button>
+              <h2>Autoplay showcase</h2>
+              <div class="autoplay-controls">
+                <button id="autoplayToggle">Start loop</button>
+                <label style="display:flex; align-items:center; gap:6px;">
+                  <span style="font-size:12px; color:var(--muted);">Speed</span>
+                  <select id="autoplaySpeed">
+                    <option value="12000">Slow</option>
+                    <option value="8000" selected>Medium</option>
+                    <option value="5000">Fast</option>
+                  </select>
+                </label>
               </div>
             </div>
             <p class="panel-help">
-              Toggle comparison to overlay the best matching baseline (left) against the current run (right). Great for showing how DP/HE defenses change metrics.
+              Let the dashboard cycle through every filtered run automatically. Great for leaving the monitor running all day as a live slideshow.
             </p>
-            <div class="comparison-grid">
-              <div>
-                <div style="font-size:14px; color:var(--muted); margin-bottom:6px;">Baseline</div>
-                <img id="comparisonBaseImage" alt="Baseline image" />
-              </div>
-              <div>
-                <div style="font-size:14px; color:var(--muted); margin-bottom:6px;">Selected</div>
-                <img id="comparisonTargetImage" alt="Selected image" />
-              </div>
-            </div>
-            <div class="metrics-grid" id="deltaMetrics"></div>
-            <div class="comparison-note" id="comparisonNote"></div>
+            <img id="autoplayImage" class="autoplay-image" alt="Autoplay preview" />
+            <div class="metrics-grid" id="autoplayMetrics"></div>
+            <div class="autoplay-status" id="autoplayStatus">Autoplay idle.</div>
           </div>
         </div>
         <section class="tabs">
@@ -1436,7 +1421,6 @@ DASHBOARD_HTML = """
   <script>
     const state = {
       data: null,
-      baselineIndex: null,
       placeholderImage: null,
       runsById: {},
       filters: {
@@ -1446,11 +1430,14 @@ DASHBOARD_HTML = """
       },
       search: "",
       sort: "best",
-      compareEnabled: false,
-      lockBaselineId: null,
       selectedRunId: null,
       filteredIds: [],
       tableSort: { field: "psnr", dir: "desc" },
+      autoplay: {
+        playing: false,
+        interval: 8000,
+        timerId: null,
+      },
     };
 
     const METRIC_FIELDS = ["PSNR", "SSIM", "LPIPS", "MSE", "LabelMatch"];
@@ -1470,7 +1457,6 @@ DASHBOARD_HTML = """
 
     function initDashboard(data) {
       state.data = data;
-      state.baselineIndex = data.baseline_index || null;
       state.placeholderImage = data.placeholder_image || "";
       data.runs.forEach((run) => {
         state.runsById[run.run_id] = run;
@@ -1482,7 +1468,6 @@ DASHBOARD_HTML = """
       }
       updateMeta(data.meta);
       wireEvents();
-      document.getElementById("btnCompareToggle").classList.toggle("active", state.compareEnabled);
       populateCharts(data.charts);
       populateAblations(data.aggregates.ablations || []);
       populateMontages(data.montages || []);
@@ -1532,11 +1517,6 @@ DASHBOARD_HTML = """
         const term = params.get("search");
         document.getElementById("searchInput").value = term;
         state.search = term.toLowerCase();
-      }
-      if (params.has("compare")) {
-        const value = params.get("compare");
-        const enabled = value === null || value === "" || value === "1" || value.toLowerCase() === "true";
-        state.compareEnabled = enabled;
       }
       if (params.has("run_id")) {
         const runId = params.get("run_id");
@@ -1619,19 +1599,19 @@ DASHBOARD_HTML = """
         setFilterSet("methods", dpMethods);
         applyFilters();
       });
-      document.getElementById("btnCompareToggle").addEventListener("click", (ev) => {
-        state.compareEnabled = !state.compareEnabled;
-        ev.currentTarget.classList.toggle("active", state.compareEnabled);
-        updateComparison();
-        updateUrlState();
+      document.getElementById("autoplayToggle").addEventListener("click", () => {
+        if (state.autoplay.playing) {
+          stopAutoplay();
+        } else {
+          startAutoplay();
+        }
       });
-      document.getElementById("lockBaselineBtn").addEventListener("click", () => {
-        if (!state.compareEnabled) return;
-        const baselineInfo = getBaselineForSelection();
-        if (!baselineInfo || !baselineInfo.run) return;
-        const baseline = baselineInfo.run;
-        state.lockBaselineId = state.lockBaselineId === baseline.run_id ? null : baseline.run_id;
-        updateComparison();
+      document.getElementById("autoplaySpeed").addEventListener("change", (ev) => {
+        const value = Number(ev.target.value);
+        if (!Number.isNaN(value)) {
+          state.autoplay.interval = value;
+          refreshAutoplayTimer();
+        }
       });
       document.getElementById("prevBtn").addEventListener("click", () => jumpSelection(-1));
       document.getElementById("nextBtn").addEventListener("click", () => jumpSelection(1));
@@ -1653,7 +1633,7 @@ DASHBOARD_HTML = """
           renderLeaderboards();
         });
       });
-      ["selectedImage", "comparisonBaseImage", "comparisonTargetImage"].forEach((id) => {
+      ["selectedImage", "autoplayImage"].forEach((id) => {
         const el = document.getElementById(id);
         if (!el) return;
         el.addEventListener("click", () => {
@@ -1711,7 +1691,7 @@ DASHBOARD_HTML = """
       }
       renderLeaderboards();
       renderSelectedRun();
-      updateComparison();
+      updateAutoplayControls();
     }
 
     function sorterFor(key) {
@@ -1818,16 +1798,14 @@ DASHBOARD_HTML = """
       const run = state.runsById[state.selectedRunId];
       if (!run) {
         updateUrlState();
+        syncAutoplayDisplay();
+        refreshAutoplayTimer();
         return;
       }
       const primarySrc = run.image_path || state.placeholderImage || "";
       const selectedImg = document.getElementById("selectedImage");
-      const comparisonImg = document.getElementById("comparisonTargetImage");
       if (selectedImg) {
         selectedImg.setAttribute("src", primarySrc);
-      }
-      if (comparisonImg) {
-        comparisonImg.setAttribute("src", primarySrc);
       }
       document.getElementById("runPath").textContent = run.source_dir || "Path unavailable";
       const metricsContainer = document.getElementById("selectedMetrics");
@@ -1840,6 +1818,8 @@ DASHBOARD_HTML = """
       });
       loadMetricsText(run);
       updateUrlState();
+      syncAutoplayDisplay();
+      refreshAutoplayTimer();
     }
 
     function updateUrlState() {
@@ -1847,9 +1827,6 @@ DASHBOARD_HTML = """
       const params = new URLSearchParams();
       if (state.selectedRunId) {
         params.set("run_id", state.selectedRunId);
-      }
-      if (state.compareEnabled) {
-        params.set("compare", "1");
       }
       const query = params.toString();
       const newUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
@@ -1893,105 +1870,81 @@ DASHBOARD_HTML = """
         });
     }
 
-    function updateComparison() {
-      const label = document.getElementById("comparisonLabel");
-      const deltaContainer = document.getElementById("deltaMetrics");
-      const baseImg = document.getElementById("comparisonBaseImage");
-      const note = document.getElementById("comparisonNote");
-      const setNote = (text) => {
-        if (note) note.textContent = text || "";
-      };
-      if (!state.compareEnabled) {
-        label.textContent = "Comparison disabled";
-        deltaContainer.innerHTML = "";
-        baseImg.src = state.placeholderImage || "";
-        setNote("Click \"Compare vs baseline\" to show the best baseline on the left and the selected run on the right.");
-        return;
-      }
-      const baselineInfo = getBaselineForSelection();
-      const baseline = baselineInfo && baselineInfo.run;
-      const selected = state.runsById[state.selectedRunId];
-      if (!baseline || !selected) {
-        label.textContent = "No baseline available";
-        deltaContainer.innerHTML = "";
-        baseImg.src = state.placeholderImage || "";
-        setNote("No matching baseline run was found for this selection. Try choosing a defenses or multi_client run.");
-        return;
-      }
-      baseImg.src = baseline.image_path || state.placeholderImage || "";
-      const lockedText = state.lockBaselineId ? " (locked)" : "";
-      const reasonText = baselineInfo && baselineInfo.reason ? ` [${baselineInfo.reason}]` : "";
-      label.textContent = `Comparing to ${baseline.method} / ${baseline.client}${reasonText}${lockedText}`;
-      if (baseline.run_id === selected.run_id) {
-        setNote("You are viewing the baseline itself. Select a defense/ablation run to see how it deviates from baseline.");
-      } else {
-        setNote("Left image: baseline. Right image: selected run. Delta cards show selected - baseline.");
-      }
-      deltaContainer.innerHTML = "";
-      [["PSNR", "dB"], ["SSIM", ""], ["LPIPS", ""], ["LabelMatch", ""]].forEach(([metric, suffix]) => {
-        const baseVal = baseline.metrics[metric];
-        const selVal = selected.metrics[metric];
-        const delta = selVal !== undefined && baseVal !== undefined ? selVal - baseVal : null;
-        const div = document.createElement("div");
-        div.className = "delta-card";
-        const deltaText = delta === null || Number.isNaN(delta) ? "—" : formatDelta(delta);
-        div.innerHTML = `<div class="label">${metric}</div><div class="delta-value">${deltaText}${suffix}</div>`;
-        deltaContainer.appendChild(div);
-      });
+    function startAutoplay() {
+      if (!state.filteredIds.length) return;
+      state.autoplay.playing = true;
+      refreshAutoplayTimer();
+      updateAutoplayControls();
     }
 
-    function formatDelta(value) {
-      const val = value;
-      if (val === null || Number.isNaN(val)) return "—";
-      const sign = val > 0 ? "+" : "";
-      if (Math.abs(val) >= 10) return `${sign}${val.toFixed(1)}`;
-      return `${sign}${val.toFixed(3)}`;
+    function stopAutoplay() {
+      state.autoplay.playing = false;
+      refreshAutoplayTimer();
+      updateAutoplayControls();
     }
 
-    function getBaselineForSelection() {
-      if (!state.compareEnabled) return null;
-      const selected = state.runsById[state.selectedRunId];
-      if (!selected) return null;
-      const index = state.baselineIndex || {};
-      const client = selected.client || "global";
-      const tryRun = (runId, reason) => {
-        if (!runId) return null;
-        const run = state.runsById[runId];
-        return run ? { run, reason } : null;
-      };
-      if (state.lockBaselineId) {
-        const locked = tryRun(state.lockBaselineId, "locked baseline");
-        if (locked) {
-          return locked;
-        }
+    function refreshAutoplayTimer() {
+      if (state.autoplay.timerId) {
+        clearTimeout(state.autoplay.timerId);
+        state.autoplay.timerId = null;
       }
-      const groupEntry = index.by_group && index.by_group[selected.group];
-      if (groupEntry) {
-        if (groupEntry.clients && groupEntry.clients[client]) {
-          const info = tryRun(groupEntry.clients[client], `${selected.group}: client ${client}`);
-          if (info) return info;
-        }
-        if (groupEntry.clients && groupEntry.clients.global) {
-          const info = tryRun(groupEntry.clients.global, `${selected.group}: client global`);
-          if (info) return info;
-        }
-        if (groupEntry.global) {
-          const info = tryRun(groupEntry.global, `${selected.group}: best baseline`);
-          if (info) return info;
-        }
+      if (state.autoplay.playing && state.filteredIds.length > 1) {
+        state.autoplay.timerId = window.setTimeout(stepAutoplay, state.autoplay.interval);
       }
-      if (index.by_client && index.by_client[client]) {
-        const info = tryRun(index.by_client[client], `client ${client}`);
-        if (info) return info;
+      updateAutoplayControls();
+    }
+
+    function stepAutoplay() {
+      if (!state.filteredIds.length) {
+        stopAutoplay();
+        return;
       }
-      if (index.by_client && index.by_client.global) {
-        const info = tryRun(index.by_client.global, "global client baseline");
-        if (info) return info;
+      const currentIdx = state.filteredIds.indexOf(state.selectedRunId);
+      const nextIdx = currentIdx === -1 ? 0 : (currentIdx + 1) % state.filteredIds.length;
+      state.selectedRunId = state.filteredIds[nextIdx];
+      renderSelectedRun();
+    }
+
+    function syncAutoplayDisplay() {
+      const image = document.getElementById("autoplayImage");
+      const metricsBox = document.getElementById("autoplayMetrics");
+      const status = document.getElementById("autoplayStatus");
+      const run = state.runsById[state.selectedRunId];
+      if (!run) {
+        if (image) image.setAttribute("src", state.placeholderImage || "");
+        if (metricsBox) metricsBox.innerHTML = "";
+        if (status) status.textContent = "No runs to autoplay.";
+        return;
       }
-      if (index.global) {
-        return tryRun(index.global, "global best baseline");
+      const src = run.image_path || state.placeholderImage || "";
+      if (image) image.setAttribute("src", src);
+      if (metricsBox) {
+        metricsBox.innerHTML = "";
+        ["PSNR", "SSIM", "LPIPS"].forEach((metric) => {
+          const card = document.createElement("div");
+          card.className = "metric-card";
+          card.innerHTML = `<div class="label">${metric}</div><div class="value">${formatMetric(run.metrics[metric])}</div>`;
+          metricsBox.appendChild(card);
+        });
       }
-      return null;
+      if (status) {
+        const idx = state.filteredIds.indexOf(run.run_id);
+        const total = state.filteredIds.length || 1;
+        const position = idx >= 0 ? idx + 1 : 1;
+        status.textContent = `Slide ${position} of ${total} · ${run.group} · ${run.method} · ${run.client}`;
+      }
+    }
+
+    function updateAutoplayControls() {
+      const btn = document.getElementById("autoplayToggle");
+      if (btn) {
+        btn.textContent = state.autoplay.playing ? "Pause loop" : "Start loop";
+        btn.disabled = state.filteredIds.length === 0;
+      }
+      const select = document.getElementById("autoplaySpeed");
+      if (select) {
+        select.disabled = state.filteredIds.length === 0;
+      }
     }
 
     function jumpSelection(delta) {
