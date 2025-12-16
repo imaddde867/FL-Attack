@@ -1511,17 +1511,27 @@
       });
       const ablationContainer = document.getElementById("ablationCharts");
       ablationContainer.innerHTML = "";
-      const ablationPath = charts["ablation_bars"];
-      if (ablationPath) {
+      const ablationChartLabels = {
+        "ablation_psnr": "PSNR Comparison (higher = better)",
+        "ablation_ssim": "SSIM Comparison (higher = better)",
+        "ablation_lpips": "LPIPS Comparison (lower = better)"
+      };
+      ["ablation_psnr", "ablation_ssim", "ablation_lpips"].forEach((key) => {
+        const path = charts[key];
         const div = document.createElement("div");
-        div.innerHTML = `<div class="chart-title">Ablation Study: Component Impact Analysis</div>`;
-        const img = document.createElement("img");
-        img.src = ablationPath;
-        img.alt = "Ablation study chart";
-        img.addEventListener("click", () => openLightbox(ablationPath));
-        div.appendChild(img);
+        const title = ablationChartLabels[key] || key.replace(/_/g, " ");
+        if (path) {
+          div.innerHTML = `<div class="chart-title">${title}</div>`;
+          const img = document.createElement("img");
+          img.src = path;
+          img.alt = title;
+          img.addEventListener("click", () => openLightbox(path));
+          div.appendChild(img);
+        } else {
+          div.innerHTML = `<div class="empty-state">Chart unavailable: ${title}</div>`;
+        }
         ablationContainer.appendChild(div);
-      }
+      });
     }
 
     function populateAblations(rows) {

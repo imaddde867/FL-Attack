@@ -2104,7 +2104,9 @@
     "defenses_grouped_bars": "assets/charts/defenses_grouped_bars.png",
     "defenses_scatter_psnr_vs_lpips": "assets/charts/defenses_scatter_psnr_vs_lpips.png",
     "multiclient_boxplots": "assets/charts/multiclient_boxplots.png",
-    "ablation_bars": "assets/charts/ablation_bars.png"
+    "ablation_psnr": "assets/charts/ablation_psnr.png",
+    "ablation_ssim": "assets/charts/ablation_ssim.png",
+    "ablation_lpips": "assets/charts/ablation_lpips.png"
   },
   "montages": [
     {
