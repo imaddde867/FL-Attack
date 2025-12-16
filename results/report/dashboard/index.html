@@ -979,9 +979,9 @@
         }
         const thumbSrc = run.image_path || state.placeholderImage || "";
         tr.innerHTML = `
-          <td>${run.group}</td>
-          <td>${run.method}</td>
-          <td>${run.client}</td>
+          <td>${formatGroup(run.group)}</td>
+          <td>${formatMethod(run.method)}</td>
+          <td>${formatClient(run.client)}</td>
           <td>${formatMetric(run.metrics.PSNR)}</td>
           <td>${formatMetric(run.metrics.SSIM)}</td>
           <td>${formatMetric(run.metrics.LPIPS)}</td>
@@ -1007,6 +1007,49 @@
       });
     }
 
+    function formatGroup(group) {
+      const labels = {
+        "ablation": "Component Test",
+        "defenses": "Defense Test",
+        "multi_client": "Multi-User",
+        "showcase": "Demo"
+      };
+      return labels[group] || group.charAt(0).toUpperCase() + group.slice(1).replace(/_/g, ' ');
+    }
+
+    function formatMethod(method) {
+      const labels = {
+        "baseline": "No Protection",
+        "dp_eps01": "Strong Privacy (ε=0.1)",
+        "dp_eps1": "Medium Privacy (ε=1)",
+        "dp_eps8": "Light Privacy (ε=8)",
+        "dp_he": "Privacy + Encryption",
+        "he": "Encryption Only",
+        "he_test": "Encryption (Test)",
+        "init_fft": "FFT Initialization",
+        "metric_both": "Combined Metric",
+        "metric_cosine": "Cosine Metric",
+        "metric_sim": "Similarity Metric",
+        "tv_1e-4": "Smoothing (1e-4)",
+        "tv_1e-6": "Smoothing (1e-6)",
+        "showcase": "Demo Run"
+      };
+      if (labels[method]) return labels[method];
+      // Handle bmk_c* patterns
+      if (method.startsWith("bmk_c")) {
+        return "Benchmark " + method.slice(4).toUpperCase();
+      }
+      return method.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function formatClient(client) {
+      if (client === "global") return "All Users";
+      if (client.match(/^c\d+$/)) {
+        return "User " + client.slice(1);
+      }
+      return client.charAt(0).toUpperCase() + client.slice(1);
+    }
+
     function renderSelectedRun() {
       const run = state.runsById[state.selectedRunId];
       const summaryEl = document.getElementById("runSummary");
@@ -1028,9 +1071,7 @@
         return;
       }
       if (summaryEl) {
-        const categoryLabel = run.group.charAt(0).toUpperCase() + run.group.slice(1);
-        const methodLabel = run.method.replace(/_/g, ' ').toUpperCase();
-        summaryEl.textContent = `${categoryLabel} · ${methodLabel} · ${run.client.toUpperCase()}`;
+        summaryEl.textContent = `${formatGroup(run.group)} · ${formatMethod(run.method)} · ${formatClient(run.client)}`;
       }
       if (pathEl) {
         pathEl.textContent = run.source_dir || "—";
