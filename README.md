@@ -4,7 +4,7 @@
 
 [![Live Demo](https://img.shields.io/badge/🔬_Live_Demo-View_Dashboard-58a6ff?style=for-the-badge)](https://imaddde867.github.io/FL-Attack/) [![GitHub Pages](https://img.shields.io/badge/GitHub_Pages-Deployed-success?style=for-the-badge&logo=github)](https://imaddde867.github.io/FL-Attack/)
 
-> **[🔗 View Interactive Dashboard →](https://imaddde867.github.io/FL-Attack/)**
+> **[🔗 View Online Dashboard →](https://imaddde867.github.io/FL-Attack/)**
 
 ![Poster (4K)](results/report/poster_4k.png)
 
