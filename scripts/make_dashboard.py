@@ -936,12 +936,27 @@ DASHBOARD_HTML = """
       flex-direction: column;
       gap: 24px;
     }
+    .sidebar-intro {
+      font-size: 13px;
+      color: var(--muted);
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      border-radius: 8px;
+      line-height: 1.4;
+    }
     .filter-block h3 {
       margin: 0 0 10px;
       font-size: 15px;
       color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.08em;
+    }
+    .filter-help {
+      margin: -6px 0 10px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
     }
     .filter-options {
       display: flex;
@@ -1013,6 +1028,12 @@ DASHBOARD_HTML = """
       display: flex;
       flex-direction: column;
       gap: 14px;
+    }
+    .panel-help {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.35;
     }
     .panel h2 {
       margin: 0;
@@ -1123,6 +1144,14 @@ DASHBOARD_HTML = """
     .delta-value {
       font-size: 16px;
       font-weight: bold;
+    }
+    .comparison-note {
+      font-size: 12px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+      margin-top: 4px;
+      line-height: 1.4;
     }
     .tabs {
       flex: 1;
@@ -1267,24 +1296,32 @@ DASHBOARD_HTML = """
     </header>
     <main>
       <aside class="sidebar">
-        <div class="filter-block">
-          <h3>Search</h3>
-          <input type="search" id="searchInput" placeholder="Find path, client, or method" />
+        <div class="sidebar-intro">
+          Use these controls like a remote for the poster: pick the scenario group, defense method, and client to jump directly to the matching reconstruction.
         </div>
         <div class="filter-block">
-          <h3>Group</h3>
+          <h3>Search runs</h3>
+          <p class="filter-help">Type parts of a run path, client, or method (e.g., "dp_eps1 c3").</p>
+          <input type="search" id="searchInput" placeholder="Search by path, method, client..." />
+        </div>
+        <div class="filter-block">
+          <h3>Scenario group</h3>
+          <p class="filter-help">Matches rows on the poster (defenses, ablation, multi_client, showcase).</p>
           <div id="groupFilters" class="filter-options"></div>
         </div>
         <div class="filter-block">
-          <h3>Method / Setting</h3>
+          <h3>Method / defense config</h3>
+          <p class="filter-help">Choose the privacy mechanism or ablation (baseline, dp, he, tv, etc.).</p>
           <div id="methodFilters" class="filter-options"></div>
         </div>
         <div class="filter-block">
-          <h3>Client</h3>
+          <h3>Client (participant)</h3>
+          <p class="filter-help">Select which client or benchmarked participant (c0..c9) to inspect.</p>
           <div id="clientFilters" class="filter-options"></div>
         </div>
         <div class="filter-block">
-          <h3>Sort</h3>
+          <h3>Sort runs</h3>
+          <p class="filter-help">Change the leaderboard ordering without touching the poster data.</p>
           <select id="sortSelect">
             <option value="best">Best (LPIPS asc, SSIM desc, PSNR desc)</option>
             <option value="psnr">PSNR high to low</option>
@@ -1296,6 +1333,7 @@ DASHBOARD_HTML = """
         </div>
         <div class="filter-block">
           <h3>Quick actions</h3>
+          <p class="filter-help">Instant presets that mirror common poster callouts.</p>
           <div class="quick-actions">
             <button id="btnBestOverall">Best overall</button>
             <button id="btnBaselineBest">Baseline best</button>
@@ -1328,6 +1366,9 @@ DASHBOARD_HTML = """
                 <button id="lockBaselineBtn">Lock baseline</button>
               </div>
             </div>
+            <p class="panel-help">
+              Toggle comparison to overlay the best matching baseline (left) against the current run (right). Great for showing how DP/HE defenses change metrics.
+            </p>
             <div class="comparison-grid">
               <div>
                 <div style="font-size:14px; color:var(--muted); margin-bottom:6px;">Baseline</div>
@@ -1339,6 +1380,7 @@ DASHBOARD_HTML = """
               </div>
             </div>
             <div class="metrics-grid" id="deltaMetrics"></div>
+            <div class="comparison-note" id="comparisonNote"></div>
           </div>
         </div>
         <section class="tabs">
@@ -1412,6 +1454,11 @@ DASHBOARD_HTML = """
     };
 
     const METRIC_FIELDS = ["PSNR", "SSIM", "LPIPS", "MSE", "LabelMatch"];
+    const FILTER_HINTS = {
+      groups: "Scenario group shown on the poster",
+      methods: "Defense or method configuration",
+      clients: "Client / participant identifier",
+    };
 
     fetch("data.json")
       .then((res) => res.json())
@@ -1452,6 +1499,8 @@ DASHBOARD_HTML = """
           btn.className = "chip active";
           btn.textContent = value;
           btn.dataset.value = value;
+          const hint = FILTER_HINTS[key] || "Filter option";
+          btn.title = `${value} — ${hint}`;
           btn.addEventListener("click", () => toggleFilter(key, value, btn));
           container.appendChild(btn);
         });
@@ -1848,10 +1897,15 @@ DASHBOARD_HTML = """
       const label = document.getElementById("comparisonLabel");
       const deltaContainer = document.getElementById("deltaMetrics");
       const baseImg = document.getElementById("comparisonBaseImage");
+      const note = document.getElementById("comparisonNote");
+      const setNote = (text) => {
+        if (note) note.textContent = text || "";
+      };
       if (!state.compareEnabled) {
         label.textContent = "Comparison disabled";
         deltaContainer.innerHTML = "";
         baseImg.src = state.placeholderImage || "";
+        setNote("Click \"Compare vs baseline\" to show the best baseline on the left and the selected run on the right.");
         return;
       }
       const baselineInfo = getBaselineForSelection();
@@ -1861,12 +1915,18 @@ DASHBOARD_HTML = """
         label.textContent = "No baseline available";
         deltaContainer.innerHTML = "";
         baseImg.src = state.placeholderImage || "";
+        setNote("No matching baseline run was found for this selection. Try choosing a defenses or multi_client run.");
         return;
       }
       baseImg.src = baseline.image_path || state.placeholderImage || "";
       const lockedText = state.lockBaselineId ? " (locked)" : "";
       const reasonText = baselineInfo && baselineInfo.reason ? ` [${baselineInfo.reason}]` : "";
       label.textContent = `Comparing to ${baseline.method} / ${baseline.client}${reasonText}${lockedText}`;
+      if (baseline.run_id === selected.run_id) {
+        setNote("You are viewing the baseline itself. Select a defense/ablation run to see how it deviates from baseline.");
+      } else {
+        setNote("Left image: baseline. Right image: selected run. Delta cards show selected - baseline.");
+      }
       deltaContainer.innerHTML = "";
       [["PSNR", "dB"], ["SSIM", ""], ["LPIPS", ""], ["LabelMatch", ""]].forEach(([metric, suffix]) => {
         const baseVal = baseline.metrics[metric];
