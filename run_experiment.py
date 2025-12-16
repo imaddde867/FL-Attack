@@ -200,19 +200,44 @@ def run_baseline_experiment(args):
 
     if args.use_he:
         print(f"\n[DEFENSE] Applying Homomorphic Encryption (bits={args.he_bits})")
-        he = HomomorphicEncryptor(bits=args.he_bits, precision=args.he_precision)
-        # Encrypt, aggregate, decrypt (simulating secure aggregation)
-        # This adds quantization noise from fixed-point representation
-        protected_grads = []
-        for g in grads:
-            flat = g.flatten().tolist()
-            encrypted = he.encrypt_vector(flat)
-            # Add encrypted Laplace noise for extra protection
-            encrypted_noisy = he.add_noise_encrypted(encrypted, scale=0.01)
-            decrypted = he.decrypt_vector(encrypted_noisy)
-            protected_grads.append(torch.tensor(decrypted, dtype=g.dtype, device=g.device).view_as(g))
-        grads = protected_grads
-        print(f"  -> HE encrypt/decrypt round-trip applied with noise!")
+        # Count total gradient elements for progress reporting
+        total_elements = sum(g.numel() for g in grads)
+        print(f"  -> Total gradient elements: {total_elements:,}")
+        
+        # For large models, full HE is too slow (Paillier encryption is O(n) per element)
+        # Use fast simulation mode: quantization noise + Laplace noise matches HE effect
+        HE_SAMPLE_LIMIT = 10000  # Only do real HE for small gradients
+        
+        if total_elements <= HE_SAMPLE_LIMIT:
+            # Small model: do actual HE encrypt/decrypt
+            print(f"  -> Using actual HE encryption (small model)")
+            he = HomomorphicEncryptor(bits=args.he_bits, precision=args.he_precision)
+            protected_grads = []
+            for g in grads:
+                flat = g.flatten().tolist()
+                encrypted = he.encrypt_vector(flat)
+                encrypted_noisy = he.add_noise_encrypted(encrypted, scale=0.01)
+                decrypted = he.decrypt_vector(encrypted_noisy)
+                protected_grads.append(torch.tensor(decrypted, dtype=g.dtype, device=g.device).view_as(g))
+            grads = protected_grads
+            print(f"  -> HE encrypt/decrypt round-trip applied with noise!")
+        else:
+            # Large model: simulate HE effect (quantization + noise)
+            # This is cryptographically equivalent for attack resistance
+            print(f"  -> Using fast HE simulation (model too large for real-time HE)")
+            precision = args.he_precision
+            noise_scale = 0.01  # Same Laplace scale as real HE
+            
+            protected_grads = []
+            for g in grads:
+                # Step 1: Quantize to fixed-point (simulates encrypt precision)
+                quantized = torch.round(g * precision) / precision
+                # Step 2: Add Laplace noise (simulates encrypted noise addition)
+                laplace_noise = torch.distributions.Laplace(0, noise_scale).sample(g.shape).to(g.device)
+                noisy = quantized + laplace_noise
+                protected_grads.append(noisy.to(g.dtype))
+            grads = protected_grads
+            print(f"  -> HE simulation applied (quantization + noise)!")
 
     label_strategy = args.label_strategy
     if label_strategy == 'auto':
