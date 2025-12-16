@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Federated Learning Gradient Inversion: Interactive Explorer</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231f2636'/%3E%3Ctext y='55%25' x='50%25' font-size='34' fill='%23f5f6fa' text-anchor='middle'%3E%F0%9F%90%8E%3C/text%3E%3C/svg%3E" />
+  <title>Privacy-Preserving Federated Learning | Gradient Inversion Analysis</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231a237e'/%3E%3Cpath d='M32 12L16 22v20l16 10 16-10V22L32 12z' fill='none' stroke='%2369a9ff' stroke-width='2'/%3E%3Ccircle cx='32' cy='32' r='8' fill='%2369a9ff'/%3E%3C/svg%3E" />
   <style>
     :root {
       color-scheme: dark;
@@ -34,8 +34,8 @@
       min-height: 100vh;
     }
     header {
-      background: #0b0e15;
-      padding: 18px 32px;
+      background: linear-gradient(135deg, #0b0e15 0%, #131825 100%);
+      padding: 24px 32px;
       display: flex;
       flex-wrap: wrap;
       align-items: flex-end;
@@ -44,18 +44,31 @@
     }
     header h1 {
       margin: 0;
-      font-size: 26px;
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    header .subtitle {
+      margin-top: 4px;
+      font-size: 14px;
+      color: var(--accent);
+      font-weight: 500;
       letter-spacing: 0.02em;
     }
     header .meta {
       text-align: right;
-      font-size: 14px;
+      font-size: 13px;
       color: var(--muted);
     }
     header .key-finding {
-      margin-top: 6px;
-      font-size: 15px;
+      margin-top: 8px;
+      font-size: 14px;
       color: var(--accent-strong);
+      font-weight: 500;
+      padding: 6px 12px;
+      background: rgba(245, 215, 66, 0.1);
+      border-radius: 6px;
+      border-left: 3px solid var(--accent-strong);
     }
     main {
       display: flex;
@@ -80,11 +93,11 @@
     .panel {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 18px;
+      border-radius: 10px;
+      padding: 16px 18px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
       min-height: 0;
       overflow: hidden;
     }
@@ -95,13 +108,15 @@
     }
     .panel h2 {
       margin: 0;
-      font-size: 18px;
-      letter-spacing: 0.04em;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--text);
     }
     .carousel-frame {
       flex: 1;
       position: relative;
-      border-radius: 12px;
+      border-radius: 8px;
       border: 1px solid var(--border);
       background: #ffffff;
       display: flex;
@@ -109,59 +124,78 @@
       justify-content: center;
       min-height: 0;
       overflow: hidden;
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
     }
     .autoplay-image {
       max-width: 100%;
       max-height: 100%;
       object-fit: contain;
-      border-radius: 10px;
+      border-radius: 4px;
       cursor: zoom-in;
+      transition: transform 0.2s ease;
+    }
+    .autoplay-image:hover {
+      transform: scale(1.02);
     }
     .carousel-badge {
       display: none;
     }
     .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 8px;
     }
     .metric-card {
       background: var(--bg-panel);
       border-radius: 8px;
-      padding: 8px 10px;
+      padding: 10px 8px;
       border: 1px solid var(--border);
       text-align: center;
+      transition: border-color 0.2s ease;
+    }
+    .metric-card:hover {
+      border-color: var(--accent);
     }
     .metric-card .label {
-      font-size: 11px;
+      font-size: 10px;
       text-transform: uppercase;
       color: var(--muted);
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
     }
     .metric-card .value {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .metric-card .value.good {
+      color: #4ade80;
+    }
+    .metric-card .value.bad {
+      color: var(--danger);
     }
     .run-summary {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
       color: var(--text);
     }
     .run-path {
-      font-family: "SFMono-Regular", "Consolas", monospace;
-      font-size: 12px;
+      font-family: "SF Mono", "Consolas", "Monaco", monospace;
+      font-size: 11px;
       color: var(--muted);
-      background: #0b0f18;
+      background: rgba(0, 0, 0, 0.3);
       padding: 8px 10px;
       border-radius: 6px;
       overflow-x: auto;
       border: 1px solid var(--border);
     }
     .section-label {
-      font-size: 12px;
+      font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.08em;
       color: var(--muted);
-      margin-bottom: 4px;
+      margin-bottom: 6px;
+      font-weight: 500;
     }
     .details-stack {
       display: flex;
@@ -177,30 +211,39 @@
       min-height: 0;
     }
     .metrics-text {
-      background: #0f131d;
+      background: rgba(0, 0, 0, 0.25);
       border: 1px solid var(--border);
       border-radius: 6px;
       padding: 12px;
       flex: 1;
-      min-height: 100px;
+      min-height: 80px;
       overflow-y: auto;
-      font-family: "SFMono-Regular", "Consolas", monospace;
-      font-size: 12px;
+      font-family: "SF Mono", "Consolas", "Monaco", monospace;
+      font-size: 11px;
+      line-height: 1.5;
       white-space: pre-wrap;
       margin: 0;
+      color: var(--muted);
     }
     .nav-buttons {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       justify-content: flex-end;
     }
     .nav-buttons button {
-      padding: 8px 14px;
+      padding: 6px 12px;
       border-radius: 6px;
       border: 1px solid var(--border);
-      background: transparent;
+      background: var(--bg-panel);
       color: var(--text);
       cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    .nav-buttons button:hover {
+      border-color: var(--accent);
+      background: rgba(105, 169, 255, 0.1);
     }
     .comparison-header {
       display: flex;
@@ -291,9 +334,9 @@
     }
     .tab-buttons {
       display: flex;
-      gap: 16px;
+      gap: 24px;
       margin-top: 16px;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 2px solid var(--border);
     }
     .tab-buttons button {
       border: none;
@@ -301,11 +344,17 @@
       color: var(--muted);
       padding: 12px 4px;
       cursor: pointer;
-      border-bottom: 3px solid transparent;
-      font-size: 15px;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    .tab-buttons button:hover {
+      color: var(--text);
     }
     .tab-buttons button.active {
-      color: var(--text);
+      color: var(--accent);
       border-color: var(--accent);
     }
     .tab-panel {
@@ -326,77 +375,109 @@
       position: sticky;
       top: 0;
       background: var(--bg-card);
+      z-index: 1;
     }
-    th, td {
-      border-bottom: 1px solid var(--border);
-      padding: 8px;
+    th {
+      border-bottom: 2px solid var(--border);
+      padding: 10px 8px;
       text-align: left;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+    th:hover {
+      color: var(--text);
+    }
+    td {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 8px;
+      text-align: left;
+      font-variant-numeric: tabular-nums;
     }
     .table-thumb {
-      width: 64px;
-      height: 40px;
+      width: 56px;
+      height: 36px;
       object-fit: cover;
       border-radius: 4px;
       border: 1px solid var(--border);
-      background: #090d13;
+      background: #fff;
     }
     tbody tr {
       cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    tbody tr:hover {
+      background: rgba(105, 169, 255, 0.06);
     }
     tbody tr.selected {
-      background: rgba(105, 169, 255, 0.12);
+      background: rgba(105, 169, 255, 0.15);
     }
     .charts-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-      gap: 18px;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 20px;
     }
     .charts-grid img,
     .montage-grid img {
       width: 100%;
-      border-radius: 10px;
+      border-radius: 8px;
       border: 1px solid var(--border);
-      background: #090d13;
+      background: #fff;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .charts-grid img:hover,
+    .montage-grid img:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
     }
     .montage-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
     }
     .empty-state {
-      padding: 18px;
+      padding: 32px;
       border-radius: 10px;
       background: var(--bg-card);
       border: 1px dashed var(--border);
       color: var(--muted);
       text-align: center;
+      font-size: 14px;
     }
     .leaderboard-controls {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
       font-size: 13px;
       color: var(--muted);
+      border-bottom: 1px solid var(--border);
     }
     .lightbox {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.8);
+      background: rgba(0, 0, 0, 0.9);
       display: none;
       align-items: center;
       justify-content: center;
       z-index: 999;
-      padding: 20px;
+      padding: 24px;
+      cursor: zoom-out;
+      backdrop-filter: blur(4px);
     }
     .lightbox.active {
       display: flex;
     }
     .lightbox img {
       max-width: 90vw;
-      max-height: 85vh;
-      border-radius: 12px;
-      border: 2px solid var(--border);
+      max-height: 90vh;
+      border-radius: 8px;
+      box-shadow: 0 16px 64px rgba(0, 0, 0, 0.5);
     }
     @media (max-width: 1100px) {
       main {
@@ -412,7 +493,8 @@
   <div class="page">
     <header>
       <div>
-        <h1>Federated Learning Gradient Inversion: Interactive Explorer</h1>
+        <h1>Privacy-Preserving Federated Learning</h1>
+        <div class="subtitle">Gradient Inversion Attack & Defense Analysis</div>
         <div class="key-finding" id="keyFinding"></div>
       </div>
       <div class="meta">
@@ -425,7 +507,7 @@
         <div class="viewer-panels">
           <div class="panel carousel-panel" id="autoplayPanel">
             <div class="comparison-header">
-              <h2>Reconstruction Preview</h2>
+              <h2>Reconstructed Image</h2>
               <div class="autoplay-controls">
                 <button id="autoplayToggle" class="circle-button" aria-label="Start autoplay" title="Start autoplay" aria-pressed="false">
                   <span class="sr-only">Start autoplay</span>
@@ -451,50 +533,50 @@
           </div>
           <div class="panel details-panel" id="selectedPanel">
             <div class="comparison-header">
-              <h2>Run details</h2>
+              <h2>Experiment Details</h2>
               <div class="nav-buttons">
-                <button id="prevBtn" title="Previous run (Arrow Left)">Prev</button>
-                <button id="nextBtn" title="Next run (Arrow Right)">Next</button>
+                <button id="prevBtn" title="Previous experiment (←)">← Prev</button>
+                <button id="nextBtn" title="Next experiment (→)">Next →</button>
               </div>
             </div>
-            <div class="run-summary" id="runSummary">No run selected.</div>
+            <div class="run-summary" id="runSummary">Select an experiment to view details</div>
             <div class="metrics-grid" id="selectedMetrics"></div>
             <div class="details-stack">
               <div>
-                <div class="section-label">Run path</div>
+                <div class="section-label">Configuration Path</div>
                 <div class="run-path" id="runPath"></div>
               </div>
               <div>
-                <div class="section-label">Metrics</div>
-                <pre class="metrics-text" id="metricsText">Metrics file not available.</pre>
+                <div class="section-label">Raw Metrics Output</div>
+                <pre class="metrics-text" id="metricsText">No metrics data available.</pre>
               </div>
             </div>
           </div>
         </div>
         <section class="tabs">
           <div class="tab-buttons">
-            <button data-tab="leaderboards" class="active">Leaderboards</button>
-            <button data-tab="distributions">Distributions</button>
-            <button data-tab="ablations">Ablations</button>
-            <button data-tab="montages">Montages</button>
+            <button data-tab="leaderboards" class="active">Results Table</button>
+            <button data-tab="distributions">Metric Distributions</button>
+            <button data-tab="ablations">Ablation Study</button>
+            <button data-tab="montages">Visual Comparisons</button>
           </div>
           <div id="tab-leaderboards" class="tab-panel active">
             <div class="leaderboard-controls">
               <div id="filteredCount"></div>
-              <div>Click any row to load that run.</div>
+              <div>Select any row to view details</div>
             </div>
             <div class="table-wrapper">
               <table>
                 <thead>
                   <tr>
-                    <th data-sort="group">Group</th>
-                    <th data-sort="method">Method</th>
+                    <th data-sort="group">Category</th>
+                    <th data-sort="method">Defense</th>
                     <th data-sort="client">Client</th>
-                    <th data-sort="psnr">PSNR</th>
-                    <th data-sort="ssim">SSIM</th>
-                    <th data-sort="lpips">LPIPS</th>
-                    <th data-sort="labelmatch">LabelMatch</th>
-                    <th>Image</th>
+                    <th data-sort="psnr">PSNR ↑</th>
+                    <th data-sort="ssim">SSIM ↑</th>
+                    <th data-sort="lpips">LPIPS ↓</th>
+                    <th data-sort="labelmatch">Label</th>
+                    <th>Preview</th>
                   </tr>
                 </thead>
                 <tbody id="leaderboardBody"></tbody>
@@ -511,7 +593,7 @@
           <div id="tab-montages" class="tab-panel">
             <div class="montage-grid" id="montageGrid"></div>
             <div class="empty-state" id="montageEmpty" style="display:none;">
-              No montages available. Provide montage PNGs in results/report/montages/.
+              No visual comparisons available for this configuration.
             </div>
           </div>
         </section>
@@ -661,11 +743,11 @@
     }
 
     function updateMeta(meta) {
-      document.getElementById("buildDate").textContent = `Build date: ${meta.build_time}`;
+      document.getElementById("buildDate").textContent = `Generated: ${meta.build_time}`;
       const counts = Object.entries(meta.groups || {})
         .map(([group, count]) => `${group}: ${count}`)
         .join("  ·  ");
-      document.getElementById("runCounts").textContent = `Total runs: ${meta.total_runs} (${counts})`;
+      document.getElementById("runCounts").textContent = `${meta.total_runs} Experiments (${counts})`;
       document.getElementById("keyFinding").textContent = meta.key_finding || "";
     }
 
@@ -867,7 +949,7 @@
       const tbody = document.getElementById("leaderboardBody");
       tbody.innerHTML = "";
       const filteredCountEl = document.getElementById("filteredCount");
-      if (filteredCountEl) filteredCountEl.textContent = `${state.filteredIds.length} runs match filters`;
+      if (filteredCountEl) filteredCountEl.textContent = `Showing ${state.filteredIds.length} experiments`;
       const runs = state.filteredIds.map((id) => state.runsById[id]);
       runs.sort((a, b) => {
         const dir = state.tableSort.dir === "asc" ? 1 : -1;
@@ -932,13 +1014,13 @@
       const metricsContainer = document.getElementById("selectedMetrics");
       const metricsBox = document.getElementById("metricsText");
       if (!run) {
-        if (summaryEl) summaryEl.textContent = "No run selected.";
-        if (pathEl) pathEl.textContent = "No run available.";
+        if (summaryEl) summaryEl.textContent = "Select an experiment to view details";
+        if (pathEl) pathEl.textContent = "—";
         if (metricsContainer) metricsContainer.innerHTML = "";
         if (metricsBox) {
           metricsBox.textContent = state.filteredIds.length
-            ? "Select a run to view metrics."
-            : "No runs match the current filters.";
+            ? "Select an experiment from the table below."
+            : "No experiments match the current configuration.";
         }
         updateUrlState();
         syncAutoplayDisplay();
@@ -946,10 +1028,12 @@
         return;
       }
       if (summaryEl) {
-        summaryEl.textContent = `${run.group} | ${run.method} | ${run.client}`;
+        const categoryLabel = run.group.charAt(0).toUpperCase() + run.group.slice(1);
+        const methodLabel = run.method.replace(/_/g, ' ').toUpperCase();
+        summaryEl.textContent = `${categoryLabel} · ${methodLabel} · ${run.client.toUpperCase()}`;
       }
       if (pathEl) {
-        pathEl.textContent = run.source_dir || "Path unavailable";
+        pathEl.textContent = run.source_dir || "—";
       }
       if (metricsContainer) {
         metricsContainer.innerHTML = "";
