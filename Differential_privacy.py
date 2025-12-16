@@ -1,120 +1,126 @@
 """
 Differential Privacy utilities for Federated Learning.
 
-Gaussian mechanism for DP-SGD / DP-FedAvg style gradient perturbation.
+Implements Gaussian mechanism for DP-SGD / DP-FedAvg style gradient perturbation.
 """
 
 import math
 from typing import List
-
 import torch
 
 
-def gaussian_sigma_for_dp(epsilon, delta, sensitivity=1.0):
+def gaussian_sigma_for_dp(epsilon: float, delta: float, sensitivity: float = 1.0) -> float:
     """
-    Compute Gaussian noise std for (epsilon, delta)-DP.
-
-    sigma = sensitivity * sqrt(2 * ln(1.25 / delta)) / epsilon
+    Compute Gaussian noise σ for (ε, δ)-differential privacy.
+    
+    Uses the analytic Gaussian mechanism:
+        σ = sensitivity × √(2 ln(1.25/δ)) / ε
+    
+    Args:
+        epsilon: Privacy budget (ε > 0)
+        delta: Failure probability (0 < δ < 1)
+        sensitivity: L2 sensitivity of the query
+    
+    Returns:
+        Standard deviation for Gaussian noise
     """
     if epsilon <= 0:
         raise ValueError("epsilon must be positive")
     if not (0 < delta < 1):
         raise ValueError("delta must be in (0, 1)")
-    sigma = sensitivity * math.sqrt(2 * math.log(1.25 / delta)) / epsilon
-    return sigma
+    return sensitivity * math.sqrt(2 * math.log(1.25 / delta)) / epsilon
 
 
-def clip_gradients(gradients, max_norm):
+def clip_gradients(gradients: List[torch.Tensor], max_norm: float) -> List[torch.Tensor]:
     """
-    Clip a list of gradient tensors to have total L2 norm <= max_norm.
-    gradients: list[torch.Tensor]
+    Clip gradient tensors to have total L2 norm ≤ max_norm.
+    
+    Args:
+        gradients: List of gradient tensors
+        max_norm: Maximum allowed L2 norm
+    
+    Returns:
+        Clipped gradients with same structure
     """
     total_norm = torch.sqrt(sum(g.pow(2).sum() for g in gradients))
-    clip_factor = max_norm / (total_norm + 1e-8)
-    clip_factor = min(clip_factor, 1.0)
+    clip_factor = min(max_norm / (total_norm + 1e-8), 1.0)
     return [g * clip_factor for g in gradients]
 
 
-def add_gaussian_noise(gradients, sigma):
+def add_gaussian_noise(gradients: List[torch.Tensor], sigma: float) -> List[torch.Tensor]:
     """
-    Add i.i.d. N(0, sigma^2) noise to each gradient tensor.
-    gradients: list[torch.Tensor]
+    Add i.i.d. Gaussian noise N(0, σ²) to each gradient tensor.
+    
+    Args:
+        gradients: List of gradient tensors
+        sigma: Standard deviation of noise
+    
+    Returns:
+        Noisy gradients
     """
-    noisy = []
-    for g in gradients:
-        noise = torch.randn_like(g) * sigma
-        noisy.append(g + noise)
-    return noisy
+    return [g + torch.randn_like(g) * sigma for g in gradients]
 
 
-def aggregate_clipped_noisy(client_gradients, max_norm, sigma, device=None):
+def aggregate_clipped_noisy(
+    client_gradients: List[List[torch.Tensor]], 
+    max_norm: float, 
+    sigma: float, 
+    device: torch.device = None
+) -> List[torch.Tensor]:
     """
-    DP-FedAvg style aggregation:
-
-    client_gradients: list of list of tensors, shape:
-        num_clients x num_params
-
+    DP-FedAvg aggregation with per-client clipping and noise addition.
+    
     Steps:
-      1. Clip each client's gradients to max_norm (L2).
-      2. Average clipped gradients.
-      3. Add Gaussian noise calibrated for DP.
+        1. Clip each client's gradients to max_norm (L2)
+        2. Average clipped gradients
+        3. Add calibrated Gaussian noise
+    
+    Args:
+        client_gradients: List of gradient lists, shape [num_clients × num_params]
+        max_norm: Per-client gradient clipping threshold
+        sigma: Base noise scale (adjusted by num_clients)
+        device: Target device for computation
+    
+    Returns:
+        Aggregated noisy gradients
     """
     if not client_gradients:
         raise ValueError("No client gradients provided")
-
-    if device is None:
-        device = torch.device("cpu")
-
+    
+    device = device or torch.device("cpu")
     num_clients = len(client_gradients)
     num_params = len(client_gradients[0])
 
-    # clip per client
-    clipped_gradients = []
-    for grads in client_gradients:
-        grads_dev = [g.to(device) for g in grads]
-        clipped_gradients.append(clip_gradients(grads_dev, max_norm))
+    # Clip per client
+    clipped = [
+        clip_gradients([g.to(device) for g in grads], max_norm) 
+        for grads in client_gradients
+    ]
 
-    # average per-parameter
-    aggregated = []
-    for p_idx in range(num_params):
-        stacked = torch.stack([grads[p_idx] for grads in clipped_gradients])
-        avg = stacked.mean(dim=0)
-        aggregated.append(avg)
+    # Average per-parameter
+    aggregated = [
+        torch.stack([grads[i] for grads in clipped]).mean(dim=0)
+        for i in range(num_params)
+    ]
 
-    # for average, sensitivity ~ max_norm / num_clients
+    # Scale noise by sensitivity (max_norm / num_clients)
     noise_scale = sigma * max_norm / num_clients
-    noisy_aggregated = add_gaussian_noise(aggregated, noise_scale)
-
-    return noisy_aggregated
+    return add_gaussian_noise(aggregated, noise_scale)
 
 
-def compute_dp_budget(sigma, delta, sensitivity=1.0):
+def compute_dp_budget(sigma: float, delta: float, sensitivity: float = 1.0) -> float:
     """
-    Invert gaussian_sigma_for_dp: given sigma, delta, sensitivity -> epsilon.
+    Compute ε given σ and δ (inverse of gaussian_sigma_for_dp).
+    
+    Args:
+        sigma: Gaussian noise standard deviation
+        delta: Failure probability
+        sensitivity: L2 sensitivity
+    
+    Returns:
+        Privacy budget ε (inf if σ ≤ 0)
     """
     if sigma <= 0:
         return float("inf")
-    epsilon = sensitivity * math.sqrt(2 * math.log(1.25 / delta)) / sigma
-    return epsilon
+    return sensitivity * math.sqrt(2 * math.log(1.25 / delta)) / sigma
 
-"""Usage example (uncomment to run)"""
-# if __name__ == "__main__":
-    # Tiny DP sanity check (does NOT affect how FL uses this module)
-
-    # eps, delta = 1.0, 1e-5
-    # max_norm = 1.0
-    # sensitivity = max_norm
-
-    # sigma = gaussian_sigma_for_dp(eps, delta, sensitivity=sensitivity)
-    # print("sigma:", sigma)
-
-    # fake client gradients: 3 clients, 2 "parameters" each
-   #  g1 = [torch.tensor([0.5, -0.3]), torch.tensor([0.1])]
-   #  g2 = [torch.tensor([1.2, 0.1]), torch.tensor([-0.2])]
-   #  g3 = [torch.tensor([-0.6, 0.4]), torch.tensor([0.0])]
-    # client_grads = [g1, g2, g3]
-
-    # noisy_agg = aggregate_clipped_noisy(client_grads, max_norm=max_norm, sigma=sigma)
-
-    # print("noisy aggregated param 0:", noisy_agg[0])
-    # print("noisy aggregated param 1:", noisy_agg[1])

@@ -1,115 +1,162 @@
+"""
+Federated Learning Gradient Attack Experiment Runner.
+
+Command-line interface for running gradient inversion attacks on federated
+learning systems with optional privacy defenses (DP and HE).
+"""
+
 import argparse
 import datetime as _dt
+import json
 import os
-from typing import Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-import torch
-import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
+import torch.nn.functional as F
 
 from device_utils import resolve_device
-
+from differential_privacy import add_gaussian_noise, clip_gradients, gaussian_sigma_for_dp
 from fl_system import FederatedLearningSystem
 from gradient_attack import GradientInversionAttack
-from Differential_privacy import gaussian_sigma_for_dp, clip_gradients, add_gaussian_noise
 from homomorphic_encryptor import HomomorphicEncryptor
 
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
 
-def denormalize_tensor(tensor, mean, std):
-    """Generic denormalization helper."""
+HE_SAMPLE_LIMIT = 10_000  # Max gradient elements for real HE (else use simulation)
+DEFAULT_DENORM = (0.5, 0.5, 0.5)  # Default CelebA normalization
+
+# ---------------------------------------------------------------------------
+# Utility Functions
+# ---------------------------------------------------------------------------
+
+
+def denormalize_tensor(
+    tensor: torch.Tensor,
+    mean: Tuple[float, ...],
+    std: Tuple[float, ...]
+) -> torch.Tensor:
+    """Denormalize a tensor from normalized space to [0, 1] pixel range."""
     mean_t = tensor.new_tensor(mean).view(-1, 1, 1)
     std_t = tensor.new_tensor(std).view(-1, 1, 1)
     return tensor * std_t + mean_t
 
 
-def compute_simple_ssim(pred, target, data_range=4.0):
+def compute_simple_ssim(
+    pred: torch.Tensor,
+    target: torch.Tensor,
+    data_range: float = 4.0
+) -> float:
+    """Compute simplified SSIM between prediction and target tensors."""
     dims = list(range(1, pred.ndim))
     mu_x = pred.mean(dim=dims)
     mu_y = target.mean(dim=dims)
     sigma_x = pred.var(dim=dims, unbiased=False)
     sigma_y = target.var(dim=dims, unbiased=False)
-    sigma_xy = ((pred - mu_x.view(-1, *([1] * (pred.ndim - 1)))) *
-                (target - mu_y.view(-1, *([1] * (target.ndim - 1))))).mean(dim=dims)
+    sigma_xy = (
+        (pred - mu_x.view(-1, *([1] * (pred.ndim - 1))))
+        * (target - mu_y.view(-1, *([1] * (target.ndim - 1))))
+    ).mean(dim=dims)
+    
     C1 = (0.01 * data_range) ** 2
     C2 = (0.03 * data_range) ** 2
-    ssim = ((2 * mu_x * mu_y + C1) * (2 * sigma_xy + C2)) / ((mu_x ** 2 + mu_y ** 2 + C1) * (sigma_x + sigma_y + C2))
+    ssim = (
+        (2 * mu_x * mu_y + C1) * (2 * sigma_xy + C2)
+    ) / (
+        (mu_x ** 2 + mu_y ** 2 + C1) * (sigma_x + sigma_y + C2)
+    )
     return ssim.mean().item()
 
 
-def maybe_init_lpips(device, enabled):
+def maybe_init_lpips(device: torch.device, enabled: bool) -> Optional[Any]:
+    """Initialize LPIPS model if enabled and available."""
     if not enabled:
         return None
     try:
-        import lpips  # type: ignore
+        import lpips
     except ImportError:
-        print("[WARN] LPIPS requested but package is not installed. Skipping LPIPS metric.")
+        print("[WARN] LPIPS requested but package is not installed.")
         return None
-    model = lpips.LPIPS(net='alex').to(device)
-    model.eval()
+    model = lpips.LPIPS(net='alex').to(device).eval()
     return model
 
 
-def compute_metrics(pred, target, compute_lpips=False, lpips_model=None, denorm_mean=None, denorm_std=None):
-    metrics = {}
+def compute_metrics(
+    pred: torch.Tensor,
+    target: torch.Tensor,
+    compute_lpips: bool = False,
+    lpips_model: Optional[Any] = None,
+    denorm_mean: Optional[Tuple[float, ...]] = None,
+    denorm_std: Optional[Tuple[float, ...]] = None
+) -> Dict[str, float]:
+    """Compute reconstruction quality metrics (MSE, PSNR, SSIM, optionally LPIPS)."""
+    metrics: Dict[str, float] = {}
     mse = F.mse_loss(pred, target).item()
     metrics['MSE'] = mse
-    max_range = 4.0  # approx data range used for normalized tensors
+    
+    max_range = 4.0  # Approximate data range for normalized tensors
     metrics['PSNR'] = 10 * np.log10((max_range ** 2) / max(mse, 1e-12))
     metrics['SSIM'] = compute_simple_ssim(pred, target, data_range=max_range)
+    
     if compute_lpips:
         if lpips_model is None:
             metrics['LPIPS'] = float('nan')
         else:
             with torch.no_grad():
                 if denorm_mean is not None and denorm_std is not None:
-                    # Convert to pixel space [0,1], then to [-1,1] for LPIPS
                     pred_pix = torch.clamp(denormalize_tensor(pred, denorm_mean, denorm_std), 0, 1)
                     target_pix = torch.clamp(denormalize_tensor(target, denorm_mean, denorm_std), 0, 1)
                     pred_lp = pred_pix * 2.0 - 1.0
                     target_lp = target_pix * 2.0 - 1.0
                 else:
-                    # Fallback: assume roughly [-1,1] already
                     pred_lp = torch.clamp(pred, -1, 1)
                     target_lp = torch.clamp(target, -1, 1)
-                score = lpips_model(pred_lp, target_lp)
-                metrics['LPIPS'] = score.mean().item()
+                metrics['LPIPS'] = lpips_model(pred_lp, target_lp).mean().item()
     return metrics
 
-def _parse_layer_weights(arg_val):
+
+def _parse_layer_weights(arg_val: Optional[str]) -> Optional[Union[str, List[float]]]:
+    """Parse layer weights argument (string mode or list of floats)."""
     if arg_val is None:
         return None
-    val = str(arg_val).strip()
-    # Support string-based weighting modes
-    valid_modes = ['auto', 'auto_norm', 'inv_norm', 'early', 'early_linear', 
-                   'early_strong', 'early_conv', 'spatial', 'uniform', 'none']
-    if val.lower() in valid_modes:
-        if val.lower() in ('uniform', 'none'):
-            return None  # Uniform weights = no special weighting
-        return val.lower()
+    
+    val = str(arg_val).strip().lower()
+    valid_modes = {
+        'auto', 'auto_norm', 'inv_norm', 'early', 'early_linear',
+        'early_strong', 'early_conv', 'spatial', 'uniform', 'none'
+    }
+    
+    if val in valid_modes:
+        return None if val in ('uniform', 'none') else val
+    
     try:
-        parts = [p for p in val.replace(';', ',').split(',') if p]
+        parts = [p.strip() for p in val.replace(';', ',').split(',') if p.strip()]
         return [float(p) for p in parts]
-    except Exception:
+    except ValueError:
         print(f"[WARN] Could not parse --layer-weights='{arg_val}', using uniform.")
         return None
 
-def run_baseline_experiment(args):
-    """
-    Experiment 1: Baseline FL Training + Gradient Inversion Attack
-    """
-    print("-"*60)
-    print("EXPERIMENT 1: BASELINE (No Privacy Protection - without DP or HE)")
-    print("-"*60)
-    
+
+# ---------------------------------------------------------------------------
+# Main Experiment Runner
+# ---------------------------------------------------------------------------
+
+
+def run_baseline_experiment(args: argparse.Namespace) -> None:
+    """Run baseline FL training with gradient inversion attack."""
+    print("-" * 60)
+    print("EXPERIMENT: BASELINE (Gradient Inversion Attack)")
+    print("-" * 60)
+
     device = resolve_device(args.device)
-    print(f"Using device: {device}")
+    print(f"Device: {device}")
     lpips_model = maybe_init_lpips(device, args.compute_lpips)
-    
+
     # Initialize FL system
-    # Use batch_size=1 to showcase a successful DLG attack
-    # Use data_subset=200 to allow the experiment to run quickly
-    print("Initializing FL System (configurable via CLI)...")
+    print("Initializing FL System...")
     fl_system = FederatedLearningSystem(
         num_clients=args.num_clients,
         device=device,
@@ -120,10 +167,10 @@ def run_baseline_experiment(args):
         local_epochs=args.local_epochs,
         augment=not args.no_augment,
     )
-    # Use CelebA normalization defaults if attributes are missing
-    denorm_mean = getattr(fl_system, 'channel_mean', (0.5, 0.5, 0.5))
-    denorm_std = getattr(fl_system, 'channel_std', (0.5, 0.5, 0.5))
     
+    denorm_mean = getattr(fl_system, 'channel_mean', DEFAULT_DENORM)
+    denorm_std = getattr(fl_system, 'channel_std', DEFAULT_DENORM)
+
     # Train for several rounds
     print("\nPhase 1: Training FL Model...")
     captured_data = None
@@ -200,17 +247,12 @@ def run_baseline_experiment(args):
 
     if args.use_he:
         print(f"\n[DEFENSE] Applying Homomorphic Encryption (bits={args.he_bits})")
-        # Count total gradient elements for progress reporting
         total_elements = sum(g.numel() for g in grads)
         print(f"  -> Total gradient elements: {total_elements:,}")
-        
-        # For large models, full HE is too slow (Paillier encryption is O(n) per element)
-        # Use fast simulation mode: quantization noise + Laplace noise matches HE effect
-        HE_SAMPLE_LIMIT = 10000  # Only do real HE for small gradients
-        
+
         if total_elements <= HE_SAMPLE_LIMIT:
-            # Small model: do actual HE encrypt/decrypt
-            print(f"  -> Using actual HE encryption (small model)")
+            # Small model: actual HE encrypt/decrypt
+            print("  -> Using actual HE encryption")
             he = HomomorphicEncryptor(bits=args.he_bits, precision=args.he_precision)
             protected_grads = []
             for g in grads:
@@ -218,26 +260,24 @@ def run_baseline_experiment(args):
                 encrypted = he.encrypt_vector(flat)
                 encrypted_noisy = he.add_noise_encrypted(encrypted, scale=0.01)
                 decrypted = he.decrypt_vector(encrypted_noisy)
-                protected_grads.append(torch.tensor(decrypted, dtype=g.dtype, device=g.device).view_as(g))
+                protected_grads.append(
+                    torch.tensor(decrypted, dtype=g.dtype, device=g.device).view_as(g)
+                )
             grads = protected_grads
-            print(f"  -> HE encrypt/decrypt round-trip applied with noise!")
+            print("  -> HE round-trip with noise applied!")
         else:
             # Large model: simulate HE effect (quantization + noise)
-            # This is cryptographically equivalent for attack resistance
-            print(f"  -> Using fast HE simulation (model too large for real-time HE)")
+            print("  -> Using fast HE simulation (large model)")
             precision = args.he_precision
-            noise_scale = 0.01  # Same Laplace scale as real HE
-            
+            noise_scale = 0.01
+
             protected_grads = []
             for g in grads:
-                # Step 1: Quantize to fixed-point (simulates encrypt precision)
                 quantized = torch.round(g * precision) / precision
-                # Step 2: Add Laplace noise (simulates encrypted noise addition)
                 laplace_noise = torch.distributions.Laplace(0, noise_scale).sample(g.shape).to(g.device)
-                noisy = quantized + laplace_noise
-                protected_grads.append(noisy.to(g.dtype))
+                protected_grads.append((quantized + laplace_noise).to(g.dtype))
             grads = protected_grads
-            print(f"  -> HE simulation applied (quantization + noise)!")
+            print("  -> HE simulation applied!")
 
     label_strategy = args.label_strategy
     if label_strategy == 'auto':
@@ -370,64 +410,91 @@ def run_baseline_experiment(args):
         print(f"  {key}: {value}")
     print(f"  Saved metrics: {metrics_txt}")
 
-def _parse_args():
-    p = argparse.ArgumentParser(description="Baseline FL + Gradient Attack R&D Runner")
-    # General
-    p.add_argument('--device', type=str, default=None, help='cuda|mps|cpu (auto if None)')
-    p.add_argument('--seed', type=int, default=42)
-    p.add_argument('--out-dir', type=str, default=None, help='Output directory')
-    p.add_argument('--save-config', action='store_true', help='Save args as config.json into out-dir')
 
-    # FL system config
-    p.add_argument('--num-clients', type=int, default=10)
-    p.add_argument('--batch-size', type=int, default=1)
-    p.add_argument('--data-subset', type=int, default=200)
-    p.add_argument('--num-rounds', type=int, default=5)
-    p.add_argument('--local-epochs', type=int, default=1)
-    p.add_argument('--client-lr', type=float, default=0.01)
-    p.add_argument('--client-momentum', type=float, default=0.9)
-    p.add_argument('--no-augment', action='store_true', help='Disable train-time augmentation')
+# ---------------------------------------------------------------------------
+# CLI Argument Parsing
+# ---------------------------------------------------------------------------
 
-    # Capture config
-    p.add_argument('--capture-client', type=int, default=0)
-    p.add_argument('--capture-round', type=int, default=None, help='If None, captures last round')
-    p.add_argument('--attack-source', type=str, default='gradients',
-                   choices=['gradients','one_step_update','agg_update'])
 
-    # Attack config
-    p.add_argument('--attack-iterations', type=int, default=2000)
-    p.add_argument('--attack-lr', type=float, default=0.1)
-    p.add_argument('--tv-weight', type=float, default=0.001)
-    p.add_argument('--attack-optimizer', type=str, default='adam', choices=['adam','lbfgs','sgd','adamw'])
-    p.add_argument('--attack-restarts', type=int, default=1)
-    p.add_argument('--attack-batch', type=int, default=1)
-    p.add_argument('--label-strategy', type=str, default='auto', choices=['auto','idlg','optimize'])
-    p.add_argument('--compute-lpips', action='store_true')
+def _parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    p = argparse.ArgumentParser(
+        description="FL Gradient Inversion Attack Experiment Runner",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
+    # General options
+    g = p.add_argument_group("General")
+    g.add_argument('--device', type=str, default=None, help='Device (cuda|mps|cpu, auto if None)')
+    g.add_argument('--seed', type=int, default=42, help='Random seed')
+    g.add_argument('--out-dir', type=str, default=None, help='Output directory')
+    g.add_argument('--save-config', action='store_true', help='Save config.json')
+
+    # FL system configuration
+    g = p.add_argument_group("Federated Learning")
+    g.add_argument('--num-clients', type=int, default=10, help='Number of FL clients')
+    g.add_argument('--batch-size', type=int, default=1, help='Client batch size')
+    g.add_argument('--data-subset', type=int, default=200, help='Samples per client')
+    g.add_argument('--num-rounds', type=int, default=5, help='FL training rounds')
+    g.add_argument('--local-epochs', type=int, default=1, help='Local epochs per round')
+    g.add_argument('--client-lr', type=float, default=0.01, help='Client learning rate')
+    g.add_argument('--client-momentum', type=float, default=0.9, help='Client SGD momentum')
+    g.add_argument('--no-augment', action='store_true', help='Disable data augmentation')
+
+    # Capture configuration
+    g = p.add_argument_group("Gradient Capture")
+    g.add_argument('--capture-client', type=int, default=0, help='Client to capture from')
+    g.add_argument('--capture-round', type=int, default=None, help='Round to capture (default: last)')
+    g.add_argument('--attack-source', type=str, default='gradients',
+                   choices=['gradients', 'one_step_update', 'agg_update'],
+                   help='Source of gradients for attack')
+
+    # Attack configuration
+    g = p.add_argument_group("Attack Parameters")
+    g.add_argument('--attack-iterations', type=int, default=2000, help='Optimization iterations')
+    g.add_argument('--attack-lr', type=float, default=0.1, help='Attack learning rate')
+    g.add_argument('--tv-weight', type=float, default=0.001, help='Total variation weight')
+    g.add_argument('--attack-optimizer', type=str, default='adam',
+                   choices=['adam', 'lbfgs', 'sgd', 'adamw'], help='Optimizer')
+    g.add_argument('--attack-restarts', type=int, default=1, help='Random restarts')
+    g.add_argument('--attack-batch', type=int, default=1, help='Batch size to reconstruct')
+    g.add_argument('--label-strategy', type=str, default='auto',
+                   choices=['auto', 'idlg', 'optimize'], help='Label inference strategy')
+    g.add_argument('--compute-lpips', action='store_true', help='Compute LPIPS metric')
+
     # Attack enhancements
-    p.add_argument('--lr-schedule', type=str, default='none', choices=['none','cosine'])
-    p.add_argument('--early-stop', action='store_true')
-    p.add_argument('--patience', type=int, default=500)
-    p.add_argument('--min-delta', type=float, default=1e-4)
-    p.add_argument('--fft-init', action='store_true')
-    p.add_argument('--preset', type=str, default=None)
-    p.add_argument('--match-metric', type=str, default='l2', choices=['l2','cosine','both','sim'])
-    p.add_argument('--l2-weight', type=float, default=1.0)
-    p.add_argument('--cos-weight', type=float, default=1.0)
-    p.add_argument('--use-layers', type=int, nargs='+', default=None, help='Indices of layers to match')
-    p.add_argument('--select-by-name', type=str, nargs='+', default=None, help='Substring patterns to select layers by name')
-    p.add_argument('--layer-weights', type=str, default=None, help="'auto' or comma-separated floats")
-    # Visualization
-    p.add_argument('--no-heatmap', action='store_true', help='Disable difference heatmap row')
+    g = p.add_argument_group("Attack Enhancements")
+    g.add_argument('--lr-schedule', type=str, default='none',
+                   choices=['none', 'cosine'], help='Learning rate schedule')
+    g.add_argument('--early-stop', action='store_true', help='Enable early stopping')
+    g.add_argument('--patience', type=int, default=500, help='Early stop patience')
+    g.add_argument('--min-delta', type=float, default=1e-4, help='Min improvement delta')
+    g.add_argument('--fft-init', action='store_true', help='Use FFT initialization')
+    g.add_argument('--preset', type=str, default=None, help='Attack preset (soft/tight/none)')
+    g.add_argument('--match-metric', type=str, default='l2',
+                   choices=['l2', 'cosine', 'both', 'sim'], help='Gradient matching metric')
+    g.add_argument('--l2-weight', type=float, default=1.0, help='L2 loss weight')
+    g.add_argument('--cos-weight', type=float, default=1.0, help='Cosine loss weight')
+    g.add_argument('--use-layers', type=int, nargs='+', default=None, help='Layer indices to match')
+    g.add_argument('--select-by-name', type=str, nargs='+', default=None, help='Layer name patterns')
+    g.add_argument('--layer-weights', type=str, default=None, help='Layer weighting mode or values')
+    g.add_argument('--no-heatmap', action='store_true', help='Disable difference heatmap')
 
     # Privacy defenses
-    p.add_argument('--dp-epsilon', type=float, default=None, help='Enable DP with this epsilon (e.g., 1.0, 0.5)')
-    p.add_argument('--dp-delta', type=float, default=1e-5, help='DP delta parameter')
-    p.add_argument('--dp-max-norm', type=float, default=1.0, help='DP gradient clipping max norm')
-    p.add_argument('--use-he', action='store_true', help='Enable Homomorphic Encryption on gradients')
-    p.add_argument('--he-bits', type=int, default=512, help='HE key size in bits')
-    p.add_argument('--he-precision', type=int, default=1000000, help='HE float precision')
+    g = p.add_argument_group("Privacy Defenses")
+    g.add_argument('--dp-epsilon', type=float, default=None, help='DP epsilon (enables DP)')
+    g.add_argument('--dp-delta', type=float, default=1e-5, help='DP delta')
+    g.add_argument('--dp-max-norm', type=float, default=1.0, help='DP clipping norm')
+    g.add_argument('--use-he', action='store_true', help='Enable Homomorphic Encryption')
+    g.add_argument('--he-bits', type=int, default=512, help='HE key size (bits)')
+    g.add_argument('--he-precision', type=int, default=1000000, help='HE precision')
 
     return p.parse_args()
+
+
+# ---------------------------------------------------------------------------
+# Entry Point
+# ---------------------------------------------------------------------------
 
 
 if __name__ == "__main__":
@@ -439,8 +506,10 @@ if __name__ == "__main__":
         ts = _dt.datetime.now().strftime('%Y%m%d_%H%M%S')
         args.out_dir = os.path.join('results', f'baseline_{ts}')
     os.makedirs(args.out_dir, exist_ok=True)
+
     if args.save_config:
-        import json
-        with open(os.path.join(args.out_dir, 'config.json'), 'w') as f:
+        config_path = os.path.join(args.out_dir, 'config.json')
+        with open(config_path, 'w') as f:
             json.dump(vars(args), f, indent=2)
+
     run_baseline_experiment(args)

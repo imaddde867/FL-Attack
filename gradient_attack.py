@@ -1,4 +1,13 @@
+"""
+Gradient Inversion Attack Implementation.
+
+Implements DLG/iDLG-style gradient inversion attacks for reconstructing
+training data from captured gradients in federated learning.
+"""
+
 import math
+from typing import Optional, List, Tuple, Dict, Any, Union
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -6,125 +15,114 @@ from torchvision.utils import save_image
 
 from device_utils import resolve_device
 
+# ---------------------------------------------------------------------------
+# Perceptual Loss Utilities
+# ---------------------------------------------------------------------------
 
-# ---- Perceptual Loss Utilities ----
+_LPIPS_MODEL_CACHE: Dict[Tuple[str, str], Any] = {}
 
-_LPIPS_MODEL_CACHE = {}
 
-def get_lpips_model(device, net='alex'):
+def get_lpips_model(device: torch.device, net: str = "alex"):
     """Get or create a cached LPIPS model for perceptual loss."""
     key = (str(device), net)
     if key not in _LPIPS_MODEL_CACHE:
         try:
             import lpips
-            model = lpips.LPIPS(net=net).to(device)
-            model.eval()
+            model = lpips.LPIPS(net=net).to(device).eval()
             for p in model.parameters():
                 p.requires_grad = False
             _LPIPS_MODEL_CACHE[key] = model
         except ImportError:
-            print("[WARN] LPIPS package not installed. Perceptual loss disabled.")
+            print("[WARN] LPIPS not installed. Perceptual loss disabled.")
             _LPIPS_MODEL_CACHE[key] = None
     return _LPIPS_MODEL_CACHE[key]
 
 
-def perceptual_loss_lpips(dummy_data, reference_data, lpips_model, denorm_mean=(0.5, 0.5, 0.5), denorm_std=(0.5, 0.5, 0.5)):
-    """
-    Compute LPIPS perceptual loss between dummy and reference images.
-    
-    Args:
-        dummy_data: Reconstructed image tensor (normalized)
-        reference_data: Optional reference image for guided reconstruction
-        lpips_model: Pre-loaded LPIPS model
-        denorm_mean/std: Normalization parameters to convert to [-1, 1] range for LPIPS
-    
-    Returns:
-        LPIPS loss value (lower = more similar)
-    """
+def perceptual_loss_lpips(
+    dummy_data: torch.Tensor, 
+    reference_data: Optional[torch.Tensor], 
+    lpips_model: Any,
+    denorm_mean: Tuple[float, ...] = (0.5, 0.5, 0.5), 
+    denorm_std: Tuple[float, ...] = (0.5, 0.5, 0.5)
+) -> torch.Tensor:
+    """Compute LPIPS perceptual loss between dummy and reference images."""
     if lpips_model is None or reference_data is None:
         return torch.tensor(0.0, device=dummy_data.device)
     
-    # Convert from normalized space to [0,1] then to [-1,1] for LPIPS
+    # Convert to [0,1] then [-1,1] for LPIPS
     mean_t = dummy_data.new_tensor(denorm_mean).view(1, -1, 1, 1)
     std_t = dummy_data.new_tensor(denorm_std).view(1, -1, 1, 1)
     
-    dummy_pix = torch.clamp(dummy_data * std_t + mean_t, 0, 1)
-    ref_pix = torch.clamp(reference_data * std_t + mean_t, 0, 1)
+    dummy_pix = torch.clamp(dummy_data * std_t + mean_t, 0, 1) * 2.0 - 1.0
+    ref_pix = torch.clamp(reference_data * std_t + mean_t, 0, 1) * 2.0 - 1.0
     
-    # Convert to [-1, 1] for LPIPS
-    dummy_lp = dummy_pix * 2.0 - 1.0
-    ref_lp = ref_pix * 2.0 - 1.0
-    
-    return lpips_model(dummy_lp, ref_lp).mean()
+    return lpips_model(dummy_pix, ref_pix).mean()
 
 
 class VGGPerceptualLoss(nn.Module):
-    """
-    VGG-based perceptual loss (lighter alternative to LPIPS).
-    Uses early VGG layers for texture/style matching.
-    """
-    def __init__(self, device, layers=['relu1_2', 'relu2_2', 'relu3_3']):
+    """VGG-based perceptual loss (lighter alternative to LPIPS)."""
+    
+    LAYER_MAP = {
+        "relu1_1": 1, "relu1_2": 3, "relu2_1": 6, "relu2_2": 8,
+        "relu3_1": 11, "relu3_2": 13, "relu3_3": 15,
+        "relu4_1": 20, "relu4_2": 22, "relu4_3": 24,
+    }
+    
+    def __init__(self, device: torch.device, layers: List[str] = None):
         super().__init__()
         self.device = device
-        self.layers = layers
+        self.layers = layers or ["relu1_2", "relu2_2", "relu3_3"]
         self.model = None
-        self._layer_mapping = {
-            'relu1_1': 1, 'relu1_2': 3,
-            'relu2_1': 6, 'relu2_2': 8,
-            'relu3_1': 11, 'relu3_2': 13, 'relu3_3': 15,
-            'relu4_1': 20, 'relu4_2': 22, 'relu4_3': 24,
-        }
         self._init_vgg()
     
     def _init_vgg(self):
         try:
             from torchvision.models import vgg16
-            vgg = vgg16(weights='IMAGENET1K_V1').features.to(self.device)
-            vgg.eval()
+            vgg = vgg16(weights="IMAGENET1K_V1").features.to(self.device).eval()
             for p in vgg.parameters():
                 p.requires_grad = False
             self.model = vgg
         except Exception as e:
-            print(f"[WARN] Could not load VGG for perceptual loss: {e}")
-            self.model = None
+            print(f"[WARN] Could not load VGG: {e}")
     
-    def forward(self, x, y, denorm_mean=(0.5, 0.5, 0.5), denorm_std=(0.5, 0.5, 0.5)):
+    def forward(
+        self, 
+        x: torch.Tensor, 
+        y: torch.Tensor, 
+        denorm_mean: Tuple[float, ...] = (0.5, 0.5, 0.5), 
+        denorm_std: Tuple[float, ...] = (0.5, 0.5, 0.5)
+    ) -> torch.Tensor:
         """Compute VGG feature loss between x and y."""
         if self.model is None:
             return torch.tensor(0.0, device=x.device)
         
-        # Denormalize and prepare for VGG (ImageNet normalization)
-        mean_t = x.new_tensor(denorm_mean).view(1, -1, 1, 1)
-        std_t = x.new_tensor(denorm_std).view(1, -1, 1, 1)
-        
+        # Denormalize and convert to VGG normalization
+        mean_t, std_t = x.new_tensor(denorm_mean).view(1, -1, 1, 1), x.new_tensor(denorm_std).view(1, -1, 1, 1)
         x_pix = torch.clamp(x * std_t + mean_t, 0, 1)
         y_pix = torch.clamp(y * std_t + mean_t, 0, 1)
         
-        # VGG ImageNet normalization
         vgg_mean = x.new_tensor([0.485, 0.456, 0.406]).view(1, -1, 1, 1)
         vgg_std = x.new_tensor([0.229, 0.224, 0.225]).view(1, -1, 1, 1)
         x_vgg = (x_pix - vgg_mean) / vgg_std
         y_vgg = (y_pix - vgg_mean) / vgg_std
         
         loss = torch.tensor(0.0, device=x.device)
-        x_feat, y_feat = x_vgg, y_vgg
+        max_layer = max(self.LAYER_MAP.get(l, 0) for l in self.layers)
         
-        max_layer = max(self._layer_mapping.get(l, 0) for l in self.layers)
         for i, layer in enumerate(self.model):
-            x_feat = layer(x_feat)
-            y_feat = layer(y_feat)
-            for layer_name in self.layers:
-                if self._layer_mapping.get(layer_name) == i:
-                    loss = loss + F.mse_loss(x_feat, y_feat)
+            x_vgg, y_vgg = layer(x_vgg), layer(y_vgg)
+            if i in [self.LAYER_MAP.get(l) for l in self.layers]:
+                loss = loss + F.mse_loss(x_vgg, y_vgg)
             if i >= max_layer:
                 break
         
         return loss
 
 
-_VGG_LOSS_CACHE = {}
+_VGG_LOSS_CACHE: Dict[str, VGGPerceptualLoss] = {}
 
-def get_vgg_loss(device):
+
+def get_vgg_loss(device: torch.device) -> VGGPerceptualLoss:
     """Get or create a cached VGG perceptual loss model."""
     key = str(device)
     if key not in _VGG_LOSS_CACHE:
@@ -132,11 +130,26 @@ def get_vgg_loss(device):
     return _VGG_LOSS_CACHE[key]
 
 class GradientInversionAttack:
-    def __init__(self, model, device=None, num_classes=None):
+    """
+    Gradient Inversion Attack for reconstructing training data.
+    
+    Implements DLG (Deep Leakage from Gradients) and iDLG (improved DLG)
+    approaches with various enhancements including TV regularization,
+    layer weighting, and multiple loss metrics.
+    """
+    
+    def __init__(
+        self, 
+        model: nn.Module, 
+        device: Optional[str] = None, 
+        num_classes: Optional[int] = None
+    ):
         self.device = resolve_device(device)
         self.model = model.to(self.device)
+        
+        # Infer num_classes if not provided
         if num_classes is None:
-            num_classes = getattr(model, 'num_classes', None)
+            num_classes = getattr(model, "num_classes", None)
         if num_classes is None:
             for module in reversed(list(model.modules())):
                 if isinstance(module, nn.Linear):
