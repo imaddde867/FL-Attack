@@ -235,6 +235,17 @@ def run_baseline_experiment(args: argparse.Namespace) -> None:
 
     # ============================================================
     # Apply Privacy Defenses (DP and/or HE)
+    #
+    # Threat model: the attacker below reads ONE client's raw gradient
+    # before any aggregation (attack_source="gradients" in every published
+    # result). Local DP — clip this client's own release to dp_max_norm,
+    # add Gaussian noise calibrated to that same sensitivity — is the
+    # correct mechanism for that read point, and that's what this block
+    # does. It is deliberately NOT the central-DP-FedAvg mechanism in
+    # differential_privacy.aggregate_clipped_noisy(), which only protects a
+    # released aggregate and would understate the noise needed here. See
+    # that function's docstring for the unevaluated secure-aggregation
+    # threat model.
     # ============================================================
     if args.dp_epsilon is not None:
         print(f"\n[DEFENSE] Applying Differential Privacy (ε={args.dp_epsilon}, δ={args.dp_delta})")

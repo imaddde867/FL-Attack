@@ -62,25 +62,46 @@ def add_gaussian_noise(gradients: List[torch.Tensor], sigma: float) -> List[torc
 
 
 def aggregate_clipped_noisy(
-    client_gradients: List[List[torch.Tensor]], 
-    max_norm: float, 
-    sigma: float, 
+    client_gradients: List[List[torch.Tensor]],
+    max_norm: float,
+    sigma: float,
     device: torch.device = None
 ) -> List[torch.Tensor]:
     """
-    DP-FedAvg aggregation with per-client clipping and noise addition.
-    
+    Central DP-FedAvg aggregation with per-client clipping and noise addition.
+
+    This is NOT the mechanism used by run_experiment.py's --dp-epsilon flag.
+    That flag implements *local* DP: it clips and noises one client's raw
+    gradient before any adversary (including this project's gradient-inversion
+    attacker) can read it — the correct mechanism when the adversary's read
+    point is a single client's pre-aggregation update, which is what every
+    published result in this project tests (attack_source="gradients").
+
+    This function implements *central* DP-FedAvg instead: it clips each
+    client's gradient, averages the clipped values, and adds noise scaled
+    down by num_clients — a guarantee that covers only the released
+    aggregate. It provides no protection to an adversary who reads any
+    individual client's update before aggregation, so it must not be used to
+    "fix" the local-DP path above; doing so would understate the noise
+    actually needed and produce a broken privacy guarantee for that release
+    point.
+
+    This function is implemented but not evaluated anywhere in this project.
+    It's the mechanism a secure-aggregation / agg_update-style experiment
+    would need (see fl_system.py's capture_mode='agg_update'), which this
+    project has never run — no GPU/CelebA compute was available to do so.
+
     Steps:
         1. Clip each client's gradients to max_norm (L2)
         2. Average clipped gradients
         3. Add calibrated Gaussian noise
-    
+
     Args:
         client_gradients: List of gradient lists, shape [num_clients × num_params]
         max_norm: Per-client gradient clipping threshold
         sigma: Base noise scale (adjusted by num_clients)
         device: Target device for computation
-    
+
     Returns:
         Aggregated noisy gradients
     """
