@@ -32,39 +32,53 @@ Constraints discovered during investigation:
 
 ## Verified findings (facts, not hypotheses)
 
-1. **The DP epsilon sweep can't show graduated protection, for three
-   separable reasons — only one of them is a bug.** (a) The analytic Gaussian
-   mechanism itself, as implemented, is correct. (b)
-   `run_experiment.py:239-246` applies it to a *single client's* full
-   gradient vector and never divides noise by `num_clients` — this is
-   per-client DP, not DP-FedAvg, roughly 10x more noise than the aggregate
-   warrants. `Differential_privacy.py`'s `aggregate_clipped_noisy`, which
-   scales noise correctly for FedAvg, exists but is **never called** anywhere
-   — this is the genuine bug. (c) Independent of (b): per-coordinate Gaussian
-   noise has L2 norm scaling ~σ√d; for the model's d≈8.76M parameters, even
-   the weakest tested ε=8 (σ≈0.6) produces noise norm ~1780 against a signal
-   capped at max_norm=1.0 — the sweep's chosen ε range sits entirely inside
-   the noise-dominated regime for this dimensionality, so it was incapable of
-   showing graduation regardless of (b). Confirmed against `summary.csv`:
-   PSNR is flat (6.71 / 6.32 / 6.36 dB) across ε=8/1/0.1. Framing: the
-   mechanism was implemented correctly; the FedAvg scaling was missed; the
-   experimental design couldn't have answered the question it posed even
-   after fixing that.
-2. **The "Homomorphic Encryption" result doesn't test encryption.**
-   `HE_SAMPLE_LIMIT = 10_000` gates real Paillier vs. a fallback path; the
-   model has 8.76M parameters, so every recorded HE run took the `else`
-   branch (`round(g*precision)/precision` + fixed-scale `Laplace(0, 0.01)`
-   noise) — no encryption ever executed. Even when the real-Paillier branch
-   *would* run, the code encrypts → adds noise → **decrypts** → hands the
-   attacker plaintext; Paillier decryption is exact, so the round-trip itself
-   contributes zero protection, only the noise term does. `fl_system.py`
-   already implements the honest version of this threat model —
-   `capture_mode='agg_update'` gives the attacker only the FedAvg average,
-   which is what a curious server actually sees under secure aggregation /
-   HE-protected FL — **but no run in `results/` ever used it** (confirmed:
-   zero `config.json` files anywhere have `attack_source: "agg_update"`).
-   This is not an evaluated result waiting to be featured; it's an
-   implemented-but-unevaluated threat model.
+1. **The DP epsilon sweep can't show graduated protection — and the DP
+   mechanism itself is correctly implemented for the threat model tested.**
+   Every published DP config has `attack_source: "gradients"`: the adversary
+   reads one client's own raw gradient before any aggregation. Local DP —
+   clip that client's release to `max_norm`, add Gaussian noise calibrated to
+   the same sensitivity — is the textbook-correct mechanism for exactly that
+   release point, and that's what `run_experiment.py:239-246` does. The
+   sweep fails for a different reason: per-coordinate Gaussian noise has L2
+   norm scaling ~σ√d. At the model's d≈8.76M parameters, even the weakest
+   tested ε=8 (σ≈0.606) gives noise norm ~1794 against a signal capped at
+   max_norm=1.0 — every tested ε (8, 1, 0.1) lands inside the
+   noise-dominated regime for this dimensionality, so the sweep was
+   incapable of showing graduation regardless of which ε was picked.
+   Confirmed against `summary.csv`: PSNR is flat (6.71 / 6.32 / 6.36 dB)
+   across ε=8/1/0.1. This is an experimental-design finding, not a code bug —
+   frame it that way.
+   `Differential_privacy.py`'s `aggregate_clipped_noisy` (clip each client,
+   average, then add noise scaled down by `num_clients`) is a *different*
+   mechanism — central DP-FedAvg, whose guarantee covers only the released
+   aggregate. It provides no protection to an adversary reading a
+   pre-aggregation individual update, so it is not a fix for the tested
+   scenario and must not be wired into it; that would under-protect by
+   claiming a privacy guarantee the released quantity doesn't have. It's
+   correctly unused for `attack_source: "gradients"` — it's the mechanism for
+   an `agg_update`-style experiment, which brings us to finding 2.
+2. **The "Homomorphic Encryption" result doesn't test encryption, and it
+   shares its root cause with finding 1: neither ever evaluated the
+   secure-aggregation release point.** `HE_SAMPLE_LIMIT = 10_000` gates real
+   Paillier vs. a fallback path; the model has 8.76M parameters, so every
+   recorded HE run took the `else` branch (`round(g*precision)/precision` +
+   fixed-scale `Laplace(0, 0.01)` noise) — no encryption ever executed. Even
+   when the real-Paillier branch *would* run, the code encrypts → adds noise
+   → **decrypts** → hands the attacker plaintext; Paillier decryption is
+   exact, so the round-trip itself contributes zero protection, only the
+   noise term does. `fl_system.py` already implements the honest version of
+   this threat model — `capture_mode='agg_update'` gives the attacker only
+   the FedAvg average, which is what a curious server actually sees under
+   secure aggregation / HE-protected FL, and which is exactly the release
+   point `aggregate_clipped_noisy`'s central-DP mechanism is calibrated for —
+   **but no run in `results/` ever used it** (confirmed: zero `config.json`
+   files anywhere have `attack_source: "agg_update"`). Findings 1 and 2 are
+   one story: *which release point is the adversary reading?* The codebase
+   correctly evaluates the single-client-leak release point (local DP, real
+   result) and has two implemented-but-unevaluated mechanisms
+   (`aggregate_clipped_noisy`, `agg_update` capture) for the
+   secure-aggregation release point. Neither is a bug; both are named,
+   honest scope limits.
 3. **Numbers disagree across surfaces.** README's defense table (baseline
    29.38 / DP ε=1 8.12 / HE 12.45 / DP+HE 6.37 dB PSNR) does not match
    `results/report/summary.csv` (baseline 29.38 / DP ε=1 6.32 / HE 14.03 /
@@ -108,29 +122,30 @@ website copy is written until the corrected DP/HE story is settled, so the
 post never states something the code doesn't actually do.
 
 ### 1. Scientific / correctness fixes
-- **DP fix (single decision, not either/or):** wire the correctly-scaled
-  `aggregate_clipped_noisy` path into `run_experiment.py` so the code is
-  right going forward — but do **not** rerun and replace the published
-  `summary.csv` numbers (no compute available; see Reproducibility policy
-  below). The existing DP rows stay, explicitly labeled as produced by the
-  pre-fix, per-client-noise code path. README/site text states the DP
-  finding as: mechanism correct, FedAvg scaling was missing (now fixed in
-  code), and the tested ε range was inside the noise-dominated regime for
-  this model's dimensionality regardless — never claim the fixed code was
-  used to produce the published numbers.
+- **DP code stays as-is — no rewire.** It is correctly calibrated local DP
+  for the threat model every published result tested. Add a short in-code
+  comment at `run_experiment.py:239` naming the release point explicitly
+  ("local DP: protects this one client's raw gradient release; see
+  `aggregate_clipped_noisy` for the central-DP/secure-aggregation
+  alternative, which this project doesn't evaluate"). Document
+  `aggregate_clipped_noisy` in its own docstring as the mechanism for an
+  `agg_update`-style experiment, unevaluated here, rather than leaving it
+  looking like orphaned dead code.
 - Add a small, dependency-light synthetic script (no CelebA, no GPU,
-  matplotlib+numpy only — confirmed available) that demonstrates the σ√d
-  noise-domination effect analytically as a function of parameter count —
-  produces a supporting figure. This is the one genuinely new artifact this
-  cycle, and it documents finding (b)+(c) above with evidence rather than a
-  caveat sentence.
+  matplotlib+numpy only — confirmed available) that plots injected-noise L2
+  norm vs. clipped-signal norm as a function of parameter count d, using the
+  actual configuration (σ = max_norm·√(2ln(1.25/δ))/ε, δ=1e-5, max_norm=1.0),
+  marking the model's real d≈8.76M and where the three tested ε values
+  (8, 1, 0.1) land — all inside the saturated region. This is the one
+  genuinely new artifact this cycle and the centerpiece evidence for finding
+  1.
 - **HE reframe is text-only, not a headline result.** No run in `results/`
   ever exercised `capture_mode='agg_update'`, so there is no honest HE/secure-
   aggregation number to feature. Instead: describe the correct threat model
-  in prose (README + site), state plainly that the published HE row measured
-  fixed-scale Laplace noise and never executed encryption, and note that the
-  secure-aggregation path is implemented in `fl_system.py` but unevaluated —
-  an explicit, named limitation rather than a filled-in result.
+  in prose (README + site) using the unified "which release point?" framing
+  from finding 2, state plainly that the published HE row measured
+  fixed-scale Laplace noise and never executed encryption, and name the
+  secure-aggregation path as implemented but unevaluated.
 - Sync README's defense table to `results/report/summary.csv` (verified
   source of truth, including the ε=8 and ε=0.1 rows README currently omits);
   update the personal site's project entry once the new story is final (last
@@ -141,17 +156,11 @@ post never states something the code doesn't actually do.
   above (verified: no `config.json` in `results/` has a non-null
   `layer_weights`). Keep only options with an evidenced result behind them.
 
-### Reproducibility policy
-Once the DP path is rewired and dead code/duplication is removed, the
-current code can no longer regenerate the numbers already committed to
-`results/` — those were produced by the pre-fix code. For a project
-presented as a reproducible benchmark, silently shipping code that can't
-reproduce its own published results is a bigger credibility risk than the
-original bug. Before making any of the correctness/cleanup changes: tag the
-current commit (e.g. `results-as-published`), and add one explicit line to
-the README: numbers in `results/` were produced at that tag; the current
-code contains the corrections described above and will not reproduce the
-same DP numbers exactly if rerun.
+None of the above changes any code path that produced a number in
+`results/report/summary.csv` — the rename, dead-code removal, and script
+merges are non-numeric, and the DP path is explicitly left unchanged. No
+reproducibility tag or provenance ceremony is needed: the current code
+already reproduces the published results.
 
 ### 2. Code quality
 - Core algorithmic files (`fl_system.py`, `gradient_attack.py` minus the dead
@@ -195,9 +204,12 @@ numbers would have been.
 
 ## Out of scope
 - Any new large-scale experiment requiring GPU/CelebA/CSC compute — none is
-  available this cycle. This includes rerunning the DP sweep with the fixed
-  scaling and evaluating the `agg_update` HE threat model — both are named
-  limitations, not deliverables.
+  available this cycle. This includes evaluating the central-DP /
+  `agg_update` secure-aggregation threat model (`aggregate_clipped_noisy`,
+  `capture_mode='agg_update'`) — named as an implemented-but-unevaluated
+  limitation, not a deliverable. (The local-DP sweep itself is not being
+  rerun for a different reason: it's already correctly implemented — see
+  finding 1 — so a rerun wouldn't change any number.)
 - A model-accuracy / utility axis alongside attack quality (would require FL
   training runs under each defense — no compute available). The benchmark
   measures attack quality only and cannot speak to the privacy/utility
@@ -210,5 +222,3 @@ numbers would have been.
 - Exact IA/wireframe of the redesigned dashboard.
 - Whether the poster image survives as a standalone artifact or is retired.
 - Exact wording of the revised DP/HE sections in README and the site entry.
-- Exact commit ordering around the `results-as-published` tag (tag must be
-  cut before the DP rewire / dead-code / rename commits land).
