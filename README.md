@@ -8,6 +8,8 @@
 
 A research framework for studying **gradient inversion attacks** and **privacy defenses** in federated learning systems.
 
+![Dashboard preview](results/report/figures/dashboard_hero.png)
+
 ## Key Findings
 
 All numbers below are read directly from `results/report/summary.csv`.
