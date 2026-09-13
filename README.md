@@ -85,7 +85,7 @@ python -m http.server --directory docs 8000
 
 | Script | Description |
 |--------|-------------|
-| `run_showcase.sh` | Single high-quality attack demo |
+| `run_showcase.sh` | Single high-quality showcase run |
 | `run_multi_client.sh` | Benchmark across 10 clients |
 | `run_defenses.sh` | DP/HE defense evaluation |
 | `run_ablation.sh` | Attack hyperparameter study |
