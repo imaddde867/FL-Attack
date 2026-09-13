@@ -3,469 +3,474 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Federated Learning Gradient Inversion: Interactive Explorer</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231f2636'/%3E%3Ctext y='55%25' x='50%25' font-size='34' fill='%23f5f6fa' text-anchor='middle'%3E%F0%9F%90%8E%3C/text%3E%3C/svg%3E" />
+  <title>Privacy Leakage in Federated Learning</title>
+  <meta name="description" content="A gradient inversion attack benchmark on federated learning: how much of a client's private image can be reconstructed from a single raw gradient update, and what local differential privacy does about it." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Privacy Leakage in Federated Learning" />
+  <meta property="og:description" content="Gradient inversion attack benchmark on CelebA: reconstruction quality under no defense and under candidate defenses." />
+  <meta property="og:url" content="https://imaddde867.github.io/FL-Attack/" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Privacy Leakage in Federated Learning" />
+  <meta name="twitter:description" content="Gradient inversion attack benchmark on CelebA: reconstruction quality under no defense and under candidate defenses." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%23faf9f6'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='none' stroke='%231d3557' stroke-width='4'/%3E%3Crect x='20' y='20' width='24' height='24' fill='%23bc4b2c'/%3E%3C/svg%3E" />
   <style>
+    /* mirrored from scripts/make_dashboard.py PALETTE */
     :root {
-      color-scheme: dark;
-      --bg: #0f131c;
-      --bg-card: #171d2a;
-      --bg-panel: #1f2636;
-      --border: #2e3548;
-      --text: #f5f6fa;
-      --muted: #c7cddf;
-      --accent: #69a9ff;
-      --accent-strong: #f5d742;
-      --danger: #ff7676;
-      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+      color-scheme: light;
+      --paper: #faf9f6;
+      --panel: #ffffff;
+      --ink: #1a1a1a;
+      --muted: #5c5a52;
+      --border: #ddd9d0;
+      --navy: #1d3557;
+      --teal: #457b9d;
+      --rust: #bc4b2c;
+      --olive: #6a7f3f;
+      --gray: #8d8a80;
+      --serif: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      --mono: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      min-height: 100vh;
-      background: var(--bg);
-      color: var(--text);
-      font-family: inherit;
-      line-height: 1.4;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 1rem;
+      line-height: 1.6;
     }
-    .page {
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
+    h1, h2, h3 {
+      font-family: var(--serif);
+      line-height: 1.25;
+      font-weight: 600;
     }
-    header {
-      background: #0b0e15;
-      padding: 18px 32px;
+    h1 {
+      margin: 0;
+      font-size: clamp(1.75rem, 1.4rem + 1.5vw, 2.5rem);
+    }
+    h2 {
+      font-size: 1.5rem;
+      margin: 0 0 1rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid var(--navy);
+    }
+    h3 {
+      font-size: 1.15rem;
+      margin: 2rem 0 0.75rem;
+    }
+    a {
+      color: var(--navy);
+    }
+    code {
+      font-family: var(--mono);
+      font-size: 0.85em;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0.05em 0.3em;
+    }
+    .wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 clamp(1rem, 4vw, 2.5rem);
+    }
+    .prose {
+      max-width: 70ch;
+    }
+
+    /* ---------- header / footer ---------- */
+    .page-header {
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+      padding: 2.5rem 0 2rem;
+    }
+    .page-header h1 a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .page-header h1 a:hover {
+      text-decoration: underline;
+      text-decoration-color: var(--rust);
+    }
+    .subtitle {
+      margin: 0.6rem 0 0;
+      font-size: 1rem;
+      color: var(--muted);
+    }
+    .build-meta {
+      margin: 1rem 0 0;
+      font-size: 0.85rem;
+      color: var(--gray);
       display: flex;
       flex-wrap: wrap;
-      align-items: flex-end;
+      gap: 0.35rem 1.25rem;
+    }
+    .page-footer {
+      margin-top: 4rem;
+      border-top: 1px solid var(--border);
+      background: var(--panel);
+      padding: 1.75rem 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .page-footer .wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 1.5rem;
       justify-content: space-between;
-      border-bottom: 1px solid var(--border);
     }
-    header h1 {
-      margin: 0;
-      font-size: 26px;
-      letter-spacing: 0.02em;
+
+    /* ---------- sections ---------- */
+    main section {
+      margin: 3.5rem 0;
     }
-    header .meta {
-      text-align: right;
-      font-size: 14px;
-      color: var(--muted);
+    section > p {
+      max-width: 70ch;
     }
-    header .key-finding {
-      margin-top: 6px;
-      font-size: 15px;
-      color: var(--accent-strong);
-    }
-    main {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-    }
-    .sidebar {
-      width: 320px;
-      background: var(--bg-card);
-      border-right: 1px solid var(--border);
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-    .sidebar-intro {
-      font-size: 13px;
-      color: var(--muted);
-      background: var(--bg-panel);
+    .callout {
+      max-width: 70ch;
+      margin: 1.5rem 0 0;
+      padding: 0.85rem 1.1rem;
+      background: var(--panel);
       border: 1px solid var(--border);
-      padding: 10px 12px;
-      border-radius: 8px;
-      line-height: 1.4;
+      border-left: 3px solid var(--rust);
+      color: var(--ink);
     }
-    .filter-block h3 {
-      margin: 0 0 10px;
-      font-size: 15px;
-      color: var(--muted);
+    .callout .section-label {
+      color: var(--rust);
+    }
+    .section-label {
+      font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+
+    /* ---------- figures ---------- */
+    figure {
+      margin: 0;
+    }
+    figure img {
+      width: 100%;
+      display: block;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--panel);
+      cursor: zoom-in;
+    }
+    figcaption {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+    .paired-figures {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.75rem;
+      margin-top: 1.25rem;
+    }
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+    .single-figure {
+      margin-top: 1.25rem;
+      max-width: 720px;
+    }
+    .montage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .montage-grid img {
+      width: 100%;
+      display: block;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--panel);
+      cursor: zoom-in;
+    }
+    .empty-state {
+      padding: 1rem;
+      border: 1px dashed var(--border);
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+
+    /* ---------- explorer controls ---------- */
+    .controls {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.1rem 1.25rem;
+      margin-top: 1.25rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem 1.5rem;
+    }
+    .filter-block h4 {
+      margin: 0 0 0.4rem;
+      font-family: var(--sans);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
     }
     .filter-help {
-      margin: -6px 0 10px;
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.35;
+      margin: 0 0 0.5rem;
+      font-size: 0.85rem;
+      color: var(--gray);
+      line-height: 1.4;
     }
     .filter-options {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
+      gap: 0.35rem;
     }
     .chip {
-      padding: 6px 10px;
-      border-radius: 6px;
+      padding: 0.25rem 0.6rem;
+      border-radius: 3px;
       border: 1px solid var(--border);
-      background: transparent;
+      background: var(--paper);
       color: var(--muted);
       cursor: pointer;
-      font-size: 13px;
-      transition: all 0.2s ease;
+      font-family: var(--sans);
+      font-size: 0.85rem;
     }
     .chip.active {
-      background: rgba(105, 169, 255, 0.15);
-      border-color: var(--accent);
-      color: var(--text);
+      background: var(--navy);
+      border-color: var(--navy);
+      color: var(--panel);
     }
-    .sidebar input[type="search"],
-    .sidebar select {
+    .controls input[type="search"],
+    .controls select {
       width: 100%;
-      padding: 8px 10px;
-      border-radius: 6px;
+      padding: 0.4rem 0.5rem;
+      border-radius: 3px;
       border: 1px solid var(--border);
-      background: var(--bg-panel);
-      color: var(--text);
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 0.9rem;
     }
     .quick-actions {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
     }
     .quick-actions button {
-      padding: 10px;
-      border-radius: 6px;
+      padding: 0.35rem 0.7rem;
+      border-radius: 3px;
       border: 1px solid var(--border);
-      background: var(--bg-panel);
-      color: var(--text);
+      background: var(--paper);
+      color: var(--ink);
       cursor: pointer;
-      font-weight: 500;
-      font-size: 13px;
+      font-family: var(--sans);
+      font-size: 0.85rem;
     }
-    .quick-actions button.active {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 1px rgba(105, 169, 255, 0.4);
+    .quick-actions button:hover {
+      border-color: var(--navy);
     }
-    .viewer {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    .viewer-panels {
-      display: grid;
-      grid-template-columns: minmax(420px, 0.65fr) minmax(360px, 0.35fr);
-      gap: 24px;
-      padding: 24px 28px 12px;
-      border-bottom: 1px solid var(--border);
-      align-items: stretch;
-    }
-    .panel {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      min-height: 0;
-    }
-    .carousel-panel,
-    .details-panel {
-      min-height: 0;
-    }
-    .panel h2 {
-      margin: 0;
-      font-size: 18px;
-      letter-spacing: 0.04em;
-    }
-    .carousel-frame {
-      flex: 1;
-      position: relative;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: #090d13;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 0;
-      height: 100%;
-      overflow: hidden;
-    }
-    .autoplay-image {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      border-radius: 10px;
-      cursor: zoom-in;
-    }
-    .carousel-badge {
-      position: absolute;
-      bottom: 12px;
-      left: 12px;
-      padding: 6px 12px;
-      border-radius: 999px;
-      background: rgba(15, 19, 28, 0.85);
-      border: 1px solid var(--border);
-      font-size: 13px;
-      color: var(--text);
-      pointer-events: none;
-    }
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 10px;
-    }
-    .metric-card {
-      background: var(--bg-panel);
-      border-radius: 8px;
-      padding: 8px 10px;
-      border: 1px solid var(--border);
-      text-align: center;
-    }
-    .metric-card .label {
-      font-size: 11px;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-    .metric-card .value {
-      font-size: 20px;
-      font-weight: 600;
-    }
-    .run-summary {
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--text);
-    }
-    .run-path {
-      font-family: "SFMono-Regular", "Consolas", monospace;
-      font-size: 12px;
-      color: var(--muted);
-      background: #0b0f18;
-      padding: 8px 10px;
-      border-radius: 6px;
-      overflow-x: auto;
-      border: 1px solid var(--border);
-    }
-    .section-label {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 4px;
-    }
-    .details-stack {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .metrics-text {
-      background: #0f131d;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 12px;
-      min-height: 140px;
-      max-height: 220px;
-      overflow-y: auto;
-      font-family: "SFMono-Regular", "Consolas", monospace;
-      font-size: 12px;
-      white-space: pre-wrap;
-      margin: 0;
-    }
-    .nav-buttons {
-      display: flex;
-      gap: 10px;
-      justify-content: flex-end;
-    }
-    .nav-buttons button {
-      padding: 8px 14px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--text);
-      cursor: pointer;
-    }
-    .comparison-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .autoplay-controls {
-      display: flex;
-      gap: 4px;
-      align-items: center;
-    }
-    .circle-button {
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      padding: 0;
-      transition: all 0.2s ease;
-    }
-    .circle-button:hover:not(:disabled) {
-      color: var(--text);
-      background: rgba(255,255,255,0.1);
-    }
-    .circle-button:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-    }
-    .circle-button svg {
-      width: 20px;
-      height: 20px;
-      fill: currentColor;
-    }
-    .circle-button .icon-pause {
-      display: none;
-    }
-    .circle-button.playing .icon-play {
-      display: none;
-    }
-    .circle-button.playing .icon-pause {
-      display: block;
-    }
-    .autoplay-speed {
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 500;
-      padding: 4px 18px 4px 8px;
-      appearance: none;
-      cursor: pointer;
-      background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
-      background-position: right 6px center;
-      background-size: 5px 5px;
-      background-repeat: no-repeat;
-      transition: color 0.2s ease;
-    }
-    .autoplay-speed:hover:not(:disabled) {
-      color: var(--text);
-    }
-    .autoplay-speed:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-    }
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-    .tabs {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 0 28px 28px;
-    }
-    .tab-buttons {
-      display: flex;
-      gap: 16px;
-      margin-top: 16px;
-      border-bottom: 1px solid var(--border);
-    }
-    .tab-buttons button {
-      border: none;
-      background: none;
-      color: var(--muted);
-      padding: 12px 4px;
-      cursor: pointer;
-      border-bottom: 3px solid transparent;
-      font-size: 15px;
-    }
-    .tab-buttons button.active {
-      color: var(--text);
-      border-color: var(--accent);
-    }
-    .tab-panel {
-      display: none;
-      padding: 18px 0;
-      flex: 1;
-      overflow-y: auto;
-    }
-    .tab-panel.active {
-      display: block;
-    }
+
+    /* ---------- tables ---------- */
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 0.9rem;
+      background: var(--panel);
     }
-    thead {
+    thead th {
       position: sticky;
       top: 0;
-      background: var(--bg-card);
+      background: var(--panel);
+      font-family: var(--sans);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      cursor: pointer;
     }
     th, td {
       border-bottom: 1px solid var(--border);
-      padding: 8px;
+      padding: 0.5rem 0.6rem;
       text-align: left;
+    }
+    .table-wrapper {
+      margin-top: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      max-height: 30rem;
+      overflow: auto;
+    }
+    tbody tr {
+      cursor: pointer;
+    }
+    tbody tr:hover {
+      background: var(--paper);
+    }
+    tbody tr.selected {
+      background: rgba(29, 53, 87, 0.08);
+      box-shadow: inset 3px 0 0 var(--navy);
     }
     .table-thumb {
       width: 64px;
       height: 40px;
       object-fit: cover;
-      border-radius: 4px;
+      border-radius: 3px;
       border: 1px solid var(--border);
-      background: #090d13;
-    }
-    tbody tr {
-      cursor: pointer;
-    }
-    tbody tr.selected {
-      background: rgba(105, 169, 255, 0.12);
-    }
-    .charts-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-      gap: 18px;
-    }
-    .charts-grid img,
-    .montage-grid img {
-      width: 100%;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: #090d13;
-    }
-    .montage-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 14px;
-    }
-    .empty-state {
-      padding: 18px;
-      border-radius: 10px;
-      background: var(--bg-card);
-      border: 1px dashed var(--border);
-      color: var(--muted);
-      text-align: center;
+      background: var(--paper);
+      cursor: zoom-in;
     }
     .leaderboard-controls {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-      font-size: 13px;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+      font-size: 0.85rem;
       color: var(--muted);
     }
+
+    /* ---------- selected run viewer ---------- */
+    .run-viewer {
+      display: grid;
+      grid-template-columns: minmax(260px, 0.9fr) minmax(300px, 1.1fr);
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.25rem;
+    }
+    .run-viewer h3 {
+      margin: 0;
+    }
+    .viewer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .selected-image {
+      width: 100%;
+      display: block;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--paper);
+      cursor: zoom-in;
+    }
+    .nav-buttons {
+      display: flex;
+      gap: 0.4rem;
+    }
+    .nav-buttons button {
+      padding: 0.25rem 0.7rem;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      background: var(--paper);
+      color: var(--ink);
+      cursor: pointer;
+      font-family: var(--sans);
+      font-size: 0.85rem;
+    }
+    .nav-buttons button:hover {
+      border-color: var(--navy);
+    }
+    .run-summary {
+      font-family: var(--serif);
+      font-size: 1.05rem;
+      margin-bottom: 0.75rem;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+      gap: 0.5rem;
+    }
+    .metric-card {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0.4rem 0.5rem;
+      text-align: center;
+    }
+    .metric-card .label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    .metric-card .value {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    .details-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 0.9rem;
+    }
+    .run-path,
+    .metrics-text {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--muted);
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0.5rem 0.6rem;
+      overflow-x: auto;
+      margin: 0;
+    }
+    .metrics-text {
+      max-height: 12rem;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    /* ---------- reproduce ---------- */
+    pre.commands {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--navy);
+      border-radius: 4px;
+      padding: 1rem 1.1rem;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: var(--ink);
+      max-width: 70ch;
+    }
+    pre.commands code {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: inherit;
+    }
+
+    /* ---------- lightbox ---------- */
     .lightbox {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.8);
+      background: rgba(26, 26, 26, 0.8);
       display: none;
       align-items: center;
       justify-content: center;
       z-index: 999;
       padding: 20px;
+      cursor: zoom-out;
     }
     .lightbox.active {
       display: flex;
@@ -473,66 +478,81 @@
     .lightbox img {
       max-width: 90vw;
       max-height: 85vh;
-      border-radius: 12px;
-      border: 2px solid var(--border);
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--panel);
     }
-    @media (max-width: 1100px) {
-      main {
-        flex-direction: column;
-      }
-      .sidebar {
-        width: 100%;
-        border-right: none;
-        border-bottom: 1px solid var(--border);
-        flex-direction: row;
-        flex-wrap: wrap;
-      }
-      .viewer-panels {
+
+    @media (max-width: 820px) {
+      .run-viewer {
         grid-template-columns: 1fr;
       }
     }
   </style>
 </head>
 <body>
-  <div class="page">
-    <header>
-      <div>
-        <h1>Federated Learning Gradient Inversion: Interactive Explorer</h1>
-        <div class="key-finding" id="keyFinding"></div>
+  <header class="page-header">
+    <div class="wrap">
+      <h1><a href="https://github.com/imaddde867/FL-Attack" target="_blank" rel="noopener">Privacy Leakage in Federated Learning</a></h1>
+      <p class="subtitle">CelebA · SimpleCNN, 8.76M parameters · gradient inversion attack</p>
+      <p class="build-meta">
+        <span id="buildDate"></span>
+        <span id="runCounts"></span>
+      </p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="overview">
+      <h2>Overview</h2>
+      <p>Federated learning promises that raw client data never leaves the device — only
+gradients are shared. This project shows that promise is weaker than it looks: an
+honest-but-curious server can reconstruct a recognizable face from a single client's
+gradient update alone, no aggregation required. The benchmark below measures
+reconstruction quality (attack strength) under no defense and under two candidate
+defenses; it does not measure model accuracy, so it cannot speak to the
+privacy/utility tradeoff.</p>
+      <div class="callout">
+        <div class="section-label">Headline result</div>
+        <div id="keyFinding"></div>
       </div>
-      <div class="meta">
-        <div id="buildDate"></div>
-        <div id="runCounts"></div>
-      </div>
-    </header>
-    <main>
-      <aside class="sidebar">
-        <div class="sidebar-intro">
-          Use these controls like a remote for the poster: pick the scenario group, defense method, and client to jump directly to the matching reconstruction.
-        </div>
+    </section>
+
+    <section id="threat-model">
+      <h2>Threat Model &amp; Scope</h2>
+      <p><strong>Every result below reads one client's raw gradient before any
+aggregation</strong> (<code>attack_source="gradients"</code>). Local differential
+privacy — clip that client's release, add calibrated Gaussian noise — is the correct
+mechanism for exactly this release point, and it is what's evaluated here. It is
+<em>not</em> a bug that ε=8, 1, and 0.1 all land at roughly the same PSNR: per-coordinate
+Gaussian noise has L2 norm scaling ~σ√d, and at this model's d≈8.76M parameters, even
+ε=8 already injects noise ~1800× the clipped signal bound. See the figure below.</p>
+      <p>The "HE" row does not test encryption: the implementation quantizes gradients and
+adds fixed-scale Laplace noise; for this model size it never executes real Paillier
+encryption, and even when it does, the code decrypts the result before scoring it — a
+real secure-aggregation deployment would never expose that decrypted intermediate to
+this attacker. An honest version of this experiment exists in the codebase
+(<code>capture_mode='agg_update'</code> + <code>aggregate_clipped_noisy</code>'s
+central-DP mechanism, attacking only the FedAvg-averaged update) but no GPU/CelebA
+compute was available to run it this cycle — a named limitation, not a filled-in
+result.</p>
+    </section>
+
+    <section id="attack-effectiveness">
+      <h2>Results — Attack Effectiveness</h2>
+      <p>Every run in the benchmark, with its reconstruction metrics. Lower LPIPS and
+      higher PSNR/SSIM mean a stronger attack — that is, a worse privacy outcome for the
+      client whose gradient was read. Click any row to load that reconstruction.</p>
+
+      <div class="controls">
         <div class="filter-block">
-          <h3>Search runs</h3>
-          <p class="filter-help">Type parts of a run path, client, or method (e.g., "dp_eps1 c3").</p>
+          <h4>Search runs</h4>
+          <p class="filter-help">Match parts of a run path, client, or method (e.g. "dp_eps1 c3").</p>
           <input type="search" id="searchInput" placeholder="Search by path, method, client..." />
         </div>
         <div class="filter-block">
-          <h3>Scenario group</h3>
-          <p class="filter-help">Matches rows on the poster (defenses, ablation, multi_client, showcase).</p>
-          <div id="groupFilters" class="filter-options"></div>
-        </div>
-        <div class="filter-block">
-          <h3>Method / defense config</h3>
-          <p class="filter-help">Choose the privacy mechanism or ablation (baseline, dp, he, tv, etc.).</p>
-          <div id="methodFilters" class="filter-options"></div>
-        </div>
-        <div class="filter-block">
-          <h3>Client (participant)</h3>
-          <p class="filter-help">Select which client or benchmarked participant (c0..c9) to inspect.</p>
-          <div id="clientFilters" class="filter-options"></div>
-        </div>
-        <div class="filter-block">
-          <h3>Sort runs</h3>
-          <p class="filter-help">Change the leaderboard ordering without touching the poster data.</p>
+          <h4>Sort runs</h4>
+          <p class="filter-help">Reorder the table without changing which runs are shown.</p>
           <select id="sortSelect">
             <option value="best">Best (LPIPS asc, SSIM desc, PSNR desc)</option>
             <option value="psnr">PSNR high to low</option>
@@ -543,8 +563,23 @@
           </select>
         </div>
         <div class="filter-block">
-          <h3>Quick actions</h3>
-          <p class="filter-help">Instant presets that mirror common poster callouts.</p>
+          <h4>Scenario group</h4>
+          <p class="filter-help">Experiment family: defenses, ablation, multi_client, showcase.</p>
+          <div id="groupFilters" class="filter-options"></div>
+        </div>
+        <div class="filter-block">
+          <h4>Method / defense config</h4>
+          <p class="filter-help">Privacy mechanism or ablation setting (baseline, dp, he, tv, ...).</p>
+          <div id="methodFilters" class="filter-options"></div>
+        </div>
+        <div class="filter-block">
+          <h4>Client (participant)</h4>
+          <p class="filter-help">Which client or benchmarked participant (c0..c9) to inspect.</p>
+          <div id="clientFilters" class="filter-options"></div>
+        </div>
+        <div class="filter-block">
+          <h4>Quick views</h4>
+          <p class="filter-help">Presets for the comparisons discussed in the text.</p>
           <div class="quick-actions">
             <button id="btnBestOverall">Best overall</button>
             <button id="btnBaselineBest">Baseline best</button>
@@ -552,104 +587,144 @@
             <button id="btnDpSweep">DP sweep</button>
           </div>
         </div>
-      </aside>
-      <section class="viewer">
-        <div class="viewer-panels">
-          <div class="panel carousel-panel" id="autoplayPanel">
-            <div class="comparison-header">
-              <h2>Autoplay carousel</h2>
-              <div class="autoplay-controls">
-                <button id="autoplayToggle" class="circle-button" aria-label="Start autoplay" title="Start autoplay" aria-pressed="false">
-                  <span class="sr-only">Start autoplay</span>
-                  <svg class="icon-play" viewBox="0 0 24 24" role="presentation">
-                    <polygon points="8,5 19,12 8,19" />
-                  </svg>
-                  <svg class="icon-pause" viewBox="0 0 24 24" role="presentation">
-                    <rect x="7" y="5" width="3" height="14" />
-                    <rect x="14" y="5" width="3" height="14" />
-                  </svg>
-                </button>
-                <select id="autoplaySpeed" class="autoplay-speed" aria-label="Loop speed">
-                  <option value="12000">Slow</option>
-                  <option value="8000" selected>Medium</option>
-                  <option value="5000">Fast</option>
-                </select>
-              </div>
-            </div>
-            <div class="carousel-frame">
-              <img id="autoplayImage" class="autoplay-image" alt="Autoplay preview" />
-              <div class="carousel-badge" id="autoplayStatus">Slide 0 / 0</div>
+      </div>
+
+      <div class="leaderboard-controls">
+        <div id="filteredCount"></div>
+        <div>Click any row to load that run.</div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th data-sort="group">Group</th>
+              <th data-sort="method">Method</th>
+              <th data-sort="client">Client</th>
+              <th data-sort="psnr">PSNR</th>
+              <th data-sort="ssim">SSIM</th>
+              <th data-sort="lpips">LPIPS</th>
+              <th data-sort="labelmatch">LabelMatch</th>
+              <th>Image</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody"></tbody>
+        </table>
+      </div>
+
+      <div class="run-viewer" id="selectedPanel">
+        <div>
+          <div class="viewer-header">
+            <h3>Reconstruction</h3>
+          </div>
+          <img id="selectedImage" class="selected-image" alt="Reconstruction for the selected run" />
+        </div>
+        <div>
+          <div class="viewer-header">
+            <h3>Run details</h3>
+            <div class="nav-buttons">
+              <button id="prevBtn" title="Previous run (Arrow Left)">Prev</button>
+              <button id="nextBtn" title="Next run (Arrow Right)">Next</button>
             </div>
           </div>
-          <div class="panel details-panel" id="selectedPanel">
-            <div class="comparison-header">
-              <h2>Run details</h2>
-              <div class="nav-buttons">
-                <button id="prevBtn" title="Previous run (Arrow Left)">Prev</button>
-                <button id="nextBtn" title="Next run (Arrow Right)">Next</button>
-              </div>
+          <div class="run-summary" id="runSummary">No run selected.</div>
+          <div class="metrics-grid" id="selectedMetrics"></div>
+          <div class="details-stack">
+            <div>
+              <div class="section-label">Run path</div>
+              <div class="run-path" id="runPath"></div>
             </div>
-            <div class="run-summary" id="runSummary">No run selected.</div>
-            <div class="metrics-grid" id="selectedMetrics"></div>
-            <div class="details-stack">
-              <div>
-                <div class="section-label">Run path</div>
-                <div class="run-path" id="runPath"></div>
-              </div>
-              <div>
-                <div class="section-label">Metrics</div>
-                <pre class="metrics-text" id="metricsText">Metrics file not available.</pre>
-              </div>
+            <div>
+              <div class="section-label">Metrics</div>
+              <pre class="metrics-text" id="metricsText">Metrics file not available.</pre>
             </div>
           </div>
         </div>
-        <section class="tabs">
-          <div class="tab-buttons">
-            <button data-tab="leaderboards" class="active">Leaderboards</button>
-            <button data-tab="distributions">Distributions</button>
-            <button data-tab="ablations">Ablations</button>
-            <button data-tab="montages">Montages</button>
-          </div>
-          <div id="tab-leaderboards" class="tab-panel active">
-            <div class="leaderboard-controls">
-              <div id="filteredCount"></div>
-              <div>Click any row to load that run.</div>
-            </div>
-            <div class="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th data-sort="group">Group</th>
-                    <th data-sort="method">Method</th>
-                    <th data-sort="client">Client</th>
-                    <th data-sort="psnr">PSNR</th>
-                    <th data-sort="ssim">SSIM</th>
-                    <th data-sort="lpips">LPIPS</th>
-                    <th data-sort="labelmatch">LabelMatch</th>
-                    <th>Image</th>
-                  </tr>
-                </thead>
-                <tbody id="leaderboardBody"></tbody>
-              </table>
-            </div>
-          </div>
-          <div id="tab-distributions" class="tab-panel">
-            <div class="charts-grid" id="distributionCharts"></div>
-          </div>
-          <div id="tab-ablations" class="tab-panel">
-            <div class="charts-grid" id="ablationCharts"></div>
-            <div id="ablationTable"></div>
-          </div>
-          <div id="tab-montages" class="tab-panel">
-            <div class="montage-grid" id="montageGrid"></div>
-            <div class="empty-state" id="montageEmpty" style="display:none;">
-              No montages available. Provide montage PNGs in results/report/montages/.
-            </div>
-          </div>
-        </section>
-      </section>
-    </main>
-  </div>
+      </div>
+
+      <h3>Robustness across clients</h3>
+      <p>The attack is not a single lucky reconstruction. Across ten independently
+      sampled clients, reconstruction quality stays in a narrow band — the leak is a
+      property of the gradient release, not of one unusually vulnerable participant.</p>
+      <div id="distributionCharts">
+        <figure class="single-figure">
+          <img id="chartMulticlientBoxplots" alt="Distribution of reconstruction metrics across ten clients" />
+          <figcaption>Per-metric distribution across the multi-client benchmark.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="defenses">
+      <h2>Results — Defenses</h2>
+      <p>Local differential privacy is applied at exactly the release point this attack
+      reads: one client's own gradient, clipped and noised before it leaves the device.
+      The epsilon sweep is the centerpiece result, and its flatness is the finding.</p>
+      <div class="paired-figures">
+        <figure class="paired-figure">
+          <img id="chartDefensesBars" alt="Reconstruction metrics by defense configuration" />
+          <figcaption>The tested ε range (8, 1, 0.1) produces flat PSNR — this is the
+          finding, not noise in the experiment.</figcaption>
+        </figure>
+        <figure class="paired-figure">
+          <img id="dpNoiseScalingFig" alt="DP noise L2 norm vs. clipped signal, by model dimensionality" />
+          <figcaption>Why the ε sweep is flat: injected noise scales with √d. At this model's
+          8.76M parameters, every tested ε lands in the noise-dominated region. Worked proof:
+          <code>scripts/dp_noise_scaling_proof.py</code>.</figcaption>
+        </figure>
+      </div>
+      <div class="callout">
+        <div class="section-label">Read the "HE" row with its caveat</div>
+        The "HE" configuration below does not test encryption, and the central-DP /
+        secure-aggregation release point is a named scope limit rather than a measured
+        result — see <a href="#threat-model">Threat Model &amp; Scope</a> before quoting
+        either number.
+      </div>
+      <figure class="single-figure">
+        <img id="chartDefensesScatter" alt="PSNR versus LPIPS for each defense configuration" />
+        <figcaption>PSNR against LPIPS per defense configuration: the two metrics agree on
+        the ordering, so the flat ε sweep is not an artifact of the metric choice.</figcaption>
+      </figure>
+    </section>
+
+    <section id="ablation">
+      <h2>Ablation Study</h2>
+      <p>Which attack hyperparameters actually matter: each chart varies one setting of
+      the inversion optimizer and reports the resulting reconstruction quality.</p>
+      <div class="charts-grid" id="ablationCharts"></div>
+      <div id="ablationTable"></div>
+
+      <h3>Reconstruction montages</h3>
+      <p>Supporting visual evidence — the same runs, side by side, as images rather than
+      numbers.</p>
+      <div class="montage-grid" id="montageGrid"></div>
+      <div class="empty-state" id="montageEmpty" style="display:none;">
+        No montages available. Provide montage PNGs in results/report/montages/.
+      </div>
+    </section>
+
+    <section id="reproduce">
+      <h2>Reproduce It</h2>
+      <p>Everything on this page is generated from <code>results/report/summary.csv</code>
+      by <code>scripts/make_dashboard.py</code>.</p>
+      <pre class="commands"><code># Install dependencies
+pip install -r requirements.txt
+
+# Run showcase experiment
+bash scripts/run_showcase.sh
+
+# Launch local dashboard
+python -m http.server --directory docs 8000</code></pre>
+      <p><a href="https://github.com/imaddde867/FL-Attack">View source on GitHub</a></p>
+    </section>
+  </main>
+
+  <footer class="page-footer">
+    <div class="wrap">
+      <span id="footerBuild"></span>
+      <span><a href="https://github.com/imaddde867/FL-Attack">github.com/imaddde867/FL-Attack</a></span>
+      <span>MIT License</span>
+    </div>
+  </footer>
+
   <div class="lightbox" id="lightbox">
     <img id="lightboxImg" alt="Full view" />
   </div>
@@ -668,26 +743,26 @@
       selectedRunId: null,
       filteredIds: [],
       tableSort: { field: "psnr", dir: "desc" },
-      autoplay: {
-        playing: false,
-        interval: 8000,
-        timerId: null,
-      },
     };
 
     const METRIC_FIELDS = ["PSNR", "SSIM", "LPIPS", "MSE", "LabelMatch"];
     const FILTER_HINTS = {
-      groups: "Scenario group shown on the poster",
+      groups: "Scenario group",
       methods: "Defense or method configuration",
       clients: "Client / participant identifier",
     };
+    const ABLATION_CHARTS = [
+      ["ablation_psnr", "PSNR by ablation setting"],
+      ["ablation_ssim", "SSIM by ablation setting"],
+      ["ablation_lpips", "LPIPS by ablation setting"],
+    ];
 
     fetch("data.json")
       .then((res) => res.json())
       .then(initDashboard)
       .catch((err) => {
         console.error(err);
-        document.body.innerHTML = "<pre style='padding:20px;color:#fff;'>Failed to load dashboard data.</pre>";
+        document.body.innerHTML = "<pre style='padding:20px;'>Failed to load dashboard data.</pre>";
       });
 
     function initDashboard(data) {
@@ -703,11 +778,10 @@
       }
       updateMeta(data.meta);
       wireEvents();
-      populateCharts(data.charts);
+      populateCharts(data.charts, data.figures);
       populateAblations(data.aggregates.ablations || []);
       populateMontages(data.montages || []);
       applyFilters();
-      startAutoplay();
     }
 
     function populateFilters(values) {
@@ -797,6 +871,10 @@
         .join("  ·  ");
       document.getElementById("runCounts").textContent = `Total runs: ${meta.total_runs} (${counts})`;
       document.getElementById("keyFinding").textContent = meta.key_finding || "";
+      const footerBuild = document.getElementById("footerBuild");
+      if (footerBuild) {
+        footerBuild.textContent = `Generated ${meta.build_time} from ${meta.build_source || "summary.csv"}`;
+      }
     }
 
     function wireEvents() {
@@ -835,28 +913,11 @@
         setFilterSet("methods", dpMethods);
         applyFilters();
       });
-      document.getElementById("autoplayToggle").addEventListener("click", () => {
-        if (state.autoplay.playing) {
-          stopAutoplay();
-        } else {
-          startAutoplay();
-        }
-      });
-      document.getElementById("autoplaySpeed").addEventListener("change", (ev) => {
-        const value = Number(ev.target.value);
-        if (!Number.isNaN(value)) {
-          state.autoplay.interval = value;
-          refreshAutoplayTimer();
-        }
-      });
       document.getElementById("prevBtn").addEventListener("click", () => jumpSelection(-1));
       document.getElementById("nextBtn").addEventListener("click", () => jumpSelection(1));
       document.addEventListener("keydown", (ev) => {
         if (ev.key === "ArrowLeft") jumpSelection(-1);
         if (ev.key === "ArrowRight") jumpSelection(1);
-      });
-      document.querySelectorAll(".tab-buttons button").forEach((btn) => {
-        btn.addEventListener("click", () => activateTab(btn.dataset.tab));
       });
       document.getElementById("lightbox").addEventListener("click", () => {
         document.getElementById("lightbox").classList.remove("active");
@@ -869,10 +930,10 @@
           renderLeaderboards();
         });
       });
-      const autoplayImg = document.getElementById("autoplayImage");
-      if (autoplayImg) {
-        autoplayImg.addEventListener("click", () => {
-          const srcAttr = autoplayImg.getAttribute("src");
+      const selectedImg = document.getElementById("selectedImage");
+      if (selectedImg) {
+        selectedImg.addEventListener("click", () => {
+          const srcAttr = selectedImg.getAttribute("src");
           if (srcAttr && srcAttr.trim()) {
             openLightbox(srcAttr);
           }
@@ -923,13 +984,11 @@
       state.filteredIds = runs.map((run) => run.run_id);
       if (state.filteredIds.length === 0) {
         state.selectedRunId = null;
-        stopAutoplay();
       } else if (!state.filteredIds.includes(state.selectedRunId)) {
         state.selectedRunId = state.filteredIds[0];
       }
       renderLeaderboards();
       renderSelectedRun();
-      updateAutoplayControls();
     }
 
     function sorterFor(key) {
@@ -1051,8 +1110,7 @@
             : "No runs match the current filters.";
         }
         updateUrlState();
-        syncAutoplayDisplay();
-        refreshAutoplayTimer();
+        syncSelectedImage();
         return;
       }
       if (summaryEl) {
@@ -1063,7 +1121,7 @@
       }
       if (metricsContainer) {
         metricsContainer.innerHTML = "";
-        ["PSNR", "SSIM", "LPIPS", "MSE", "LabelMatch"].forEach((metric) => {
+        METRIC_FIELDS.forEach((metric) => {
           const div = document.createElement("div");
           div.className = "metric-card";
           div.innerHTML = `<div class="label">${metric}</div><div class="value">${formatMetric(run.metrics[metric])}</div>`;
@@ -1075,8 +1133,20 @@
       }
       loadMetricsText(run);
       updateUrlState();
-      syncAutoplayDisplay();
-      refreshAutoplayTimer();
+      syncSelectedImage();
+    }
+
+    function syncSelectedImage() {
+      const image = document.getElementById("selectedImage");
+      if (!image) return;
+      const run = state.runsById[state.selectedRunId];
+      const fallback = state.placeholderImage || "";
+      const src = run ? run.image_path || fallback : fallback;
+      image.setAttribute("src", src);
+      image.setAttribute(
+        "alt",
+        run ? `Reconstruction for ${run.group} / ${run.method} / ${run.client}` : "No run selected"
+      );
     }
 
     function updateUrlState() {
@@ -1125,91 +1195,9 @@
         })
         .catch(() => {
           if (state.selectedRunId === run.run_id) {
-        box.textContent = "Failed to load metrics.";
+            box.textContent = "Failed to load metrics.";
           }
         });
-    }
-
-
-
-
-
-    function startAutoplay() {
-      if (!state.filteredIds.length) return;
-      state.autoplay.playing = true;
-      refreshAutoplayTimer();
-      updateAutoplayControls();
-    }
-
-    function stopAutoplay() {
-      state.autoplay.playing = false;
-      refreshAutoplayTimer();
-      updateAutoplayControls();
-    }
-
-    function refreshAutoplayTimer() {
-      if (state.autoplay.timerId) {
-        clearTimeout(state.autoplay.timerId);
-        state.autoplay.timerId = null;
-      }
-      if (state.autoplay.playing && state.filteredIds.length > 1) {
-        state.autoplay.timerId = window.setTimeout(stepAutoplay, state.autoplay.interval);
-      }
-      updateAutoplayControls();
-    }
-
-    function stepAutoplay() {
-      if (!state.filteredIds.length) {
-        stopAutoplay();
-        return;
-      }
-      const currentIdx = state.filteredIds.indexOf(state.selectedRunId);
-      const nextIdx = currentIdx === -1 ? 0 : (currentIdx + 1) % state.filteredIds.length;
-      state.selectedRunId = state.filteredIds[nextIdx];
-      renderSelectedRun();
-      renderLeaderboards();
-    }
-
-    function syncAutoplayDisplay() {
-      const image = document.getElementById("autoplayImage");
-      const status = document.getElementById("autoplayStatus");
-      const run = state.runsById[state.selectedRunId];
-      const fallback = state.placeholderImage || "";
-      if (!run) {
-        if (image) image.setAttribute("src", fallback);
-        if (status) {
-          status.textContent = state.filteredIds.length ? "Slide 0 / " + state.filteredIds.length : "No runs";
-        }
-        return;
-      }
-      const src = run.image_path || fallback;
-      if (image) image.setAttribute("src", src);
-      if (status) {
-        const idx = state.filteredIds.indexOf(run.run_id);
-        const total = state.filteredIds.length || 1;
-        const position = idx >= 0 ? idx + 1 : 1;
-        status.textContent = `Slide ${position} / ${total}`;
-      }
-    }
-
-    function updateAutoplayControls() {
-      const btn = document.getElementById("autoplayToggle");
-      if (btn) {
-        btn.disabled = state.filteredIds.length === 0;
-        btn.classList.toggle("playing", state.autoplay.playing);
-        const label = state.autoplay.playing ? "Pause autoplay" : "Start autoplay";
-        btn.setAttribute("aria-label", label);
-        btn.setAttribute("title", label);
-        btn.setAttribute("aria-pressed", String(state.autoplay.playing));
-        const sr = btn.querySelector(".sr-only");
-        if (sr) {
-          sr.textContent = label;
-        }
-      }
-      const select = document.getElementById("autoplaySpeed");
-      if (select) {
-        select.disabled = state.filteredIds.length === 0;
-      }
     }
 
     function jumpSelection(delta) {
@@ -1222,36 +1210,47 @@
       renderLeaderboards();
     }
 
-    function activateTab(tabName) {
-      document.querySelectorAll(".tab-buttons button").forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.tab === tabName);
-      });
-      document.querySelectorAll(".tab-panel").forEach((panel) => {
-        panel.classList.toggle("active", panel.id === `tab-${tabName}`);
-      });
+    function setFigureSrc(imgId, path) {
+      const img = document.getElementById(imgId);
+      if (!img) return;
+      const figure = img.closest("figure");
+      if (!path) {
+        if (figure) figure.style.display = "none";
+        return;
+      }
+      img.src = path;
+      img.addEventListener("click", () => openLightbox(path));
     }
 
-    function populateCharts(charts) {
-      const distContainer = document.getElementById("distributionCharts");
-      distContainer.innerHTML = "";
-      ["defenses_grouped_bars", "defenses_scatter_psnr_vs_lpips", "multiclient_boxplots"].forEach((key) => {
-        const path = charts[key];
-        const div = document.createElement("div");
-        if (path) {
-          div.innerHTML = `<div style="margin-bottom:8px;font-size:14px;color:var(--muted);">${key.replace(/_/g, " ")}</div><img src="${path}" alt="${key}" />`;
-        } else {
-          div.innerHTML = `<div class="empty-state">Chart ${key} unavailable.</div>`;
-        }
-        distContainer.appendChild(div);
-      });
-      const ablationContainer = document.getElementById("ablationCharts");
-      ablationContainer.innerHTML = "";
-      const ablationPath = charts["ablation_bars"];
-      if (ablationPath) {
-        const div = document.createElement("div");
-        div.innerHTML = `<div style="margin-bottom:8px;font-size:14px;color:var(--muted);">Ablation summary</div><img src="${ablationPath}" alt="Ablation chart" />`;
-        ablationContainer.appendChild(div);
+    function populateCharts(charts, figures) {
+      const chartPaths = charts || {};
+      const figurePaths = figures || {};
+      setFigureSrc("chartMulticlientBoxplots", chartPaths.multiclient_boxplots);
+      setFigureSrc("chartDefensesBars", chartPaths.defenses_grouped_bars);
+      setFigureSrc("chartDefensesScatter", chartPaths.defenses_scatter_psnr_vs_lpips);
+      setFigureSrc("dpNoiseScalingFig", figurePaths.dp_noise_scaling);
+
+      const container = document.getElementById("ablationCharts");
+      if (!container) return;
+      container.innerHTML = "";
+      const available = ABLATION_CHARTS.filter(([key]) => chartPaths[key]);
+      if (available.length === 0) {
+        container.innerHTML = '<div class="empty-state">Ablation charts unavailable.</div>';
+        return;
       }
+      available.forEach(([key, caption]) => {
+        const path = chartPaths[key];
+        const figure = document.createElement("figure");
+        const img = document.createElement("img");
+        img.src = path;
+        img.alt = caption;
+        img.addEventListener("click", () => openLightbox(path));
+        const figcaption = document.createElement("figcaption");
+        figcaption.textContent = caption;
+        figure.appendChild(img);
+        figure.appendChild(figcaption);
+        container.appendChild(figure);
+      });
     }
 
     function populateAblations(rows) {
@@ -1260,6 +1259,8 @@
         container.innerHTML = '<div class="empty-state">No ablation data.</div>';
         return;
       }
+      const wrapper = document.createElement("div");
+      wrapper.className = "table-wrapper";
       const table = document.createElement("table");
       table.innerHTML = `
         <thead>
@@ -1285,8 +1286,9 @@
         tbody.appendChild(tr);
       });
       table.appendChild(tbody);
+      wrapper.appendChild(table);
       container.innerHTML = "";
-      container.appendChild(table);
+      container.appendChild(wrapper);
     }
 
     function populateMontages(montages) {
@@ -1301,7 +1303,7 @@
       grid.innerHTML = "";
       montages.forEach((item) => {
         const card = document.createElement("div");
-        card.innerHTML = `<div style="margin-bottom:6px;color:var(--muted);">${item.name}</div>`;
+        card.innerHTML = `<div style="margin-bottom:6px;font-size:0.85rem;color:var(--muted);">${item.name}</div>`;
         const img = document.createElement("img");
         img.src = item.path;
         img.alt = item.name;
