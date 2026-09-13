@@ -8,7 +8,7 @@
 
 A benchmark for gradient inversion attacks in federated learning, and for the defenses that are supposed to stop them. Built together with [Ritesh Bhandari](https://github.com/Riteshbhandarii).
 
-![Dashboard preview](results/report/figures/dashboard_hero.png)
+![Original and reconstructed faces across every method and defense in this benchmark](results/report/figures/project_card_mosaic.png)
 
 ## Key Findings
 
