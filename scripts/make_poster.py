@@ -17,6 +17,7 @@ import os
 import sys
 import glob
 import math
+import argparse
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any
@@ -68,28 +69,63 @@ OUTER_MARGIN = 25
 CARD_PADDING = 20
 GUTTER = 28
 
-# Colors (refined dark theme with high contrast)
-BG_COLOR = (22, 27, 38)  # Deeper dark blue
-CARD_BG = (38, 44, 58)   # Slightly darker cards
-CARD_BORDER = (60, 75, 100)
-HEADER_BG = (15, 18, 28)  # Very dark header
-TEXT_WHITE = (255, 255, 255)  # Pure white for max contrast
-TEXT_LIGHT = (220, 225, 235)
-TEXT_MUTED = (150, 160, 180)
-ACCENT_BLUE = (80, 150, 255)   # Brighter blue
-ACCENT_GREEN = (100, 200, 120)  # Brighter green
-ACCENT_ORANGE = (255, 170, 50)  # Warmer orange
-ACCENT_RED = (255, 90, 90)
-ACCENT_PURPLE = (180, 100, 220)  # Brighter purple
-ACCENT_GOLD = (255, 215, 0)  # Gold for highlights
+# Colors: two complete palettes, selected at runtime by apply_theme().
+THEMES = {
+    "dark": dict(
+        BG_COLOR=(22, 27, 38), CARD_BG=(38, 44, 58), CARD_BORDER=(60, 75, 100),
+        HEADER_BG=(15, 18, 28), TEXT_WHITE=(255, 255, 255), TEXT_DARK=(255, 255, 255),
+        TEXT_LIGHT=(220, 225, 235), TEXT_MUTED=(150, 160, 180),
+        ACCENT_BLUE=(80, 150, 255), ACCENT_GREEN=(100, 200, 120),
+        ACCENT_ORANGE=(255, 170, 50), ACCENT_RED=(255, 90, 90),
+        ACCENT_PURPLE=(180, 100, 220), ACCENT_GOLD=(255, 215, 0),
+        COL_COLORS=[(70, 140, 255), (255, 160, 40), (80, 200, 120), (180, 100, 220)],
+        HEADER_BOX_FILL=(30, 50, 80),
+        SUBTITLE_TEXT=(220, 225, 235),
+        CAPTION_TEXT_ON_CARD=(255, 255, 255),
+        PANEL_TITLE_TEXT=(255, 255, 255),
+        DP_DELTA_BOX_FILL=(30, 50, 45),
+        DPHE_DELTA_BOX_FILL=(40, 30, 55),
+        DPHE_IMPACT_LABEL_COLOR=(255, 215, 0),
+        METRICS_PANEL_BG=(32, 38, 50),
+        CARD_BG_ALT=(32, 38, 50),
+        SECTION_LABEL_COLOR=(255, 215, 0),
+        CHART_TEXT_COLOR="white",
+        CHART_EDGE_COLOR="white",
+        CHART_SPINE_COLOR="#465673",
+        POSTER_FILENAME="poster_4k",
+    ),
+    "light": dict(
+        BG_COLOR=(245, 247, 250), CARD_BG=(255, 255, 255), CARD_BORDER=(200, 210, 225),
+        HEADER_BG=(30, 60, 110), TEXT_WHITE=(255, 255, 255), TEXT_DARK=(30, 35, 45),
+        TEXT_LIGHT=(60, 70, 85), TEXT_MUTED=(120, 130, 150),
+        ACCENT_BLUE=(40, 100, 200), ACCENT_GREEN=(30, 150, 80),
+        ACCENT_ORANGE=(220, 130, 20), ACCENT_RED=(200, 50, 50),
+        ACCENT_PURPLE=(130, 60, 180), ACCENT_GOLD=(180, 140, 0),
+        COL_COLORS=[(50, 120, 220), (230, 140, 30), (40, 160, 90), (140, 70, 190)],
+        HEADER_BOX_FILL=(240, 230, 200),
+        SUBTITLE_TEXT=(255, 255, 255),
+        CAPTION_TEXT_ON_CARD=(30, 35, 45),
+        PANEL_TITLE_TEXT=(40, 100, 200),
+        DP_DELTA_BOX_FILL=(230, 245, 235),
+        DPHE_DELTA_BOX_FILL=(240, 235, 250),
+        DPHE_IMPACT_LABEL_COLOR=(130, 60, 180),
+        METRICS_PANEL_BG=(235, 240, 248),
+        CARD_BG_ALT=(250, 252, 255),
+        SECTION_LABEL_COLOR=(220, 130, 20),
+        CHART_TEXT_COLOR="#1e232d",
+        CHART_EDGE_COLOR="#333333",
+        CHART_SPINE_COLOR="#c8d2e1",
+        POSTER_FILENAME="poster_4k_light",
+    ),
+}
 
-# Column header colors - more vibrant
-COL_COLORS = [
-    (70, 140, 255),   # Bright Blue - Baseline
-    (255, 160, 40),   # Bright Orange - DP
-    (80, 200, 120),   # Bright Green - HE
-    (180, 100, 220),  # Bright Purple - DP+HE
-]
+
+def apply_theme(name: str) -> None:
+    """Set all theme-dependent module-level constants. Must be called
+    before any drawing happens (i.e. at the top of main(), after argparse)."""
+    if name not in THEMES:
+        raise ValueError(f"Unknown theme '{name}', expected one of {list(THEMES)}")
+    globals().update(THEMES[name])
 
 # Font sizes (LARGE for TV readability at distance)
 FONT_TITLE = 96
@@ -313,8 +349,10 @@ def resize_contain(img: Image.Image, target_w: int, target_h: int) -> Image.Imag
 
 
 def add_border(img: Image.Image, border_width: int = 2,
-               color: Tuple[int, int, int] = CARD_BORDER) -> Image.Image:
+               color: Optional[Tuple[int, int, int]] = None) -> Image.Image:
     """Add a border around an image."""
+    if color is None:
+        color = CARD_BORDER
     bordered = Image.new('RGB', (img.width + 2 * border_width, img.height + 2 * border_width), color)
     bordered.paste(img, (border_width, border_width))
     return bordered
@@ -374,14 +412,14 @@ def create_ablation_charts(df: pd.DataFrame, chart_w: int = 500, chart_h: int = 
         stds = agg_data[std_col].fillna(0).values
 
         ax.bar(x, means, yerr=stds, capsize=3, color=color, alpha=0.85,
-               edgecolor='white', linewidth=0.5)
-        ax.set_title(title, fontsize=14, color='white', fontweight='bold', pad=10)
+               edgecolor=CHART_EDGE_COLOR, linewidth=0.5)
+        ax.set_title(title, fontsize=14, color=CHART_TEXT_COLOR, fontweight='bold', pad=10)
         ax.set_xticks(x)
-        ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=9, color='white')
-        ax.tick_params(colors='white')
+        ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=9, color=CHART_TEXT_COLOR)
+        ax.tick_params(colors=CHART_TEXT_COLOR)
 
         for spine in ax.spines.values():
-            spine.set_color('#465673')
+            spine.set_color(CHART_SPINE_COLOR)
         ax.set_facecolor(np.array(CARD_BG) / 255)
 
         plt.tight_layout()
@@ -448,7 +486,7 @@ class PosterComposer:
 
         # Subtitle - tool description
         subtitle = "Privacy-Preserving Benchmarking Tool for Gradient Inversion Attacks"
-        self.draw.text((OUTER_MARGIN + 25, 120), subtitle, fill=TEXT_LIGHT, font=self.font_subheader)
+        self.draw.text((OUTER_MARGIN + 25, 120), subtitle, fill=SUBTITLE_TEXT, font=self.font_subheader)
 
         # Key result box - right side
         takeaway = self._generate_takeaway()
@@ -458,7 +496,7 @@ class PosterComposer:
         result_box_w = tw + 50
         result_box_x = CANVAS_WIDTH - OUTER_MARGIN - result_box_w
         draw_rounded_rect(self.draw, (result_box_x, 40, CANVAS_WIDTH - OUTER_MARGIN, 100),
-                          radius=10, fill=(30, 50, 80), outline=ACCENT_GOLD, width=3)
+                          radius=10, fill=HEADER_BOX_FILL, outline=ACCENT_GOLD, width=3)
         self.draw.text((result_box_x + 25, 55), takeaway, fill=ACCENT_GOLD, font=self.font_body)
 
     def _generate_takeaway(self) -> str:
@@ -652,11 +690,11 @@ class PosterComposer:
 
             mx = x + img.width + 12
             my = current_y + 5
-            self.draw.text((mx, my), f"LPIPS: {lpips:.3f}", fill=TEXT_WHITE, font=self.font_caption)
+            self.draw.text((mx, my), f"LPIPS: {lpips:.3f}", fill=CAPTION_TEXT_ON_CARD, font=self.font_caption)
             my += line_h
-            self.draw.text((mx, my), f"SSIM: {ssim:.3f}", fill=TEXT_WHITE, font=self.font_caption)
+            self.draw.text((mx, my), f"SSIM: {ssim:.3f}", fill=CAPTION_TEXT_ON_CARD, font=self.font_caption)
             my += line_h
-            self.draw.text((mx, my), f"PSNR: {psnr:.1f} dB", fill=TEXT_WHITE, font=self.font_caption)
+            self.draw.text((mx, my), f"PSNR: {psnr:.1f} dB", fill=CAPTION_TEXT_ON_CARD, font=self.font_caption)
             my += line_h + 10
 
             # Delta vs baseline - highlighted
@@ -703,9 +741,9 @@ class PosterComposer:
         psnr = float(row.get('PSNR', 0))
         label_match = row.get('LabelMatch', 0)
 
-        self.draw.text((x, current_y), f"LPIPS: {lpips:.3f}   SSIM: {ssim:.3f}", fill=TEXT_WHITE, font=self.font_caption)
+        self.draw.text((x, current_y), f"LPIPS: {lpips:.3f}   SSIM: {ssim:.3f}", fill=CAPTION_TEXT_ON_CARD, font=self.font_caption)
         current_y += line_h
-        self.draw.text((x, current_y), f"PSNR: {psnr:.1f} dB", fill=TEXT_WHITE, font=self.font_caption)
+        self.draw.text((x, current_y), f"PSNR: {psnr:.1f} dB", fill=CAPTION_TEXT_ON_CARD, font=self.font_caption)
         current_y += line_h
 
         lm_text = "LabelMatch: Yes" if label_match else "LabelMatch: No"
@@ -718,14 +756,14 @@ class PosterComposer:
 
         delta_box_h = 150
         draw_rounded_rect(self.draw, (x, current_y, x + w, current_y + delta_box_h),
-                          radius=10, fill=(30, 50, 45), outline=ACCENT_GREEN, width=3)
+                          radius=10, fill=DP_DELTA_BOX_FILL, outline=ACCENT_GREEN, width=3)
 
         dy = current_y + 25
         self.draw.text((x + 25, dy), "Defense Impact:", fill=ACCENT_GREEN, font=self.font_body)
         dy += 45
-        self.draw.text((x + 25, dy), f"dPSNR = {d_psnr:+.1f} dB", fill=TEXT_WHITE, font=self.font_caption)
+        self.draw.text((x + 25, dy), f"dPSNR = {d_psnr:+.1f} dB", fill=CAPTION_TEXT_ON_CARD, font=self.font_caption)
         dy += 35
-        self.draw.text((x + 25, dy), f"dLPIPS = {d_lpips:+.3f}", fill=TEXT_WHITE, font=self.font_caption)
+        self.draw.text((x + 25, dy), f"dLPIPS = {d_lpips:+.3f}", fill=CAPTION_TEXT_ON_CARD, font=self.font_caption)
 
     def _render_dphe_column(self, area: Tuple[int, int, int, int], w: int, h: int):
         """Render DP+HE column - the strongest defense."""
@@ -761,9 +799,9 @@ class PosterComposer:
         psnr = float(row.get('PSNR', 0))
         label_match = row.get('LabelMatch', 0)
 
-        self.draw.text((x, current_y), f"LPIPS: {lpips:.3f}   SSIM: {ssim:.3f}", fill=TEXT_WHITE, font=self.font_caption)
+        self.draw.text((x, current_y), f"LPIPS: {lpips:.3f}   SSIM: {ssim:.3f}", fill=CAPTION_TEXT_ON_CARD, font=self.font_caption)
         current_y += line_h
-        self.draw.text((x, current_y), f"PSNR: {psnr:.1f} dB", fill=TEXT_WHITE, font=self.font_caption)
+        self.draw.text((x, current_y), f"PSNR: {psnr:.1f} dB", fill=CAPTION_TEXT_ON_CARD, font=self.font_caption)
         current_y += line_h
 
         lm_text = "LabelMatch: No (Attack Failed)" if not label_match else "LabelMatch: Yes"
@@ -777,10 +815,10 @@ class PosterComposer:
 
         delta_box_h = 150
         draw_rounded_rect(self.draw, (x, current_y, x + w, current_y + delta_box_h),
-                          radius=10, fill=(40, 30, 55), outline=ACCENT_PURPLE, width=3)
+                          radius=10, fill=DPHE_DELTA_BOX_FILL, outline=ACCENT_PURPLE, width=3)
 
         dy = current_y + 25
-        self.draw.text((x + 25, dy), "IMPACT:", fill=ACCENT_GOLD, font=self.font_body)
+        self.draw.text((x + 25, dy), "IMPACT:", fill=DPHE_IMPACT_LABEL_COLOR, font=self.font_body)
         dy += 45
         
         self.draw.text((x + 25, dy), f"dPSNR = {d_psnr:+.1f} dB",
@@ -800,9 +838,9 @@ class PosterComposer:
         """Draw a metrics panel and return the new y position."""
         panel_h = min(max_h, 160)
         draw_rounded_rect(self.draw, (x, y, x + w, y + panel_h),
-                          radius=8, fill=(32, 38, 50), outline=CARD_BORDER, width=1)
+                          radius=8, fill=METRICS_PANEL_BG, outline=CARD_BORDER, width=1)
 
-        self.draw.text((x + 15, y + 12), title, fill=TEXT_WHITE, font=self.font_caption)
+        self.draw.text((x + 15, y + 12), title, fill=PANEL_TITLE_TEXT, font=self.font_caption)
 
         ly = y + 42
         line_h = int(FONT_SMALL * LINE_SPACING) + 4
@@ -810,7 +848,7 @@ class PosterComposer:
             if metric in agg and ly + line_h < y + panel_h - 10:
                 mean, std = agg[metric]
                 text = f"{metric}: {mean:.2f} +/- {std:.2f}"
-                self.draw.text((x + 15, ly), text, fill=TEXT_WHITE, font=self.font_small)
+                self.draw.text((x + 15, ly), text, fill=CAPTION_TEXT_ON_CARD, font=self.font_small)
                 ly += line_h
 
         if 'LabelMatch_rate' in agg and ly + line_h < y + panel_h - 5:
@@ -860,7 +898,7 @@ class PosterComposer:
             # Chart card background
             card_x = chart_x + i * (single_chart_w + 15)
             draw_rounded_rect(self.draw, (card_x, content_y, card_x + single_chart_w, content_y + chart_h),
-                              radius=8, fill=(32, 38, 50), outline=CARD_BORDER, width=1)
+                              radius=8, fill=CARD_BG_ALT, outline=CARD_BORDER, width=1)
 
             # Resize and paste chart
             chart_resized = resize_contain(chart, single_chart_w - 10, chart_h - 10)
@@ -874,7 +912,7 @@ class PosterComposer:
         right_card_w = text_card_w
 
         draw_rounded_rect(self.draw, (right_x, content_y, right_x + right_card_w, content_y + right_card_h),
-                          radius=10, fill=(32, 38, 50), outline=ACCENT_BLUE, width=2)
+                          radius=10, fill=CARD_BG_ALT, outline=ACCENT_BLUE, width=2)
 
         # Calculate proper vertical centering
         inner_padding = 30
@@ -899,14 +937,14 @@ class PosterComposer:
         agg_by_type = agg_by_type.sort_values('PSNR', ascending=False)
 
         # Section 1: Top Configurations
-        self.draw.text((text_x, text_y), "BEST ATTACK SETTINGS", fill=ACCENT_GOLD, font=self.font_body)
+        self.draw.text((text_x, text_y), "BEST ATTACK SETTINGS", fill=SECTION_LABEL_COLOR, font=self.font_body)
         text_y += 45
 
         for idx, row in agg_by_type.head(3).iterrows():
             name = row['ablation_type']
             psnr = row['PSNR']
             line = f"  {name}: {psnr:.1f} dB PSNR"
-            self.draw.text((text_x, text_y), line, fill=TEXT_WHITE, font=self.font_caption)
+            self.draw.text((text_x, text_y), line, fill=CAPTION_TEXT_ON_CARD, font=self.font_caption)
             text_y += 32
 
         text_y += 25
@@ -994,6 +1032,12 @@ class PosterComposer:
 # =============================================================================
 
 def main():
+    parser = argparse.ArgumentParser(description='Generate a 4K poster for FL privacy research')
+    parser.add_argument('--theme', choices=['dark', 'light'], default='dark',
+                         help='Color theme for the generated poster')
+    args = parser.parse_args()
+    apply_theme(args.theme)
+
     print("=" * 60)
     print("Federated Learning Privacy Poster Generator")
     print("=" * 60)
@@ -1024,12 +1068,12 @@ def main():
 
     # Save PNG
     print("\n[3/4] Saving poster...")
-    png_path = REPORT_DIR / 'poster_4k.png'
+    png_path = REPORT_DIR / f'{POSTER_FILENAME}.png'
     poster.save(png_path, 'PNG', optimize=True)
     print(f"      Saved: {png_path}")
 
     # Try to save PDF
-    pdf_path = REPORT_DIR / 'poster_4k.pdf'
+    pdf_path = REPORT_DIR / f'{POSTER_FILENAME}.pdf'
     try:
         poster.save(pdf_path, 'PDF', resolution=150.0)
         print(f"      Saved: {pdf_path}")
