@@ -506,11 +506,10 @@
   <main class="wrap">
     <section id="overview">
       <h2>Overview</h2>
-      <p>Federated learning promises that raw client data never leaves the device,
-and only gradients get shared. That promise is weaker than it sounds. A server
-that follows the protocol exactly and simply reads the updates it receives can
-rebuild a recognizable face from a single client's gradient update, with no
-aggregation involved. The benchmark below
+      <p>Federated learning is sold on one promise: raw client data never leaves the
+device, and only gradients get shared. That promise is weaker than it sounds.
+An honest-but-curious server can rebuild a recognizable face from a single
+client's gradient update, with no aggregation involved. The benchmark below
 scores reconstruction quality (how strong the attack is) with no defense and
 with two candidate defenses. It never scores model accuracy, so it has nothing
 to say about the privacy/utility tradeoff.</p>
