@@ -12,10 +12,7 @@ A benchmark for gradient inversion attacks in federated learning, and for the de
 
 ## Key Findings
 
-Every number below comes straight out of `results/report/summary.csv`. PSNR is peak
-signal-to-noise ratio in dB against the true image, so higher means a stronger attack.
-LPIPS is learned perceptual distance [4], so lower means a stronger attack. Around
-0.08 LPIPS is a recognizable face here; 0.82 is noise.
+Every number below comes straight out of `results/report/summary.csv`.
 
 | Configuration | PSNR (dB) | LPIPS ↓ |
 |---|---|---|
@@ -28,9 +25,8 @@ LPIPS is learned perceptual distance [4], so lower means a stronger attack. Arou
 
 - Baseline attacks reconstruct recognizable faces from a single client's
   raw gradient.
-- The DP mechanism above is correctly implemented local differential
-  privacy. It clips one client's own gradient to an L2 norm of 1.0 and adds
-  Gaussian noise calibrated at δ=1e-5 before release, which is the right
+- The DP mechanism above is correctly implemented local DP. It clips
+  and noises one client's own gradient before release, which is the right
   mechanism for the threat model tested here (an adversary reading a
   single pre-aggregation update). It is *not* a bug that ε=8/1/0.1 all land
   at roughly the same PSNR: per-coordinate Gaussian noise has L2 norm
@@ -39,8 +35,7 @@ LPIPS is learned perceptual distance [4], so lower means a stronger attack. Arou
   couldn't have shown graduated protection at this dimensionality; see
   `results/report/figures/dp_noise_scaling.png` and
   `scripts/dp_noise_scaling_proof.py` for the worked-out proof.
-- The "HE" row does not test homomorphic encryption, despite the label.
-  The implementation quantizes
+- The "HE" row does not test encryption. The implementation quantizes
   gradients and adds a fixed-scale Laplace noise term; at this model size
   it never executes real Paillier encryption, and even when it does, the
   code decrypts the result before scoring it. A real HE/secure-aggregation
@@ -75,7 +70,7 @@ python -m http.server --directory docs 8000
 ```text
 ├── run_experiment.py          # Main experiment runner
 ├── fl_system.py               # Federated learning simulation
-├── gradient_attack.py         # DLG [1] / iDLG [2] attack implementation
+├── gradient_attack.py         # DLG/iDLG attack implementation
 ├── differential_privacy.py    # Gaussian mechanism for DP
 ├── homomorphic_encryptor.py   # Paillier-like HE
 ├── device_utils.py            # Auto device detection
@@ -122,26 +117,7 @@ See `python run_experiment.py --help` for all options.
 ## Notes
 
 - Results hold for this experimental setup only (single-client gradient
-  leak, 8.76M-parameter model, CelebA [6] at 64×64).
+  leak, 8.76M-parameter model, CelebA 64×64).
 - The DP/HE implementations here are research-grade and should stay well
   away from production.
 - The dashboard carries the detailed visualizations.
-
-## References
-
-1. Zhu, Liu and Han. Deep Leakage from Gradients. NeurIPS 2019.
-   [arXiv:1906.08935](https://arxiv.org/abs/1906.08935)
-2. Zhao, Mopuri and Bilen. iDLG: Improved Deep Leakage from Gradients. 2020.
-   [arXiv:2001.02610](https://arxiv.org/abs/2001.02610)
-3. Geiping, Bauermeister, Dröge and Moeller. Inverting Gradients: How Easy Is
-   It to Break Privacy in Federated Learning? NeurIPS 2020.
-   [arXiv:2003.14053](https://arxiv.org/abs/2003.14053). Source of the `sim`
-   matching loss in `gradient_attack.py`.
-4. Zhang, Isola, Efros, Shechtman and Wang. The Unreasonable Effectiveness of
-   Deep Features as a Perceptual Metric. CVPR 2018.
-   [arXiv:1801.03924](https://arxiv.org/abs/1801.03924). Defines LPIPS.
-5. McMahan, Moore, Ramage, Hampson and Agüera y Arcas. Communication-Efficient
-   Learning of Deep Networks from Decentralized Data. AISTATS 2017.
-   [arXiv:1602.05629](https://arxiv.org/abs/1602.05629). Defines FedAvg.
-6. Liu, Luo, Wang and Tang. Deep Learning Face Attributes in the Wild. ICCV 2015.
-   [arXiv:1411.7766](https://arxiv.org/abs/1411.7766). Source of CelebA.
