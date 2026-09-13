@@ -125,8 +125,7 @@ def _parse_layer_weights(arg_val: Optional[str]) -> Optional[Union[str, List[flo
     
     val = str(arg_val).strip().lower()
     valid_modes = {
-        'auto', 'auto_norm', 'inv_norm', 'early', 'early_linear',
-        'early_strong', 'early_conv', 'spatial', 'uniform', 'none'
+        'auto', 'auto_norm', 'inv_norm', 'uniform', 'none'
     }
     
     if val in valid_modes:

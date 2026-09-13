@@ -159,54 +159,6 @@ class GradientInversionAttack:
             raise ValueError("num_classes must be provided or inferable from model")
         self.num_classes = num_classes
         
-    def reconstruct_image(self, captured_gradients, num_iterations=5000, lr=0.1):
-        """
-        Reconstruct image from gradients using optimization
-        
-        This is a simplified version of the DLG/iDLG attack
-        """
-        # Initialize dummy data and label
-        dummy_data = torch.randn(1, 3, 64, 64, requires_grad=True, device=self.device)
-        dummy_label = torch.randint(0, self.num_classes, (1,), device=self.device)
-        
-        # Optimizer for dummy data
-        optimizer = torch.optim.LBFGS([dummy_data], lr=lr)
-        
-        criterion = nn.CrossEntropyLoss()
-        
-        history = []
-        
-        for iteration in range(num_iterations):
-            def closure():
-                optimizer.zero_grad()
-                
-                # Forward pass with dummy data
-                self.model.zero_grad()
-                output = self.model(dummy_data)
-                loss = criterion(output, dummy_label)
-                
-                # Compute gradients
-                dummy_gradients = torch.autograd.grad(
-                    loss, self.model.parameters(), create_graph=True
-                )
-                
-                # Match gradients
-                grad_diff = 0
-                for dg, tg in zip(dummy_gradients, captured_gradients):
-                    grad_diff += ((dg - tg) ** 2).sum()
-                
-                grad_diff.backward()
-                return grad_diff
-            
-            loss = optimizer.step(closure)
-            
-            if iteration % 500 == 0:
-                current_loss = loss.item() if torch.is_tensor(loss) else loss
-                print(f"Iteration {iteration}: Loss = {current_loss:.4f}")
-                history.append(current_loss)
-        
-        return dummy_data.detach(), history
-    
     def reconstruct_with_label_inference(
         self,
         captured_gradients,
@@ -594,18 +546,16 @@ def _resolve_layer_indices(total_layers, use_layers=None, select_by_name=None, p
 def _prepare_layer_weights(indices, layer_weights, target_grads, param_names=None):
     """
     Prepare layer weights for gradient matching.
-    
+
     Supports multiple weighting strategies:
     - None / 'uniform' / 'none': Equal weights for all layers
     - 'auto' / 'auto_norm' / 'inv_norm': Inverse of gradient norm (normalizes contribution)
-    - 'early': Exponential decay - upweights early layers, downweights later layers
-    - 'early_linear': Linear decay from early to late layers  
-    - 'early_conv': Upweights only convolutional layers in first 1-3 blocks
-    - 'spatial': Emphasizes layers with spatial structure (conv layers)
     - List of floats: Explicit weights per layer
-    
-    Phase 1 Improvement: Early layer weighting improves spatial coherence
-    and reduces high-frequency noise in reconstructions.
+
+    Modes not listed here ('early', 'early_linear', 'early_strong',
+    'early_conv', 'spatial') were removed: no config.json in results/ ever
+    used a non-null layer_weights value, so none of these modes have an
+    evidenced result behind them.
     """
     n = len(indices)
     total_layers = len(target_grads)
@@ -633,63 +583,6 @@ def _prepare_layer_weights(indices, layer_weights, target_grads, param_names=Non
             w = 1.0 / (g.norm().item() + eps)
             ws.append(w)
         s = sum(ws) + eps
-        ws = [w * (n / s) for w in ws]
-        return ws
-    
-    if mode == 'early':
-        # Exponential decay: w_i = exp(-0.08 * i)
-        # Normalized so mean(w) = 1
-        ws = []
-        for idx in indices:
-            w = math.exp(-0.08 * idx)
-            ws.append(w)
-        # Normalize: divide by mean to get mean = 1
-        mean_w = sum(ws) / len(ws) if ws else 1.0
-        ws = [w / mean_w for w in ws]
-        return ws
-    
-    if mode == 'early_linear':
-        # Linear decay: w_i = 1 - i/(L-1)
-        # Normalized so mean(w) = 1
-        L = total_layers
-        ws = []
-        for idx in indices:
-            w = max(1.0 - idx / max(L - 1, 1), 0.01)  # Avoid zero weight
-            ws.append(w)
-        # Normalize: divide by mean to get mean = 1
-        mean_w = sum(ws) / len(ws) if ws else 1.0
-        ws = [w / mean_w for w in ws]
-        return ws
-    
-    if mode == 'early_strong':
-        # Strong exponential decay: w_i = exp(-0.20 * i)
-        # Normalized so mean(w) = 1
-        ws = []
-        for idx in indices:
-            w = math.exp(-0.20 * idx)
-            ws.append(w)
-        # Normalize: divide by mean to get mean = 1
-        mean_w = sum(ws) / len(ws) if ws else 1.0
-        ws = [w / mean_w for w in ws]
-        return ws
-    
-    if mode in ('early_conv', 'spatial'):
-        # Upweight early convolutional layers based on parameter names
-        ws = []
-        for i, idx in enumerate(indices):
-            name = param_names[idx] if param_names and idx < len(param_names) else ''
-            is_conv = 'conv' in name.lower() or 'features.0' in name.lower() or 'features.3' in name.lower()
-            is_early = idx < total_layers // 2
-            if is_conv and is_early:
-                w = 3.0
-            elif is_conv:
-                w = 1.5
-            elif is_early:
-                w = 1.2
-            else:
-                w = 0.5
-            ws.append(w)
-        s = sum(ws) + 1e-8
         ws = [w * (n / s) for w in ws]
         return ws
     

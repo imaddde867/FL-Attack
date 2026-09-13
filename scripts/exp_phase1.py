@@ -142,29 +142,21 @@ def get_tv_sweep_configs() -> List[ExperimentConfig]:
 def get_layer_weighting_configs() -> List[ExperimentConfig]:
     """
     Layer Weighting Ablation
-    
+
     Strategies tested:
     - uniform: Equal weight for all layers (baseline)
     - auto: Inverse gradient norm (normalize contribution)
-    - early: Exponential decay (upweight early layers)
-    - early_linear: Linear decay from early to late
-    - early_strong: Strong emphasis on first 1/3 of layers
-    - early_conv: Emphasize early convolutional layers specifically
-    
+
     Goal: Improve spatial coherence and reduce high-frequency noise
     by focusing on early layers that capture low-frequency structure.
     """
     configs = []
-    
+
     strategies = [
         ("uniform", "Uniform weighting (baseline)"),
         ("auto", "Auto inverse-norm weighting"),
-        ("early", "Exponential early layer emphasis"),
-        ("early_linear", "Linear early layer decay"),
-        ("early_strong", "Strong first-1/3 emphasis"),
-        ("early_conv", "Early convolutional layer focus"),
     ]
-    
+
     for i, (strategy, desc) in enumerate(strategies):
         lw = None if strategy == "uniform" else strategy
         configs.append(ExperimentConfig(
@@ -177,39 +169,7 @@ def get_layer_weighting_configs() -> List[ExperimentConfig]:
             attack_restarts=5,
             priority=20 + i,
         ))
-    
-    return configs
 
-
-def get_combined_best_configs() -> List[ExperimentConfig]:
-    """
-    Combined experiments with best settings from sweeps.
-    Run after initial sweeps to find optimal combination.
-    """
-    configs = []
-    
-    # Combine best TV with best layer weighting (we'll update after initial results)
-    combinations = [
-        # (tv_weight, layer_strategy, description)
-        (1e-5, "early", "Medium TV + early weighting"),
-        (1e-5, "early_linear", "Medium TV + linear early weighting"),
-        (1e-4, "early_strong", "High TV + strong early emphasis"),
-        (1e-5, "early_conv", "Medium TV + conv layer focus"),
-    ]
-    
-    for i, (tv, layer, desc) in enumerate(combinations):
-        tv_str = f"{tv:.0e}".replace("+", "").replace("-0", "-")
-        configs.append(ExperimentConfig(
-            name=f"p1_combined_{tv_str}_{layer}",
-            description=f"Combined: {desc}",
-            category="combined",
-            tv_weight=tv,
-            layer_weights=layer,
-            attack_iterations=4000,  # Slightly more iterations for combined
-            attack_restarts=7,
-            priority=30 + i,
-        ))
-    
     return configs
 
 
@@ -219,7 +179,6 @@ def get_all_configs() -> List[ExperimentConfig]:
     configs.append(get_baseline_reference())
     configs.extend(get_tv_sweep_configs())
     configs.extend(get_layer_weighting_configs())
-    configs.extend(get_combined_best_configs())
     return sorted(configs, key=lambda c: c.priority)
 
 
@@ -438,7 +397,7 @@ def save_summary_csv(results: List[Dict[str, Any]], output_dir: Path):
 def main():
     parser = argparse.ArgumentParser(description="Phase 1 — Baseline Improvement Experiments")
     parser.add_argument("--mode", type=str, default="all",
-                       choices=["all", "tv-sweep", "layer-ablation", "combined", "baseline"],
+                       choices=["all", "tv-sweep", "layer-ablation", "baseline"],
                        help="Which experiments to run")
     parser.add_argument("--dry-run", action="store_true", help="Preview commands without running")
     parser.add_argument("--clean", action="store_true", help="Remove existing results first")
@@ -469,8 +428,6 @@ def main():
         configs = get_tv_sweep_configs()
     elif args.mode == "layer-ablation":
         configs = get_layer_weighting_configs()
-    elif args.mode == "combined":
-        configs = get_combined_best_configs()
     elif args.mode == "baseline":
         configs = [get_baseline_reference()]
     else:  # all
