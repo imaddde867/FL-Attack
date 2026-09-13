@@ -8,7 +8,7 @@
 
 A research framework for studying **gradient inversion attacks** and **privacy defenses** in federated learning systems.
 
-![Research Poster](results/report/poster_4k.png)
+![Dashboard preview](results/report/figures/dashboard_hero.png)
 
 ## Key Findings
 
@@ -60,9 +60,6 @@ pip install -r requirements.txt
 
 # Run showcase experiment
 bash scripts/run_showcase.sh
-
-# Generate poster visualization
-python scripts/make_poster.py
 
 # Launch local dashboard
 python -m http.server --directory docs 8000

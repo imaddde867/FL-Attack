@@ -1,10 +1,10 @@
 {
   "meta": {
-    "build_time": "2025-12-16 04:04 UTC",
-    "total_runs": 39,
+    "build_time": "2026-09-13 13:11 UTC",
+    "total_runs": 38,
     "groups": {
       "ablation": 21,
-      "defenses": 7,
+      "defenses": 6,
       "multi_client": 10,
       "showcase": 1
     },
@@ -85,25 +85,7 @@
       "search_text": "defenses baseline global baseline results/defenses/baseline run_0003_defenses-baseline-global"
     },
     {
-      "run_id": "run_0004_defenses-he-test-global",
-      "group": "defenses",
-      "setting": "he_test",
-      "method": "he_test",
-      "client": "global",
-      "source_dir": "results/defenses/he_test",
-      "metrics": {
-        "MSE": 0.1997629255056381,
-        "PSNR": 19.036050930720847,
-        "SSIM": 0.4094901084899902,
-        "LPIPS": null,
-        "LabelMatch": 1.0
-      },
-      "image_path": "assets/images/defenses-he-test-global.png",
-      "metrics_path": "assets/metrics/defenses-he-test-global_metrics.txt",
-      "search_text": "defenses he_test global he_test results/defenses/he_test run_0004_defenses-he-test-global"
-    },
-    {
-      "run_id": "run_0005_defenses-dp-eps01-global",
+      "run_id": "run_0004_defenses-dp-eps01-global",
       "group": "defenses",
       "setting": "dp_eps01",
       "method": "dp_eps01",
@@ -118,10 +100,10 @@
       },
       "image_path": "assets/images/defenses-dp-eps01-global.png",
       "metrics_path": "assets/metrics/defenses-dp-eps01-global_metrics.txt",
-      "search_text": "defenses dp_eps01 global dp_eps01 results/defenses/dp_eps01 run_0005_defenses-dp-eps01-global"
+      "search_text": "defenses dp_eps01 global dp_eps01 results/defenses/dp_eps01 run_0004_defenses-dp-eps01-global"
     },
     {
-      "run_id": "run_0006_defenses-dp-he-global",
+      "run_id": "run_0005_defenses-dp-he-global",
       "group": "defenses",
       "setting": "dp_he",
       "method": "dp_he",
@@ -136,10 +118,10 @@
       },
       "image_path": "assets/images/defenses-dp-he-global.png",
       "metrics_path": "assets/metrics/defenses-dp-he-global_metrics.txt",
-      "search_text": "defenses dp_he global dp_he results/defenses/dp_he run_0006_defenses-dp-he-global"
+      "search_text": "defenses dp_he global dp_he results/defenses/dp_he run_0005_defenses-dp-he-global"
     },
     {
-      "run_id": "run_0007_multi-client-bmk-c5-c5",
+      "run_id": "run_0006_multi-client-bmk-c5-c5",
       "group": "multi_client",
       "setting": "bmk_c5",
       "method": "bmk_c5",
@@ -154,10 +136,10 @@
       },
       "image_path": "assets/images/multi-client-bmk-c5-c5.png",
       "metrics_path": "assets/metrics/multi-client-bmk-c5-c5_metrics.txt",
-      "search_text": "multi_client bmk_c5 c5 bmk_c5 results/multi_client/bmk_c5 run_0007_multi-client-bmk-c5-c5"
+      "search_text": "multi_client bmk_c5 c5 bmk_c5 results/multi_client/bmk_c5 run_0006_multi-client-bmk-c5-c5"
     },
     {
-      "run_id": "run_0008_multi-client-bmk-c2-c2",
+      "run_id": "run_0007_multi-client-bmk-c2-c2",
       "group": "multi_client",
       "setting": "bmk_c2",
       "method": "bmk_c2",
@@ -172,10 +154,10 @@
       },
       "image_path": "assets/images/multi-client-bmk-c2-c2.png",
       "metrics_path": "assets/metrics/multi-client-bmk-c2-c2_metrics.txt",
-      "search_text": "multi_client bmk_c2 c2 bmk_c2 results/multi_client/bmk_c2 run_0008_multi-client-bmk-c2-c2"
+      "search_text": "multi_client bmk_c2 c2 bmk_c2 results/multi_client/bmk_c2 run_0007_multi-client-bmk-c2-c2"
     },
     {
-      "run_id": "run_0009_multi-client-bmk-c3-c3",
+      "run_id": "run_0008_multi-client-bmk-c3-c3",
       "group": "multi_client",
       "setting": "bmk_c3",
       "method": "bmk_c3",
@@ -190,10 +172,10 @@
       },
       "image_path": "assets/images/multi-client-bmk-c3-c3.png",
       "metrics_path": "assets/metrics/multi-client-bmk-c3-c3_metrics.txt",
-      "search_text": "multi_client bmk_c3 c3 bmk_c3 results/multi_client/bmk_c3 run_0009_multi-client-bmk-c3-c3"
+      "search_text": "multi_client bmk_c3 c3 bmk_c3 results/multi_client/bmk_c3 run_0008_multi-client-bmk-c3-c3"
     },
     {
-      "run_id": "run_0010_multi-client-bmk-c4-c4",
+      "run_id": "run_0009_multi-client-bmk-c4-c4",
       "group": "multi_client",
       "setting": "bmk_c4",
       "method": "bmk_c4",
@@ -208,10 +190,10 @@
       },
       "image_path": "assets/images/multi-client-bmk-c4-c4.png",
       "metrics_path": "assets/metrics/multi-client-bmk-c4-c4_metrics.txt",
-      "search_text": "multi_client bmk_c4 c4 bmk_c4 results/multi_client/bmk_c4 run_0010_multi-client-bmk-c4-c4"
+      "search_text": "multi_client bmk_c4 c4 bmk_c4 results/multi_client/bmk_c4 run_0009_multi-client-bmk-c4-c4"
     },
     {
-      "run_id": "run_0011_multi-client-bmk-c1-c1",
+      "run_id": "run_0010_multi-client-bmk-c1-c1",
       "group": "multi_client",
       "setting": "bmk_c1",
       "method": "bmk_c1",
@@ -226,10 +208,10 @@
       },
       "image_path": "assets/images/multi-client-bmk-c1-c1.png",
       "metrics_path": "assets/metrics/multi-client-bmk-c1-c1_metrics.txt",
-      "search_text": "multi_client bmk_c1 c1 bmk_c1 results/multi_client/bmk_c1 run_0011_multi-client-bmk-c1-c1"
+      "search_text": "multi_client bmk_c1 c1 bmk_c1 results/multi_client/bmk_c1 run_0010_multi-client-bmk-c1-c1"
     },
     {
-      "run_id": "run_0012_multi-client-bmk-c6-c6",
+      "run_id": "run_0011_multi-client-bmk-c6-c6",
       "group": "multi_client",
       "setting": "bmk_c6",
       "method": "bmk_c6",
@@ -244,10 +226,10 @@
       },
       "image_path": "assets/images/multi-client-bmk-c6-c6.png",
       "metrics_path": "assets/metrics/multi-client-bmk-c6-c6_metrics.txt",
-      "search_text": "multi_client bmk_c6 c6 bmk_c6 results/multi_client/bmk_c6 run_0012_multi-client-bmk-c6-c6"
+      "search_text": "multi_client bmk_c6 c6 bmk_c6 results/multi_client/bmk_c6 run_0011_multi-client-bmk-c6-c6"
     },
     {
-      "run_id": "run_0013_multi-client-bmk-c8-c8",
+      "run_id": "run_0012_multi-client-bmk-c8-c8",
       "group": "multi_client",
       "setting": "bmk_c8",
       "method": "bmk_c8",
@@ -262,10 +244,10 @@
       },
       "image_path": "assets/images/multi-client-bmk-c8-c8.png",
       "metrics_path": "assets/metrics/multi-client-bmk-c8-c8_metrics.txt",
-      "search_text": "multi_client bmk_c8 c8 bmk_c8 results/multi_client/bmk_c8 run_0013_multi-client-bmk-c8-c8"
+      "search_text": "multi_client bmk_c8 c8 bmk_c8 results/multi_client/bmk_c8 run_0012_multi-client-bmk-c8-c8"
     },
     {
-      "run_id": "run_0014_multi-client-bmk-c9-c9",
+      "run_id": "run_0013_multi-client-bmk-c9-c9",
       "group": "multi_client",
       "setting": "bmk_c9",
       "method": "bmk_c9",
@@ -280,10 +262,10 @@
       },
       "image_path": "assets/images/multi-client-bmk-c9-c9.png",
       "metrics_path": "assets/metrics/multi-client-bmk-c9-c9_metrics.txt",
-      "search_text": "multi_client bmk_c9 c9 bmk_c9 results/multi_client/bmk_c9 run_0014_multi-client-bmk-c9-c9"
+      "search_text": "multi_client bmk_c9 c9 bmk_c9 results/multi_client/bmk_c9 run_0013_multi-client-bmk-c9-c9"
     },
     {
-      "run_id": "run_0015_multi-client-bmk-c7-c7",
+      "run_id": "run_0014_multi-client-bmk-c7-c7",
       "group": "multi_client",
       "setting": "bmk_c7",
       "method": "bmk_c7",
@@ -298,10 +280,10 @@
       },
       "image_path": "assets/images/multi-client-bmk-c7-c7.png",
       "metrics_path": "assets/metrics/multi-client-bmk-c7-c7_metrics.txt",
-      "search_text": "multi_client bmk_c7 c7 bmk_c7 results/multi_client/bmk_c7 run_0015_multi-client-bmk-c7-c7"
+      "search_text": "multi_client bmk_c7 c7 bmk_c7 results/multi_client/bmk_c7 run_0014_multi-client-bmk-c7-c7"
     },
     {
-      "run_id": "run_0016_multi-client-bmk-c0-c0",
+      "run_id": "run_0015_multi-client-bmk-c0-c0",
       "group": "multi_client",
       "setting": "bmk_c0",
       "method": "bmk_c0",
@@ -316,10 +298,10 @@
       },
       "image_path": "assets/images/multi-client-bmk-c0-c0.png",
       "metrics_path": "assets/metrics/multi-client-bmk-c0-c0_metrics.txt",
-      "search_text": "multi_client bmk_c0 c0 bmk_c0 results/multi_client/bmk_c0 run_0016_multi-client-bmk-c0-c0"
+      "search_text": "multi_client bmk_c0 c0 bmk_c0 results/multi_client/bmk_c0 run_0015_multi-client-bmk-c0-c0"
     },
     {
-      "run_id": "run_0017_ablation-metric-sim-c7-c7",
+      "run_id": "run_0016_ablation-metric-sim-c7-c7",
       "group": "ablation",
       "setting": "metric_sim/c7",
       "method": "metric_sim",
@@ -334,10 +316,10 @@
       },
       "image_path": "assets/images/ablation-metric-sim-c7-c7.png",
       "metrics_path": "assets/metrics/ablation-metric-sim-c7-c7_metrics.txt",
-      "search_text": "ablation metric_sim c7 metric_sim/c7 results/ablation/metric_sim/c7 run_0017_ablation-metric-sim-c7-c7"
+      "search_text": "ablation metric_sim c7 metric_sim/c7 results/ablation/metric_sim/c7 run_0016_ablation-metric-sim-c7-c7"
     },
     {
-      "run_id": "run_0018_ablation-metric-sim-c0-c0",
+      "run_id": "run_0017_ablation-metric-sim-c0-c0",
       "group": "ablation",
       "setting": "metric_sim/c0",
       "method": "metric_sim",
@@ -352,10 +334,10 @@
       },
       "image_path": "assets/images/ablation-metric-sim-c0-c0.png",
       "metrics_path": "assets/metrics/ablation-metric-sim-c0-c0_metrics.txt",
-      "search_text": "ablation metric_sim c0 metric_sim/c0 results/ablation/metric_sim/c0 run_0018_ablation-metric-sim-c0-c0"
+      "search_text": "ablation metric_sim c0 metric_sim/c0 results/ablation/metric_sim/c0 run_0017_ablation-metric-sim-c0-c0"
     },
     {
-      "run_id": "run_0019_ablation-metric-sim-c3-c3",
+      "run_id": "run_0018_ablation-metric-sim-c3-c3",
       "group": "ablation",
       "setting": "metric_sim/c3",
       "method": "metric_sim",
@@ -370,10 +352,10 @@
       },
       "image_path": "assets/images/ablation-metric-sim-c3-c3.png",
       "metrics_path": "assets/metrics/ablation-metric-sim-c3-c3_metrics.txt",
-      "search_text": "ablation metric_sim c3 metric_sim/c3 results/ablation/metric_sim/c3 run_0019_ablation-metric-sim-c3-c3"
+      "search_text": "ablation metric_sim c3 metric_sim/c3 results/ablation/metric_sim/c3 run_0018_ablation-metric-sim-c3-c3"
     },
     {
-      "run_id": "run_0020_ablation-init-fft-c7-c7",
+      "run_id": "run_0019_ablation-init-fft-c7-c7",
       "group": "ablation",
       "setting": "init_fft/c7",
       "method": "init_fft",
@@ -388,10 +370,10 @@
       },
       "image_path": "assets/images/ablation-init-fft-c7-c7.png",
       "metrics_path": "assets/metrics/ablation-init-fft-c7-c7_metrics.txt",
-      "search_text": "ablation init_fft c7 init_fft/c7 results/ablation/init_fft/c7 run_0020_ablation-init-fft-c7-c7"
+      "search_text": "ablation init_fft c7 init_fft/c7 results/ablation/init_fft/c7 run_0019_ablation-init-fft-c7-c7"
     },
     {
-      "run_id": "run_0021_ablation-init-fft-c0-c0",
+      "run_id": "run_0020_ablation-init-fft-c0-c0",
       "group": "ablation",
       "setting": "init_fft/c0",
       "method": "init_fft",
@@ -406,10 +388,10 @@
       },
       "image_path": "assets/images/ablation-init-fft-c0-c0.png",
       "metrics_path": "assets/metrics/ablation-init-fft-c0-c0_metrics.txt",
-      "search_text": "ablation init_fft c0 init_fft/c0 results/ablation/init_fft/c0 run_0021_ablation-init-fft-c0-c0"
+      "search_text": "ablation init_fft c0 init_fft/c0 results/ablation/init_fft/c0 run_0020_ablation-init-fft-c0-c0"
     },
     {
-      "run_id": "run_0022_ablation-init-fft-c3-c3",
+      "run_id": "run_0021_ablation-init-fft-c3-c3",
       "group": "ablation",
       "setting": "init_fft/c3",
       "method": "init_fft",
@@ -424,10 +406,10 @@
       },
       "image_path": "assets/images/ablation-init-fft-c3-c3.png",
       "metrics_path": "assets/metrics/ablation-init-fft-c3-c3_metrics.txt",
-      "search_text": "ablation init_fft c3 init_fft/c3 results/ablation/init_fft/c3 run_0022_ablation-init-fft-c3-c3"
+      "search_text": "ablation init_fft c3 init_fft/c3 results/ablation/init_fft/c3 run_0021_ablation-init-fft-c3-c3"
     },
     {
-      "run_id": "run_0023_ablation-tv-1e-4-c7-c7",
+      "run_id": "run_0022_ablation-tv-1e-4-c7-c7",
       "group": "ablation",
       "setting": "tv_1e-4/c7",
       "method": "tv_1e-4",
@@ -442,10 +424,10 @@
       },
       "image_path": "assets/images/ablation-tv-1e-4-c7-c7.png",
       "metrics_path": "assets/metrics/ablation-tv-1e-4-c7-c7_metrics.txt",
-      "search_text": "ablation tv_1e-4 c7 tv_1e-4/c7 results/ablation/tv_1e-4/c7 run_0023_ablation-tv-1e-4-c7-c7"
+      "search_text": "ablation tv_1e-4 c7 tv_1e-4/c7 results/ablation/tv_1e-4/c7 run_0022_ablation-tv-1e-4-c7-c7"
     },
     {
-      "run_id": "run_0024_ablation-tv-1e-4-c0-c0",
+      "run_id": "run_0023_ablation-tv-1e-4-c0-c0",
       "group": "ablation",
       "setting": "tv_1e-4/c0",
       "method": "tv_1e-4",
@@ -460,10 +442,10 @@
       },
       "image_path": "assets/images/ablation-tv-1e-4-c0-c0.png",
       "metrics_path": "assets/metrics/ablation-tv-1e-4-c0-c0_metrics.txt",
-      "search_text": "ablation tv_1e-4 c0 tv_1e-4/c0 results/ablation/tv_1e-4/c0 run_0024_ablation-tv-1e-4-c0-c0"
+      "search_text": "ablation tv_1e-4 c0 tv_1e-4/c0 results/ablation/tv_1e-4/c0 run_0023_ablation-tv-1e-4-c0-c0"
     },
     {
-      "run_id": "run_0025_ablation-tv-1e-4-c3-c3",
+      "run_id": "run_0024_ablation-tv-1e-4-c3-c3",
       "group": "ablation",
       "setting": "tv_1e-4/c3",
       "method": "tv_1e-4",
@@ -478,10 +460,10 @@
       },
       "image_path": "assets/images/ablation-tv-1e-4-c3-c3.png",
       "metrics_path": "assets/metrics/ablation-tv-1e-4-c3-c3_metrics.txt",
-      "search_text": "ablation tv_1e-4 c3 tv_1e-4/c3 results/ablation/tv_1e-4/c3 run_0025_ablation-tv-1e-4-c3-c3"
+      "search_text": "ablation tv_1e-4 c3 tv_1e-4/c3 results/ablation/tv_1e-4/c3 run_0024_ablation-tv-1e-4-c3-c3"
     },
     {
-      "run_id": "run_0026_ablation-metric-both-c7-c7",
+      "run_id": "run_0025_ablation-metric-both-c7-c7",
       "group": "ablation",
       "setting": "metric_both/c7",
       "method": "metric_both",
@@ -496,10 +478,10 @@
       },
       "image_path": "assets/images/ablation-metric-both-c7-c7.png",
       "metrics_path": "assets/metrics/ablation-metric-both-c7-c7_metrics.txt",
-      "search_text": "ablation metric_both c7 metric_both/c7 results/ablation/metric_both/c7 run_0026_ablation-metric-both-c7-c7"
+      "search_text": "ablation metric_both c7 metric_both/c7 results/ablation/metric_both/c7 run_0025_ablation-metric-both-c7-c7"
     },
     {
-      "run_id": "run_0027_ablation-metric-both-c0-c0",
+      "run_id": "run_0026_ablation-metric-both-c0-c0",
       "group": "ablation",
       "setting": "metric_both/c0",
       "method": "metric_both",
@@ -514,10 +496,10 @@
       },
       "image_path": "assets/images/ablation-metric-both-c0-c0.png",
       "metrics_path": "assets/metrics/ablation-metric-both-c0-c0_metrics.txt",
-      "search_text": "ablation metric_both c0 metric_both/c0 results/ablation/metric_both/c0 run_0027_ablation-metric-both-c0-c0"
+      "search_text": "ablation metric_both c0 metric_both/c0 results/ablation/metric_both/c0 run_0026_ablation-metric-both-c0-c0"
     },
     {
-      "run_id": "run_0028_ablation-metric-both-c3-c3",
+      "run_id": "run_0027_ablation-metric-both-c3-c3",
       "group": "ablation",
       "setting": "metric_both/c3",
       "method": "metric_both",
@@ -532,10 +514,10 @@
       },
       "image_path": "assets/images/ablation-metric-both-c3-c3.png",
       "metrics_path": "assets/metrics/ablation-metric-both-c3-c3_metrics.txt",
-      "search_text": "ablation metric_both c3 metric_both/c3 results/ablation/metric_both/c3 run_0028_ablation-metric-both-c3-c3"
+      "search_text": "ablation metric_both c3 metric_both/c3 results/ablation/metric_both/c3 run_0027_ablation-metric-both-c3-c3"
     },
     {
-      "run_id": "run_0029_ablation-baseline-c7-c7",
+      "run_id": "run_0028_ablation-baseline-c7-c7",
       "group": "ablation",
       "setting": "baseline/c7",
       "method": "baseline",
@@ -550,10 +532,10 @@
       },
       "image_path": "assets/images/ablation-baseline-c7-c7.png",
       "metrics_path": "assets/metrics/ablation-baseline-c7-c7_metrics.txt",
-      "search_text": "ablation baseline c7 baseline/c7 results/ablation/baseline/c7 run_0029_ablation-baseline-c7-c7"
+      "search_text": "ablation baseline c7 baseline/c7 results/ablation/baseline/c7 run_0028_ablation-baseline-c7-c7"
     },
     {
-      "run_id": "run_0030_ablation-baseline-c0-c0",
+      "run_id": "run_0029_ablation-baseline-c0-c0",
       "group": "ablation",
       "setting": "baseline/c0",
       "method": "baseline",
@@ -568,10 +550,10 @@
       },
       "image_path": "assets/images/ablation-baseline-c0-c0.png",
       "metrics_path": "assets/metrics/ablation-baseline-c0-c0_metrics.txt",
-      "search_text": "ablation baseline c0 baseline/c0 results/ablation/baseline/c0 run_0030_ablation-baseline-c0-c0"
+      "search_text": "ablation baseline c0 baseline/c0 results/ablation/baseline/c0 run_0029_ablation-baseline-c0-c0"
     },
     {
-      "run_id": "run_0031_ablation-baseline-c3-c3",
+      "run_id": "run_0030_ablation-baseline-c3-c3",
       "group": "ablation",
       "setting": "baseline/c3",
       "method": "baseline",
@@ -586,10 +568,10 @@
       },
       "image_path": "assets/images/ablation-baseline-c3-c3.png",
       "metrics_path": "assets/metrics/ablation-baseline-c3-c3_metrics.txt",
-      "search_text": "ablation baseline c3 baseline/c3 results/ablation/baseline/c3 run_0031_ablation-baseline-c3-c3"
+      "search_text": "ablation baseline c3 baseline/c3 results/ablation/baseline/c3 run_0030_ablation-baseline-c3-c3"
     },
     {
-      "run_id": "run_0032_ablation-metric-cosine-c7-c7",
+      "run_id": "run_0031_ablation-metric-cosine-c7-c7",
       "group": "ablation",
       "setting": "metric_cosine/c7",
       "method": "metric_cosine",
@@ -604,10 +586,10 @@
       },
       "image_path": "assets/images/ablation-metric-cosine-c7-c7.png",
       "metrics_path": "assets/metrics/ablation-metric-cosine-c7-c7_metrics.txt",
-      "search_text": "ablation metric_cosine c7 metric_cosine/c7 results/ablation/metric_cosine/c7 run_0032_ablation-metric-cosine-c7-c7"
+      "search_text": "ablation metric_cosine c7 metric_cosine/c7 results/ablation/metric_cosine/c7 run_0031_ablation-metric-cosine-c7-c7"
     },
     {
-      "run_id": "run_0033_ablation-metric-cosine-c0-c0",
+      "run_id": "run_0032_ablation-metric-cosine-c0-c0",
       "group": "ablation",
       "setting": "metric_cosine/c0",
       "method": "metric_cosine",
@@ -622,10 +604,10 @@
       },
       "image_path": "assets/images/ablation-metric-cosine-c0-c0.png",
       "metrics_path": "assets/metrics/ablation-metric-cosine-c0-c0_metrics.txt",
-      "search_text": "ablation metric_cosine c0 metric_cosine/c0 results/ablation/metric_cosine/c0 run_0033_ablation-metric-cosine-c0-c0"
+      "search_text": "ablation metric_cosine c0 metric_cosine/c0 results/ablation/metric_cosine/c0 run_0032_ablation-metric-cosine-c0-c0"
     },
     {
-      "run_id": "run_0034_ablation-metric-cosine-c3-c3",
+      "run_id": "run_0033_ablation-metric-cosine-c3-c3",
       "group": "ablation",
       "setting": "metric_cosine/c3",
       "method": "metric_cosine",
@@ -640,10 +622,10 @@
       },
       "image_path": "assets/images/ablation-metric-cosine-c3-c3.png",
       "metrics_path": "assets/metrics/ablation-metric-cosine-c3-c3_metrics.txt",
-      "search_text": "ablation metric_cosine c3 metric_cosine/c3 results/ablation/metric_cosine/c3 run_0034_ablation-metric-cosine-c3-c3"
+      "search_text": "ablation metric_cosine c3 metric_cosine/c3 results/ablation/metric_cosine/c3 run_0033_ablation-metric-cosine-c3-c3"
     },
     {
-      "run_id": "run_0035_ablation-tv-1e-6-c7-c7",
+      "run_id": "run_0034_ablation-tv-1e-6-c7-c7",
       "group": "ablation",
       "setting": "tv_1e-6/c7",
       "method": "tv_1e-6",
@@ -658,10 +640,10 @@
       },
       "image_path": "assets/images/ablation-tv-1e-6-c7-c7.png",
       "metrics_path": "assets/metrics/ablation-tv-1e-6-c7-c7_metrics.txt",
-      "search_text": "ablation tv_1e-6 c7 tv_1e-6/c7 results/ablation/tv_1e-6/c7 run_0035_ablation-tv-1e-6-c7-c7"
+      "search_text": "ablation tv_1e-6 c7 tv_1e-6/c7 results/ablation/tv_1e-6/c7 run_0034_ablation-tv-1e-6-c7-c7"
     },
     {
-      "run_id": "run_0036_ablation-tv-1e-6-c0-c0",
+      "run_id": "run_0035_ablation-tv-1e-6-c0-c0",
       "group": "ablation",
       "setting": "tv_1e-6/c0",
       "method": "tv_1e-6",
@@ -676,10 +658,10 @@
       },
       "image_path": "assets/images/ablation-tv-1e-6-c0-c0.png",
       "metrics_path": "assets/metrics/ablation-tv-1e-6-c0-c0_metrics.txt",
-      "search_text": "ablation tv_1e-6 c0 tv_1e-6/c0 results/ablation/tv_1e-6/c0 run_0036_ablation-tv-1e-6-c0-c0"
+      "search_text": "ablation tv_1e-6 c0 tv_1e-6/c0 results/ablation/tv_1e-6/c0 run_0035_ablation-tv-1e-6-c0-c0"
     },
     {
-      "run_id": "run_0037_ablation-tv-1e-6-c3-c3",
+      "run_id": "run_0036_ablation-tv-1e-6-c3-c3",
       "group": "ablation",
       "setting": "tv_1e-6/c3",
       "method": "tv_1e-6",
@@ -694,10 +676,10 @@
       },
       "image_path": "assets/images/ablation-tv-1e-6-c3-c3.png",
       "metrics_path": "assets/metrics/ablation-tv-1e-6-c3-c3_metrics.txt",
-      "search_text": "ablation tv_1e-6 c3 tv_1e-6/c3 results/ablation/tv_1e-6/c3 run_0037_ablation-tv-1e-6-c3-c3"
+      "search_text": "ablation tv_1e-6 c3 tv_1e-6/c3 results/ablation/tv_1e-6/c3 run_0036_ablation-tv-1e-6-c3-c3"
     },
     {
-      "run_id": "run_0038_showcase-showcase-global",
+      "run_id": "run_0037_showcase-showcase-global",
       "group": "showcase",
       "setting": "showcase",
       "method": "showcase",
@@ -712,7 +694,7 @@
       },
       "image_path": "assets/images/showcase-showcase-global.png",
       "metrics_path": "assets/metrics/showcase-showcase-global_metrics.txt",
-      "search_text": "showcase showcase global showcase results/showcase run_0038_showcase-showcase-global"
+      "search_text": "showcase showcase global showcase results/showcase run_0037_showcase-showcase-global"
     }
   ],
   "aggregates": {
@@ -1035,27 +1017,6 @@
         },
         "LPIPS": {
           "mean": 0.6345014572143555,
-          "std": 0.0
-        },
-        "LabelMatch": {
-          "mean": 1.0,
-          "std": 0.0
-        }
-      },
-      {
-        "group": "defenses",
-        "method": "he_test",
-        "count": 1,
-        "MSE": {
-          "mean": 0.1997629255056381,
-          "std": 0.0
-        },
-        "PSNR": {
-          "mean": 19.036050930720847,
-          "std": 0.0
-        },
-        "SSIM": {
-          "mean": 0.4094901084899902,
           "std": 0.0
         },
         "LabelMatch": {
@@ -1725,26 +1686,6 @@
         }
       },
       {
-        "method": "he_test",
-        "count": 1,
-        "MSE": {
-          "mean": 0.1997629255056381,
-          "std": 0.0
-        },
-        "PSNR": {
-          "mean": 19.036050930720847,
-          "std": 0.0
-        },
-        "SSIM": {
-          "mean": 0.4094901084899902,
-          "std": 0.0
-        },
-        "LabelMatch": {
-          "mean": 1.0,
-          "std": 0.0
-        }
-      },
-      {
         "method": "init_fft",
         "count": 3,
         "MSE": {
@@ -1967,31 +1908,31 @@
   },
   "baselines_by_client": {
     "global": "run_0003_defenses-baseline-global",
-    "c5": "run_0007_multi-client-bmk-c5-c5",
-    "c2": "run_0008_multi-client-bmk-c2-c2",
-    "c3": "run_0009_multi-client-bmk-c3-c3",
-    "c4": "run_0010_multi-client-bmk-c4-c4",
-    "c1": "run_0011_multi-client-bmk-c1-c1",
-    "c6": "run_0012_multi-client-bmk-c6-c6",
-    "c8": "run_0013_multi-client-bmk-c8-c8",
-    "c9": "run_0014_multi-client-bmk-c9-c9",
-    "c7": "run_0029_ablation-baseline-c7-c7",
-    "c0": "run_0030_ablation-baseline-c0-c0"
+    "c5": "run_0006_multi-client-bmk-c5-c5",
+    "c2": "run_0007_multi-client-bmk-c2-c2",
+    "c3": "run_0008_multi-client-bmk-c3-c3",
+    "c4": "run_0009_multi-client-bmk-c4-c4",
+    "c1": "run_0010_multi-client-bmk-c1-c1",
+    "c6": "run_0011_multi-client-bmk-c6-c6",
+    "c8": "run_0012_multi-client-bmk-c8-c8",
+    "c9": "run_0013_multi-client-bmk-c9-c9",
+    "c7": "run_0028_ablation-baseline-c7-c7",
+    "c0": "run_0029_ablation-baseline-c0-c0"
   },
   "baseline_index": {
-    "global": "run_0009_multi-client-bmk-c3-c3",
+    "global": "run_0008_multi-client-bmk-c3-c3",
     "by_client": {
       "global": "run_0003_defenses-baseline-global",
-      "c5": "run_0007_multi-client-bmk-c5-c5",
-      "c2": "run_0008_multi-client-bmk-c2-c2",
-      "c3": "run_0009_multi-client-bmk-c3-c3",
-      "c4": "run_0010_multi-client-bmk-c4-c4",
-      "c1": "run_0011_multi-client-bmk-c1-c1",
-      "c6": "run_0012_multi-client-bmk-c6-c6",
-      "c8": "run_0013_multi-client-bmk-c8-c8",
-      "c9": "run_0014_multi-client-bmk-c9-c9",
-      "c7": "run_0029_ablation-baseline-c7-c7",
-      "c0": "run_0030_ablation-baseline-c0-c0"
+      "c5": "run_0006_multi-client-bmk-c5-c5",
+      "c2": "run_0007_multi-client-bmk-c2-c2",
+      "c3": "run_0008_multi-client-bmk-c3-c3",
+      "c4": "run_0009_multi-client-bmk-c4-c4",
+      "c1": "run_0010_multi-client-bmk-c1-c1",
+      "c6": "run_0011_multi-client-bmk-c6-c6",
+      "c8": "run_0012_multi-client-bmk-c8-c8",
+      "c9": "run_0013_multi-client-bmk-c9-c9",
+      "c7": "run_0028_ablation-baseline-c7-c7",
+      "c0": "run_0029_ablation-baseline-c0-c0"
     },
     "by_group": {
       "defenses": {
@@ -2001,57 +1942,56 @@
         }
       },
       "multi_client": {
-        "global": "run_0009_multi-client-bmk-c3-c3",
+        "global": "run_0008_multi-client-bmk-c3-c3",
         "clients": {
-          "c5": "run_0007_multi-client-bmk-c5-c5",
-          "c2": "run_0008_multi-client-bmk-c2-c2",
-          "c3": "run_0009_multi-client-bmk-c3-c3",
-          "c4": "run_0010_multi-client-bmk-c4-c4",
-          "c1": "run_0011_multi-client-bmk-c1-c1",
-          "c6": "run_0012_multi-client-bmk-c6-c6",
-          "c8": "run_0013_multi-client-bmk-c8-c8",
-          "c9": "run_0014_multi-client-bmk-c9-c9",
-          "c7": "run_0015_multi-client-bmk-c7-c7",
-          "c0": "run_0016_multi-client-bmk-c0-c0"
+          "c5": "run_0006_multi-client-bmk-c5-c5",
+          "c2": "run_0007_multi-client-bmk-c2-c2",
+          "c3": "run_0008_multi-client-bmk-c3-c3",
+          "c4": "run_0009_multi-client-bmk-c4-c4",
+          "c1": "run_0010_multi-client-bmk-c1-c1",
+          "c6": "run_0011_multi-client-bmk-c6-c6",
+          "c8": "run_0012_multi-client-bmk-c8-c8",
+          "c9": "run_0013_multi-client-bmk-c9-c9",
+          "c7": "run_0014_multi-client-bmk-c7-c7",
+          "c0": "run_0015_multi-client-bmk-c0-c0"
         }
       },
       "ablation": {
-        "global": "run_0031_ablation-baseline-c3-c3",
+        "global": "run_0030_ablation-baseline-c3-c3",
         "clients": {
-          "c7": "run_0029_ablation-baseline-c7-c7",
-          "c0": "run_0030_ablation-baseline-c0-c0",
-          "c3": "run_0031_ablation-baseline-c3-c3"
+          "c7": "run_0028_ablation-baseline-c7-c7",
+          "c0": "run_0029_ablation-baseline-c0-c0",
+          "c3": "run_0030_ablation-baseline-c3-c3"
         }
       }
     }
   },
-  "best_overall_id": "run_0009_multi-client-bmk-c3-c3",
-  "best_baseline_id": "run_0009_multi-client-bmk-c3-c3",
+  "best_overall_id": "run_0008_multi-client-bmk-c3-c3",
+  "best_baseline_id": "run_0008_multi-client-bmk-c3-c3",
   "best_per_setting": {
     "he": "run_0000_defenses-he-global",
     "dp_eps1": "run_0001_defenses-dp-eps1-global",
     "dp_eps8": "run_0002_defenses-dp-eps8-global",
-    "baseline": "run_0031_ablation-baseline-c3-c3",
-    "he_test": "run_0004_defenses-he-test-global",
-    "dp_eps01": "run_0005_defenses-dp-eps01-global",
-    "dp_he": "run_0006_defenses-dp-he-global",
-    "bmk_c5": "run_0007_multi-client-bmk-c5-c5",
-    "bmk_c2": "run_0008_multi-client-bmk-c2-c2",
-    "bmk_c3": "run_0009_multi-client-bmk-c3-c3",
-    "bmk_c4": "run_0010_multi-client-bmk-c4-c4",
-    "bmk_c1": "run_0011_multi-client-bmk-c1-c1",
-    "bmk_c6": "run_0012_multi-client-bmk-c6-c6",
-    "bmk_c8": "run_0013_multi-client-bmk-c8-c8",
-    "bmk_c9": "run_0014_multi-client-bmk-c9-c9",
-    "bmk_c7": "run_0015_multi-client-bmk-c7-c7",
-    "bmk_c0": "run_0016_multi-client-bmk-c0-c0",
-    "metric_sim": "run_0019_ablation-metric-sim-c3-c3",
-    "init_fft": "run_0022_ablation-init-fft-c3-c3",
-    "tv_1e-4": "run_0023_ablation-tv-1e-4-c7-c7",
-    "metric_both": "run_0028_ablation-metric-both-c3-c3",
-    "metric_cosine": "run_0034_ablation-metric-cosine-c3-c3",
-    "tv_1e-6": "run_0035_ablation-tv-1e-6-c7-c7",
-    "showcase": "run_0038_showcase-showcase-global"
+    "baseline": "run_0030_ablation-baseline-c3-c3",
+    "dp_eps01": "run_0004_defenses-dp-eps01-global",
+    "dp_he": "run_0005_defenses-dp-he-global",
+    "bmk_c5": "run_0006_multi-client-bmk-c5-c5",
+    "bmk_c2": "run_0007_multi-client-bmk-c2-c2",
+    "bmk_c3": "run_0008_multi-client-bmk-c3-c3",
+    "bmk_c4": "run_0009_multi-client-bmk-c4-c4",
+    "bmk_c1": "run_0010_multi-client-bmk-c1-c1",
+    "bmk_c6": "run_0011_multi-client-bmk-c6-c6",
+    "bmk_c8": "run_0012_multi-client-bmk-c8-c8",
+    "bmk_c9": "run_0013_multi-client-bmk-c9-c9",
+    "bmk_c7": "run_0014_multi-client-bmk-c7-c7",
+    "bmk_c0": "run_0015_multi-client-bmk-c0-c0",
+    "metric_sim": "run_0018_ablation-metric-sim-c3-c3",
+    "init_fft": "run_0021_ablation-init-fft-c3-c3",
+    "tv_1e-4": "run_0022_ablation-tv-1e-4-c7-c7",
+    "metric_both": "run_0027_ablation-metric-both-c3-c3",
+    "metric_cosine": "run_0033_ablation-metric-cosine-c3-c3",
+    "tv_1e-6": "run_0034_ablation-tv-1e-6-c7-c7",
+    "showcase": "run_0037_showcase-showcase-global"
   },
   "filter_values": {
     "groups": [
@@ -2077,7 +2017,6 @@
       "dp_eps8",
       "dp_he",
       "he",
-      "he_test",
       "init_fft",
       "metric_both",
       "metric_cosine",
@@ -2104,7 +2043,9 @@
     "defenses_grouped_bars": "assets/charts/defenses_grouped_bars.png",
     "defenses_scatter_psnr_vs_lpips": "assets/charts/defenses_scatter_psnr_vs_lpips.png",
     "multiclient_boxplots": "assets/charts/multiclient_boxplots.png",
-    "ablation_bars": "assets/charts/ablation_bars.png"
+    "ablation_psnr": "assets/charts/ablation_psnr.png",
+    "ablation_ssim": "assets/charts/ablation_ssim.png",
+    "ablation_lpips": "assets/charts/ablation_lpips.png"
   },
   "montages": [
     {
@@ -2112,5 +2053,8 @@
       "path": "assets/montages/top_ranked.png"
     }
   ],
+  "figures": {
+    "dp_noise_scaling": "assets/figures/dp_noise_scaling.png"
+  },
   "placeholder_image": "assets/images/placeholder.png"
 }

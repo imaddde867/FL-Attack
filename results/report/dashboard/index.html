@@ -3,837 +3,728 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gradient Inversion Attack Analysis | Federated Learning Security Research</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230d1117'/%3E%3Cpath d='M32 12L16 22v20l16 10 16-10V22L32 12z' fill='none' stroke='%2358a6ff' stroke-width='2.5'/%3E%3Ccircle cx='32' cy='32' r='6' fill='%2358a6ff'/%3E%3Ccircle cx='22' cy='24' r='3' fill='%2356d364'/%3E%3Ccircle cx='42' cy='24' r='3' fill='%23f78166'/%3E%3Ccircle cx='32' cy='44' r='3' fill='%23db61a2'/%3E%3C/svg%3E" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <title>Privacy Leakage in Federated Learning</title>
+  <meta name="description" content="A gradient inversion attack benchmark on federated learning: how much of a client's private image can be reconstructed from a single raw gradient update, and what local differential privacy does about it." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Privacy Leakage in Federated Learning" />
+  <meta property="og:description" content="Gradient inversion attack benchmark on CelebA: reconstruction quality under no defense and under candidate defenses." />
+  <meta property="og:url" content="https://imaddde867.github.io/FL-Attack/" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Privacy Leakage in Federated Learning" />
+  <meta name="twitter:description" content="Gradient inversion attack benchmark on CelebA: reconstruction quality under no defense and under candidate defenses." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%23faf9f6'/%3E%3Crect x='8' y='8' width='48' height='48' rx='4' fill='none' stroke='%231d3557' stroke-width='4'/%3E%3Crect x='20' y='20' width='24' height='24' fill='%23bc4b2c'/%3E%3C/svg%3E" />
   <style>
+    /* mirrored from scripts/make_dashboard.py PALETTE */
     :root {
-      color-scheme: dark;
-      --bg: #0d1117;
-      --bg-card: #161b22;
-      --bg-panel: #21262d;
-      --bg-elevated: #30363d;
-      --border: #30363d;
-      --border-subtle: #21262d;
-      --text: #e6edf3;
-      --text-secondary: #8b949e;
-      --muted: #6e7681;
-      --accent: #58a6ff;
-      --accent-emphasis: #1f6feb;
-      --success: #3fb950;
-      --success-subtle: rgba(63, 185, 80, 0.15);
-      --warning: #d29922;
-      --warning-subtle: rgba(210, 153, 34, 0.15);
-      --danger: #f85149;
-      --danger-subtle: rgba(248, 81, 73, 0.15);
-      --purple: #a371f7;
-      --pink: #db61a2;
-      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color-scheme: light;
+      --paper: #faf9f6;
+      --panel: #ffffff;
+      --ink: #1a1a1a;
+      --muted: #5c5a52;
+      --border: #ddd9d0;
+      --navy: #1d3557;
+      --teal: #457b9d;
+      --rust: #bc4b2c;
+      --olive: #6a7f3f;
+      --gray: #8d8a80;
+      --serif: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      --mono: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      min-height: 100vh;
-      background: var(--bg);
-      color: var(--text);
-      font-family: inherit;
-      line-height: 1.5;
-      font-size: 14px;
-      -webkit-font-smoothing: antialiased;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 1rem;
+      line-height: 1.6;
     }
-    .page {
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
+    h1, h2, h3 {
+      font-family: var(--serif);
+      line-height: 1.25;
+      font-weight: 600;
     }
-    header {
-      background: linear-gradient(180deg, #161b22 0%, #0d1117 100%);
-      padding: 18px 36px;
+    h1 {
+      margin: 0;
+      font-size: clamp(1.75rem, 1.4rem + 1.5vw, 2.5rem);
+    }
+    h2 {
+      font-size: 1.5rem;
+      margin: 0 0 1rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 2px solid var(--navy);
+    }
+    h3 {
+      font-size: 1.15rem;
+      margin: 2rem 0 0.75rem;
+    }
+    a {
+      color: var(--navy);
+    }
+    code {
+      font-family: var(--mono);
+      font-size: 0.85em;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0.05em 0.3em;
+    }
+    .wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 clamp(1rem, 4vw, 2.5rem);
+    }
+    .prose {
+      max-width: 70ch;
+    }
+
+    /* ---------- header / footer ---------- */
+    .page-header {
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+      padding: 2.5rem 0 2rem;
+    }
+    .page-header h1 a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .page-header h1 a:hover {
+      text-decoration: underline;
+      text-decoration-color: var(--rust);
+    }
+    .subtitle {
+      margin: 0.6rem 0 0;
+      font-size: 1rem;
+      color: var(--muted);
+    }
+    .build-meta {
+      margin: 1rem 0 0;
+      font-size: 0.85rem;
+      color: var(--gray);
       display: flex;
       flex-wrap: wrap;
-      align-items: flex-start;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--border);
-      gap: 12px;
+      gap: 0.35rem 1.25rem;
     }
-    header h1 {
-      margin: 0;
-      font-size: 20px;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    header h1::before {
-      content: "";
-      display: inline-block;
-      width: 3px;
-      height: 20px;
-      background: var(--accent);
-      border-radius: 2px;
-    }
-    header .subtitle {
-      margin-top: 4px;
-      font-size: 13px;
-      color: var(--text-secondary);
-      font-weight: 400;
-      letter-spacing: 0;
-    }
-    header .meta {
-      text-align: right;
-      font-size: 12px;
+    .page-footer {
+      margin-top: 4rem;
+      border-top: 1px solid var(--border);
+      background: var(--panel);
+      padding: 1.75rem 0;
+      font-size: 0.85rem;
       color: var(--muted);
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
     }
-    header .meta-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      background: var(--bg-panel);
+    .page-footer .wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 1.5rem;
+      justify-content: space-between;
+    }
+
+    /* ---------- sections ---------- */
+    main section {
+      margin: 3.5rem 0;
+    }
+    section > p {
+      max-width: 70ch;
+    }
+    .callout {
+      max-width: 70ch;
+      margin: 1.5rem 0 0;
+      padding: 0.85rem 1.1rem;
+      background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--text-secondary);
+      border-left: 3px solid var(--rust);
+      color: var(--ink);
     }
-    header .key-finding {
-      margin-top: 8px;
-      font-size: 12px;
-      color: var(--success);
-      font-weight: 500;
-      padding: 8px 12px;
-      background: var(--success-subtle);
-      border-radius: 6px;
-      border-left: 3px solid var(--success);
-      display: flex;
-      align-items: center;
-      gap: 6px;
+    .callout .section-label {
+      color: var(--rust);
     }
-    header .key-finding::before {
-      content: "✓";
-      font-weight: 700;
-      font-size: 12px;
-    }
-    main {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-    }
-    .viewer {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    .viewer-panels {
-      display: grid;
-      grid-template-columns: minmax(400px, 0.6fr) minmax(340px, 0.4fr);
-      gap: 20px;
-      padding: 20px 36px 16px;
-      border-bottom: 1px solid var(--border-subtle);
-      align-items: stretch;
-    }
-    .panel {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 14px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      min-height: 0;
-      overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
-    }
-    .carousel-panel,
-    .details-panel {
-      min-height: 0;
-      height: 100%;
-    }
-    .panel h2 {
-      margin: 0;
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
+    .section-label {
+      font-size: 0.75rem;
       text-transform: uppercase;
-      color: var(--text-secondary);
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
     }
-    .carousel-frame {
-      flex: 1;
-      position: relative;
-      border-radius: 10px;
+
+    /* ---------- figures ---------- */
+    figure {
+      margin: 0;
+    }
+    figure img {
+      width: 100%;
+      display: block;
       border: 1px solid var(--border);
-      background: linear-gradient(145deg, #fafbfc 0%, #f6f8fa 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 280px;
-      max-height: 400px;
-      overflow: hidden;
-      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
-    }
-    .autoplay-image {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      border-radius: 6px;
+      border-radius: 4px;
+      background: var(--panel);
       cursor: zoom-in;
-      transition: transform 0.25s ease, box-shadow 0.25s ease;
     }
-    .autoplay-image:hover {
-      transform: scale(1.015);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    figcaption {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: var(--muted);
     }
-    .carousel-badge {
-      display: none;
+    .paired-figures {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.75rem;
+      margin-top: 1.25rem;
+    }
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+    .single-figure {
+      margin-top: 1.25rem;
+      max-width: 720px;
+    }
+    .montage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .montage-grid img {
+      width: 100%;
+      display: block;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--panel);
+      cursor: zoom-in;
+    }
+    .empty-state {
+      padding: 1rem;
+      border: 1px dashed var(--border);
+      border-radius: 4px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+
+    /* ---------- explorer controls ---------- */
+    .controls {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.1rem 1.25rem;
+      margin-top: 1.25rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem 1.5rem;
+    }
+    .filter-block h4 {
+      margin: 0 0 0.4rem;
+      font-family: var(--sans);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    .filter-help {
+      margin: 0 0 0.5rem;
+      font-size: 0.85rem;
+      color: var(--gray);
+      line-height: 1.4;
+    }
+    .filter-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+    .chip {
+      padding: 0.25rem 0.6rem;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      background: var(--paper);
+      color: var(--muted);
+      cursor: pointer;
+      font-family: var(--sans);
+      font-size: 0.85rem;
+    }
+    .chip.active {
+      background: var(--navy);
+      border-color: var(--navy);
+      color: var(--panel);
+    }
+    .controls input[type="search"],
+    .controls select {
+      width: 100%;
+      padding: 0.4rem 0.5rem;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 0.9rem;
+    }
+    .quick-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    .quick-actions button {
+      padding: 0.35rem 0.7rem;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      background: var(--paper);
+      color: var(--ink);
+      cursor: pointer;
+      font-family: var(--sans);
+      font-size: 0.85rem;
+    }
+    .quick-actions button:hover {
+      border-color: var(--navy);
+    }
+
+    /* ---------- tables ---------- */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      background: var(--panel);
+    }
+    thead th {
+      position: sticky;
+      top: 0;
+      background: var(--panel);
+      font-family: var(--sans);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: 0.5rem 0.6rem;
+      text-align: left;
+    }
+    .table-wrapper {
+      margin-top: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      max-height: 30rem;
+      overflow: auto;
+    }
+    tbody tr {
+      cursor: pointer;
+    }
+    tbody tr:hover {
+      background: var(--paper);
+    }
+    tbody tr.selected {
+      background: rgba(29, 53, 87, 0.08);
+      box-shadow: inset 3px 0 0 var(--navy);
+    }
+    .table-thumb {
+      width: 64px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      background: var(--paper);
+      cursor: zoom-in;
+    }
+    .leaderboard-controls {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    /* ---------- selected run viewer ---------- */
+    .run-viewer {
+      display: grid;
+      grid-template-columns: minmax(260px, 0.9fr) minmax(300px, 1.1fr);
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.25rem;
+    }
+    .run-viewer h3 {
+      margin: 0;
+    }
+    .viewer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .selected-image {
+      width: 100%;
+      display: block;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--paper);
+      cursor: zoom-in;
+    }
+    .nav-buttons {
+      display: flex;
+      gap: 0.4rem;
+    }
+    .nav-buttons button {
+      padding: 0.25rem 0.7rem;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      background: var(--paper);
+      color: var(--ink);
+      cursor: pointer;
+      font-family: var(--sans);
+      font-size: 0.85rem;
+    }
+    .nav-buttons button:hover {
+      border-color: var(--navy);
+    }
+    .run-summary {
+      font-family: var(--serif);
+      font-size: 1.05rem;
+      margin-bottom: 0.75rem;
     }
     .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+      gap: 0.5rem;
     }
     .metric-card {
-      background: var(--bg-panel);
-      border-radius: 8px;
-      padding: 8px 6px;
+      background: var(--paper);
       border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0.4rem 0.5rem;
       text-align: center;
-      transition: all 0.2s ease;
-      position: relative;
-    }
-    .metric-card:hover {
-      border-color: var(--accent);
-      background: var(--bg-elevated);
     }
     .metric-card .label {
-      font-size: 10px;
+      font-size: 0.7rem;
       text-transform: uppercase;
-      color: var(--muted);
       letter-spacing: 0.06em;
-      margin-bottom: 4px;
-      font-weight: 500;
+      color: var(--muted);
     }
     .metric-card .value {
-      font-size: 15px;
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-      font-family: "JetBrains Mono", "SF Mono", monospace;
-    }
-    .metric-card .value.good {
-      color: var(--success);
-    }
-    .metric-card .value.bad {
-      color: var(--danger);
-    }
-    .metric-card .value.neutral {
-      color: var(--text-secondary);
-    }
-    .run-summary {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-      padding: 6px 10px;
-      background: var(--bg-panel);
-      border-radius: 6px;
-      border-left: 3px solid var(--accent);
-    }
-    .run-path {
-      font-family: "JetBrains Mono", "SF Mono", "Consolas", monospace;
-      font-size: 11px;
-      color: var(--muted);
-      background: rgba(0, 0, 0, 0.25);
-      padding: 10px 12px;
-      border-radius: 8px;
-      overflow-x: auto;
-      border: 1px solid var(--border-subtle);
-    }
-    .section-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      margin-bottom: 6px;
+      font-size: 1.1rem;
       font-weight: 600;
     }
     .details-stack {
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      flex: 1;
-      min-height: 0;
+      gap: 0.75rem;
+      margin-top: 0.9rem;
     }
-    .details-stack > div:last-child {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      min-height: 0;
+    .run-path,
+    .metrics-text {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--muted);
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0.5rem 0.6rem;
+      overflow-x: auto;
+      margin: 0;
     }
-    .metrics-table-wrapper {
-      background: var(--bg);
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
-      padding: 8px;
-      flex: 1;
-      min-height: 60px;
+    .metrics-text {
+      max-height: 12rem;
       overflow-y: auto;
+      white-space: pre-wrap;
     }
-    .metrics-table-wrapper table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 11px;
-    }
-    .metrics-table-wrapper th {
-      text-align: left;
-      padding: 4px 8px;
-      font-weight: 500;
-      color: var(--muted);
-      border-bottom: 1px solid var(--border-subtle);
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .metrics-table-wrapper td {
-      padding: 6px 8px;
-      font-family: "JetBrains Mono", monospace;
-      color: var(--text-secondary);
-      border-bottom: 1px solid var(--border-subtle);
-    }
-    .metrics-table-wrapper tr:last-child td {
-      border-bottom: none;
-    }
-    .metrics-table-wrapper .metric-name {
-      color: var(--text);
-      font-weight: 500;
-    }
-    .nav-buttons {
-      display: flex;
-      gap: 6px;
-      justify-content: flex-end;
-    }
-    .nav-buttons button {
-      padding: 6px 14px;
-      border-radius: 8px;
+
+    /* ---------- reproduce ---------- */
+    pre.commands {
+      background: var(--panel);
       border: 1px solid var(--border);
-      background: var(--bg-panel);
-      color: var(--text-secondary);
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 500;
-      transition: all 0.15s ease;
+      border-left: 3px solid var(--navy);
+      border-radius: 4px;
+      padding: 1rem 1.1rem;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: var(--ink);
+      max-width: 70ch;
     }
-    .nav-buttons button:hover {
-      border-color: var(--accent);
-      background: var(--accent-emphasis);
-      color: var(--text);
-    }
-    .comparison-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .autoplay-controls {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-    }
-    .circle-button {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      border: 1px solid var(--border);
-      background: var(--bg-panel);
-      color: var(--muted);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      padding: 0;
-      transition: all 0.15s ease;
-    }
-    .circle-button:hover:not(:disabled) {
-      color: var(--text);
-      background: var(--accent-emphasis);
-      border-color: var(--accent);
-    }
-    .circle-button:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
-    }
-    .circle-button svg {
-      width: 18px;
-      height: 18px;
-      fill: currentColor;
-    }
-    .shuffle-btn {
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--bg-panel);
-      color: var(--muted);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      padding: 0;
-      transition: all 0.15s ease;
-    }
-    .shuffle-btn:hover {
-      color: var(--text);
-      background: var(--accent-emphasis);
-      border-color: var(--accent);
-    }
-    .shuffle-btn svg {
-      width: 14px;
-      height: 14px;
-      fill: currentColor;
-    }
-    .circle-button .icon-pause {
-      display: none;
-    }
-    .circle-button.playing .icon-play {
-      display: none;
-    }
-    .circle-button.playing .icon-pause {
-      display: block;
-    }
-    .autoplay-speed {
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: var(--bg-panel);
-      color: var(--text-secondary);
-      font-size: 11px;
-      font-weight: 500;
-      padding: 5px 22px 5px 10px;
-      appearance: none;
-      cursor: pointer;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236e7681' d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E");
-      background-position: right 6px center;
-      background-size: 12px;
-      background-repeat: no-repeat;
-      transition: all 0.15s ease;
-    }
-    .autoplay-speed:hover:not(:disabled) {
-      border-color: var(--accent);
-      color: var(--text);
-    }
-    .autoplay-speed:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
-    }
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-    .tabs {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 0 36px 24px;
-      min-height: 0;
-    }
-    .tab-buttons {
-      display: flex;
-      gap: 28px;
-      margin-top: 12px;
-      border-bottom: 1px solid var(--border);
-    }
-    .tab-buttons button {
-      border: none;
+    pre.commands code {
       background: none;
-      color: var(--muted);
-      padding: 10px 2px;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      margin-bottom: -1px;
-      font-size: 13px;
-      font-weight: 500;
-      transition: all 0.15s ease;
-      letter-spacing: 0.01em;
+      border: none;
+      padding: 0;
+      font-size: inherit;
     }
-    .tab-buttons button:hover {
-      color: var(--text-secondary);
-    }
-    .tab-buttons button.active {
-      color: var(--accent);
-      border-color: var(--accent);
-    }
-    .tab-panel {
-      display: none;
-      padding: 20px 0;
-      flex: 1;
-      overflow-y: auto;
-    }
-    .tab-panel.active {
-      display: block;
-    }
-    table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      font-size: 13px;
-    }
-    thead {
-      position: sticky;
-      top: 0;
-      background: var(--bg-card);
-      z-index: 1;
-    }
-    th {
-      border-bottom: 1px solid var(--border);
-      padding: 12px 10px;
-      text-align: left;
-      font-weight: 600;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--muted);
-      cursor: pointer;
-      transition: color 0.15s ease;
-      white-space: nowrap;
-    }
-    th:hover {
-      color: var(--text-secondary);
-    }
-    td {
-      border-bottom: 1px solid var(--border-subtle);
-      padding: 12px 10px;
-      text-align: left;
-      font-variant-numeric: tabular-nums;
-      font-family: "JetBrains Mono", "SF Mono", monospace;
-      font-size: 12px;
-    }
-    td:first-child {
-      font-family: inherit;
-    }
-    .table-thumb {
-      width: 52px;
-      height: 34px;
-      object-fit: cover;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: #fff;
-      transition: transform 0.15s ease;
-    }
-    .table-thumb:hover {
-      transform: scale(1.1);
-    }
-    tbody tr {
-      cursor: pointer;
-      transition: background 0.1s ease;
-    }
-    tbody tr:hover {
-      background: rgba(88, 166, 255, 0.04);
-    }
-    tbody tr.selected {
-      background: rgba(88, 166, 255, 0.1);
-      border-left: 2px solid var(--accent);
-    }
-    .charts-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-      gap: 24px;
-    }
-    .charts-grid img,
-    .montage-grid img {
-      width: 100%;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: linear-gradient(145deg, #fafbfc 0%, #f6f8fa 100%);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-      cursor: pointer;
-    }
-    .charts-grid img:hover,
-    .montage-grid img:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
-    }
-    .montage-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 20px;
-    }
-    .chart-title {
-      margin-bottom: 10px;
-      font-size: 13px;
-      color: var(--text-secondary);
-      font-weight: 500;
-    }
-    .empty-state {
-      padding: 40px;
-      border-radius: 12px;
-      background: var(--bg-card);
-      border: 1px dashed var(--border);
-      color: var(--muted);
-      text-align: center;
-      font-size: 13px;
-    }
-    .leaderboard-controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      font-size: 12px;
-      color: var(--muted);
-      border-bottom: 1px solid var(--border-subtle);
-    }
-    .leaderboard-controls strong {
-      color: var(--text-secondary);
-      font-weight: 600;
-    }
+
+    /* ---------- lightbox ---------- */
     .lightbox {
       position: fixed;
       inset: 0;
-      background: rgba(1, 4, 9, 0.92);
+      background: rgba(26, 26, 26, 0.8);
       display: none;
       align-items: center;
       justify-content: center;
       z-index: 999;
-      padding: 32px;
+      padding: 20px;
       cursor: zoom-out;
-      backdrop-filter: blur(8px);
     }
     .lightbox.active {
       display: flex;
     }
     .lightbox img {
-      max-width: 92vw;
-      max-height: 92vh;
-      border-radius: 12px;
-      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+      max-width: 90vw;
+      max-height: 85vh;
+      border-radius: 4px;
       border: 1px solid var(--border);
+      background: var(--panel);
     }
-    @media (max-width: 1100px) {
-      main {
-        flex-direction: column;
-      }
-      .viewer-panels {
+
+    @media (max-width: 820px) {
+      .run-viewer {
         grid-template-columns: 1fr;
       }
-    }
-    /* Custom scrollbar */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    ::-webkit-scrollbar-track {
-      background: var(--bg);
-    }
-    ::-webkit-scrollbar-thumb {
-      background: var(--bg-elevated);
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: var(--muted);
-    }
-    /* Footer */
-    footer {
-      padding: 16px 36px;
-      border-top: 1px solid var(--border-subtle);
-      background: var(--bg-card);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 11px;
-      color: var(--muted);
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    footer a {
-      color: var(--accent);
-      text-decoration: none;
-    }
-    footer a:hover {
-      text-decoration: underline;
-    }
-    .footer-links {
-      display: flex;
-      gap: 20px;
-    }
-    .footer-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      background: var(--bg-panel);
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
-      font-size: 10px;
-      font-weight: 500;
-      color: var(--text-secondary);
-    }
-    .github-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      background: var(--bg-panel);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text-secondary);
-      text-decoration: none;
-      font-size: 12px;
-      font-weight: 500;
-      transition: all 0.15s ease;
-    }
-    .github-link:hover {
-      background: var(--bg-elevated);
-      border-color: var(--accent);
-      color: var(--text);
-    }
-    .github-link svg {
-      width: 16px;
-      height: 16px;
-      fill: currentColor;
     }
   </style>
 </head>
 <body>
-  <div class="page">
-    <header>
-      <div>
-        <h1>Privacy Leakage in Federated Learning</h1>
-        <div class="subtitle">Gradient Inversion Attacks & Defense Mechanisms, Experimental Analysis</div>
-        <div class="key-finding" id="keyFinding"></div>
+  <header class="page-header">
+    <div class="wrap">
+      <h1><a href="https://github.com/imaddde867/FL-Attack" target="_blank" rel="noopener">Privacy Leakage in Federated Learning</a></h1>
+      <p class="subtitle">CelebA · SimpleCNN, 8.76M parameters · gradient inversion attack</p>
+      <p class="build-meta">
+        <span id="buildDate"></span>
+        <span id="runCounts"></span>
+      </p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="overview">
+      <h2>Overview</h2>
+      <p>Federated learning promises that raw client data never leaves the device — only
+gradients are shared. This project shows that promise is weaker than it looks: an
+honest-but-curious server can reconstruct a recognizable face from a single client's
+gradient update alone, no aggregation required. The benchmark below measures
+reconstruction quality (attack strength) under no defense and under two candidate
+defenses; it does not measure model accuracy, so it cannot speak to the
+privacy/utility tradeoff.</p>
+      <div class="callout">
+        <div class="section-label">Headline result</div>
+        <div id="keyFinding"></div>
       </div>
-      <div class="meta">
-        <a href="https://github.com/imaddde867/FL-Attack" target="_blank" rel="noopener" class="github-link" title="View source on GitHub">
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-          GitHub
-        </a>
-        <div class="meta-badge" id="buildDate"></div>
-        <div id="runCounts" style="margin-top:6px;"></div>
+    </section>
+
+    <section id="threat-model">
+      <h2>Threat Model &amp; Scope</h2>
+      <p><strong>Every result below reads one client's raw gradient before any
+aggregation</strong> (<code>attack_source="gradients"</code>). Local differential
+privacy — clip that client's release, add calibrated Gaussian noise — is the correct
+mechanism for exactly this release point, and it is what's evaluated here. It is
+<em>not</em> a bug that ε=8, 1, and 0.1 all land at roughly the same PSNR: per-coordinate
+Gaussian noise has L2 norm scaling ~σ√d, and at this model's d≈8.76M parameters, even
+ε=8 already injects noise ~1800× the clipped signal bound. See the figure below.</p>
+      <p>The "HE" row does not test encryption: the implementation quantizes gradients and
+adds fixed-scale Laplace noise; for this model size it never executes real Paillier
+encryption, and even when it does, the code decrypts the result before scoring it — a
+real secure-aggregation deployment would never expose that decrypted intermediate to
+this attacker. An honest version of this experiment exists in the codebase
+(<code>capture_mode='agg_update'</code> + <code>aggregate_clipped_noisy</code>'s
+central-DP mechanism, attacking only the FedAvg-averaged update) but no GPU/CelebA
+compute was available to run it this cycle — a named limitation, not a filled-in
+result.</p>
+    </section>
+
+    <section id="attack-effectiveness">
+      <h2>Results — Attack Effectiveness</h2>
+      <p>Every run in the benchmark, with its reconstruction metrics. Lower LPIPS and
+      higher PSNR/SSIM mean a stronger attack — that is, a worse privacy outcome for the
+      client whose gradient was read. Click any row to load that reconstruction.</p>
+
+      <div class="controls">
+        <div class="filter-block">
+          <h4>Search runs</h4>
+          <p class="filter-help">Match parts of a run path, client, or method (e.g. "dp_eps1 c3").</p>
+          <input type="search" id="searchInput" placeholder="Search by path, method, client..." />
+        </div>
+        <div class="filter-block">
+          <h4>Sort runs</h4>
+          <p class="filter-help">Reorder the table without changing which runs are shown.</p>
+          <select id="sortSelect">
+            <option value="best">Best (LPIPS asc, SSIM desc, PSNR desc)</option>
+            <option value="psnr">PSNR high to low</option>
+            <option value="ssim">SSIM high to low</option>
+            <option value="lpips">LPIPS low to high</option>
+            <option value="labelmatch">LabelMatch high to low</option>
+            <option value="path">Run path</option>
+          </select>
+        </div>
+        <div class="filter-block">
+          <h4>Scenario group</h4>
+          <p class="filter-help">Experiment family: defenses, ablation, multi_client, showcase.</p>
+          <div id="groupFilters" class="filter-options"></div>
+        </div>
+        <div class="filter-block">
+          <h4>Method / defense config</h4>
+          <p class="filter-help">Privacy mechanism or ablation setting (baseline, dp, he, tv, ...).</p>
+          <div id="methodFilters" class="filter-options"></div>
+        </div>
+        <div class="filter-block">
+          <h4>Client (participant)</h4>
+          <p class="filter-help">Which client or benchmarked participant (c0..c9) to inspect.</p>
+          <div id="clientFilters" class="filter-options"></div>
+        </div>
+        <div class="filter-block">
+          <h4>Quick views</h4>
+          <p class="filter-help">Presets for the comparisons discussed in the text.</p>
+          <div class="quick-actions">
+            <button id="btnBestOverall">Best overall</button>
+            <button id="btnBaselineBest">Baseline best</button>
+            <button id="btnBaselineWorst">Worst baseline</button>
+            <button id="btnDpSweep">DP sweep</button>
+          </div>
+        </div>
       </div>
-    </header>
-    <main>
-      <section class="viewer">
-        <div class="viewer-panels">
-          <div class="panel carousel-panel" id="autoplayPanel">
-            <div class="comparison-header">
-              <h2>Reconstructed Image Preview</h2>
-              <div class="autoplay-controls">
-                <button id="autoplayToggle" class="circle-button" aria-label="Start autoplay" title="Start autoplay" aria-pressed="false">
-                  <span class="sr-only">Start autoplay</span>
-                  <svg class="icon-play" viewBox="0 0 24 24" role="presentation">
-                    <polygon points="8,5 19,12 8,19" />
-                  </svg>
-                  <svg class="icon-pause" viewBox="0 0 24 24" role="presentation">
-                    <rect x="7" y="5" width="3" height="14" />
-                    <rect x="14" y="5" width="3" height="14" />
-                  </svg>
-                </button>
-                <button id="shuffleBtn" class="shuffle-btn" aria-label="Random experiment" title="Random experiment">
-                  <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
-                </button>
-                <select id="autoplaySpeed" class="autoplay-speed" aria-label="Loop speed">
-                  <option value="4000">Slow</option>
-                  <option value="2000" selected>Medium</option>
-                  <option value="1000">Fast</option>
-                </select>
-              </div>
-            </div>
-            <div class="carousel-frame">
-              <img id="autoplayImage" class="autoplay-image" alt="Autoplay preview" />
-              <div class="carousel-badge" id="autoplayStatus">Slide 0 / 0</div>
+
+      <div class="leaderboard-controls">
+        <div id="filteredCount"></div>
+        <div>Click any row to load that run.</div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th data-sort="group">Group</th>
+              <th data-sort="method">Method</th>
+              <th data-sort="client">Client</th>
+              <th data-sort="psnr">PSNR</th>
+              <th data-sort="ssim">SSIM</th>
+              <th data-sort="lpips">LPIPS</th>
+              <th data-sort="labelmatch">LabelMatch</th>
+              <th>Image</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody"></tbody>
+        </table>
+      </div>
+
+      <div class="run-viewer" id="selectedPanel">
+        <div>
+          <div class="viewer-header">
+            <h3>Reconstruction</h3>
+          </div>
+          <img id="selectedImage" class="selected-image" alt="Reconstruction for the selected run" />
+        </div>
+        <div>
+          <div class="viewer-header">
+            <h3>Run details</h3>
+            <div class="nav-buttons">
+              <button id="prevBtn" title="Previous run (Arrow Left)">Prev</button>
+              <button id="nextBtn" title="Next run (Arrow Right)">Next</button>
             </div>
           </div>
-          <div class="panel details-panel" id="selectedPanel">
-            <div class="comparison-header">
-              <h2>Experiment Configuration</h2>
-              <div class="nav-buttons">
-                <button id="prevBtn" title="Previous experiment (←)">◀ Previous</button>
-                <button id="nextBtn" title="Next experiment (→)">Next ▶</button>
-              </div>
+          <div class="run-summary" id="runSummary">No run selected.</div>
+          <div class="metrics-grid" id="selectedMetrics"></div>
+          <div class="details-stack">
+            <div>
+              <div class="section-label">Run path</div>
+              <div class="run-path" id="runPath"></div>
             </div>
-            <div class="run-summary" id="runSummary">Select an experiment to view configuration details</div>
-            <div class="metrics-grid" id="selectedMetrics"></div>
-            <div class="details-stack">
-              <div>
-                <div class="section-label">Source Directory</div>
-                <div class="run-path" id="runPath"></div>
-              </div>
-              <div>
-                <div class="section-label">Full Results</div>
-                <div class="metrics-table-wrapper" id="metricsText"></div>
-              </div>
+            <div>
+              <div class="section-label">Metrics</div>
+              <pre class="metrics-text" id="metricsText">Metrics file not available.</pre>
             </div>
           </div>
         </div>
-        <section class="tabs">
-          <div class="tab-buttons">
-            <button data-tab="leaderboards" class="active">Experiment Results</button>
-            <button data-tab="distributions">Statistical Analysis</button>
-            <button data-tab="ablations">Ablation Study</button>
-            <button data-tab="montages">Visual Comparison</button>
-          </div>
-          <div id="tab-leaderboards" class="tab-panel active">
-            <div class="leaderboard-controls">
-              <div id="filteredCount"></div>
-              <div>Click any row to view detailed results</div>
-            </div>
-            <div class="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th data-sort="group">Experiment</th>
-                    <th data-sort="method">Defense Method</th>
-                    <th data-sort="client">Client ID</th>
-                    <th data-sort="psnr">PSNR (dB) ↑</th>
-                    <th data-sort="ssim">SSIM ↑</th>
-                    <th data-sort="lpips">LPIPS ↓</th>
-                    <th data-sort="labelmatch">Label Acc.</th>
-                    <th>Reconstruction</th>
-                  </tr>
-                </thead>
-                <tbody id="leaderboardBody"></tbody>
-              </table>
-            </div>
-          </div>
-          <div id="tab-distributions" class="tab-panel">
-            <div class="charts-grid" id="distributionCharts"></div>
-          </div>
-          <div id="tab-ablations" class="tab-panel">
-            <div class="charts-grid" id="ablationCharts"></div>
-            <div id="ablationTable"></div>
-          </div>
-          <div id="tab-montages" class="tab-panel">
-            <div class="montage-grid" id="montageGrid"></div>
-            <div class="empty-state" id="montageEmpty" style="display:none;">
-              No side-by-side images available.
-            </div>
-          </div>
-        </section>
-      </section>
-    </main>
-    <footer>
-      <div>
-        <span class="footer-badge">🔬 Research Dashboard</span>
-        <span style="margin-left:12px;">Federated Learning Privacy & Security Analysis</span>
       </div>
-      <div class="footer-links">
-        <span>PSNR: Peak Signal-to-Noise Ratio</span>
-        <span>SSIM: Structural Similarity Index</span>
-        <span>LPIPS: Learned Perceptual Image Patch Similarity</span>
+
+      <h3>Robustness across clients</h3>
+      <p>The attack is not a single lucky reconstruction. Across ten independently
+      sampled clients, reconstruction quality stays in a narrow band — the leak is a
+      property of the gradient release, not of one unusually vulnerable participant.</p>
+      <div id="distributionCharts">
+        <figure class="single-figure">
+          <img id="chartMulticlientBoxplots" alt="Distribution of reconstruction metrics across ten clients" />
+          <figcaption>Per-metric distribution across the multi-client benchmark.</figcaption>
+        </figure>
       </div>
-    </footer>
-  </div>
+    </section>
+
+    <section id="defenses">
+      <h2>Results — Defenses</h2>
+      <p>Local differential privacy is applied at exactly the release point this attack
+      reads: one client's own gradient, clipped and noised before it leaves the device.
+      The epsilon sweep is the centerpiece result, and its flatness is the finding.</p>
+      <div class="paired-figures">
+        <figure>
+          <img id="chartDefensesBars" alt="Reconstruction metrics by defense configuration" />
+          <figcaption>The tested ε range (8, 1, 0.1) produces flat PSNR — this is the
+          finding, not noise in the experiment.</figcaption>
+        </figure>
+        <figure>
+          <img id="dpNoiseScalingFig" alt="DP noise L2 norm vs. clipped signal, by model dimensionality" />
+          <figcaption>Why the ε sweep is flat: injected noise scales with √d. At this model's
+          8.76M parameters, every tested ε lands in the noise-dominated region. Worked proof:
+          <code>scripts/dp_noise_scaling_proof.py</code>.</figcaption>
+        </figure>
+      </div>
+      <div class="callout">
+        <div class="section-label">Read the "HE" row with its caveat</div>
+        The "HE" configuration below does not test encryption, and the central-DP /
+        secure-aggregation release point is a named scope limit rather than a measured
+        result — see <a href="#threat-model">Threat Model &amp; Scope</a> before quoting
+        either number.
+      </div>
+      <figure class="single-figure">
+        <img id="chartDefensesScatter" alt="PSNR versus LPIPS for each defense configuration" />
+        <figcaption>PSNR against LPIPS per defense configuration: the two metrics agree on
+        the ordering, so the flat ε sweep is not an artifact of the metric choice.</figcaption>
+      </figure>
+    </section>
+
+    <section id="ablation">
+      <h2>Ablation Study</h2>
+      <p>Which attack hyperparameters actually matter: each chart varies one setting of
+      the inversion optimizer and reports the resulting reconstruction quality.</p>
+      <div class="charts-grid" id="ablationCharts"></div>
+      <div id="ablationTable"></div>
+
+      <h3>Reconstruction montages</h3>
+      <p>Supporting visual evidence — the same runs, side by side, as images rather than
+      numbers.</p>
+      <div class="montage-grid" id="montageGrid"></div>
+      <div class="empty-state" id="montageEmpty" style="display:none;">
+        No montages available. Provide montage PNGs in results/report/montages/.
+      </div>
+    </section>
+
+    <section id="reproduce">
+      <h2>Reproduce It</h2>
+      <p>Everything on this page is generated from <code>results/report/summary.csv</code>
+      by <code>scripts/make_dashboard.py</code>.</p>
+      <pre class="commands"><code># Install dependencies
+pip install -r requirements.txt
+
+# Run showcase experiment
+bash scripts/run_showcase.sh
+
+# Launch local dashboard
+python -m http.server --directory docs 8000</code></pre>
+      <p><a href="https://github.com/imaddde867/FL-Attack">View source on GitHub</a></p>
+    </section>
+  </main>
+
+  <footer class="page-footer">
+    <div class="wrap">
+      <span id="footerBuild"></span>
+      <span><a href="https://github.com/imaddde867/FL-Attack">github.com/imaddde867/FL-Attack</a></span>
+      <span>MIT License</span>
+    </div>
+  </footer>
+
   <div class="lightbox" id="lightbox">
     <img id="lightboxImg" alt="Full view" />
   </div>
@@ -852,26 +743,26 @@
       selectedRunId: null,
       filteredIds: [],
       tableSort: { field: "psnr", dir: "desc" },
-      autoplay: {
-        playing: false,
-        interval: 8000,
-        timerId: null,
-      },
     };
 
     const METRIC_FIELDS = ["PSNR", "SSIM", "LPIPS", "MSE", "LabelMatch"];
     const FILTER_HINTS = {
-      groups: "Scenario group shown on the poster",
+      groups: "Scenario group",
       methods: "Defense or method configuration",
       clients: "Client / participant identifier",
     };
+    const ABLATION_CHARTS = [
+      ["ablation_psnr", "PSNR by ablation setting"],
+      ["ablation_ssim", "SSIM by ablation setting"],
+      ["ablation_lpips", "LPIPS by ablation setting"],
+    ];
 
     fetch("data.json")
       .then((res) => res.json())
       .then(initDashboard)
       .catch((err) => {
         console.error(err);
-        document.body.innerHTML = "<pre style='padding:20px;color:#fff;'>Failed to load dashboard data.</pre>";
+        document.body.innerHTML = "<pre style='padding:20px;'>Failed to load dashboard data.</pre>";
       });
 
     function initDashboard(data) {
@@ -887,18 +778,16 @@
       }
       updateMeta(data.meta);
       wireEvents();
-      populateCharts(data.charts);
+      populateCharts(data.charts, data.figures);
       populateAblations(data.aggregates.ablations || []);
       populateMontages(data.montages || []);
       applyFilters();
-      startAutoplay();
     }
 
     function populateFilters(values) {
       ["groups", "methods", "clients"].forEach((key) => {
         state.filters[key] = new Set(values[key]);
         const container = document.getElementById(`${key.slice(0, -1)}Filters`);
-        if (!container) return;
         container.innerHTML = "";
         values[key].forEach((value) => {
           const btn = document.createElement("button");
@@ -936,8 +825,7 @@
       });
       if (params.has("search")) {
         const term = params.get("search");
-        const searchInput = document.getElementById("searchInput");
-        if (searchInput) searchInput.value = term;
+        document.getElementById("searchInput").value = term;
         state.search = term.toLowerCase();
       }
       if (params.has("run_id")) {
@@ -977,104 +865,59 @@
     }
 
     function updateMeta(meta) {
-      document.getElementById("buildDate").textContent = `⏱ ${meta.build_time}`;
+      document.getElementById("buildDate").textContent = `Build date: ${meta.build_time}`;
       const counts = Object.entries(meta.groups || {})
-        .map(([group, count]) => `${formatGroup(group)}: ${count}`)
+        .map(([group, count]) => `${group}: ${count}`)
         .join("  ·  ");
-      document.getElementById("runCounts").textContent = `${meta.total_runs} experiments across ${Object.keys(meta.groups).length} categories`;
-      const keyFindingEl = document.getElementById("keyFinding");
-      if (meta.key_finding) {
-        keyFindingEl.textContent = meta.key_finding;
-        keyFindingEl.style.display = "flex";
-      } else {
-        keyFindingEl.style.display = "none";
+      document.getElementById("runCounts").textContent = `Total runs: ${meta.total_runs} (${counts})`;
+      document.getElementById("keyFinding").textContent = meta.key_finding || "";
+      const footerBuild = document.getElementById("footerBuild");
+      if (footerBuild) {
+        footerBuild.textContent = `Generated ${meta.build_time} from ${meta.build_source || "summary.csv"}`;
       }
     }
 
     function wireEvents() {
-      const searchInput = document.getElementById("searchInput");
-      if (searchInput) {
-        searchInput.addEventListener("input", (ev) => {
-          state.search = ev.target.value.toLowerCase();
-          applyFilters();
-        });
-      }
-      const sortSelect = document.getElementById("sortSelect");
-      if (sortSelect) {
-        sortSelect.addEventListener("change", (ev) => {
-          state.sort = ev.target.value;
-          applyFilters();
-        });
-      }
-      const btnBestOverall = document.getElementById("btnBestOverall");
-      if (btnBestOverall) {
-        btnBestOverall.addEventListener("click", () => {
-          state.sort = "best";
-          const sortSel = document.getElementById("sortSelect");
-          if (sortSel) sortSel.value = "best";
-          state.selectedRunId = state.data.best_overall_id;
-          clearFilterSelections();
-          applyFilters();
-        });
-      }
-      const btnBaselineBest = document.getElementById("btnBaselineBest");
-      if (btnBaselineBest) {
-        btnBaselineBest.addEventListener("click", () => {
-          focusOnMethod("baseline");
-          const bestBaseline = state.data.best_baseline_id;
-          if (bestBaseline) {
-            state.selectedRunId = bestBaseline;
-          }
-          applyFilters();
-        });
-      }
-      const btnBaselineWorst = document.getElementById("btnBaselineWorst");
-      if (btnBaselineWorst) {
-        btnBaselineWorst.addEventListener("click", () => {
-          focusOnMethod("baseline");
-          const baselineRuns = getRuns().filter((run) => run.method.toLowerCase().includes("baseline"));
-          baselineRuns.sort((a, b) => worstSort(a, b));
-          state.selectedRunId = baselineRuns[0] ? baselineRuns[0].run_id : state.selectedRunId;
-          applyFilters();
-        });
-      }
-      const btnDpSweep = document.getElementById("btnDpSweep");
-      if (btnDpSweep) {
-        btnDpSweep.addEventListener("click", () => {
-          const dpMethods = state.data.filter_values.methods.filter((m) => m.toLowerCase().includes("dp"));
-          setFilterSet("methods", dpMethods);
-          applyFilters();
-        });
-      }
-      document.getElementById("autoplayToggle").addEventListener("click", () => {
-        if (state.autoplay.playing) {
-          stopAutoplay();
-        } else {
-          startAutoplay();
-        }
+      document.getElementById("searchInput").addEventListener("input", (ev) => {
+        state.search = ev.target.value.toLowerCase();
+        applyFilters();
       });
-      document.getElementById("shuffleBtn").addEventListener("click", () => {
-        if (!state.filteredIds.length) return;
-        const randomIdx = Math.floor(Math.random() * state.filteredIds.length);
-        state.selectedRunId = state.filteredIds[randomIdx];
-        renderSelectedRun();
-        renderLeaderboards();
+      document.getElementById("sortSelect").addEventListener("change", (ev) => {
+        state.sort = ev.target.value;
+        applyFilters();
       });
-      document.getElementById("autoplaySpeed").addEventListener("change", (ev) => {
-        const value = Number(ev.target.value);
-        if (!Number.isNaN(value)) {
-          state.autoplay.interval = value;
-          refreshAutoplayTimer();
+      document.getElementById("btnBestOverall").addEventListener("click", () => {
+        state.sort = "best";
+        document.getElementById("sortSelect").value = "best";
+        state.selectedRunId = state.data.best_overall_id;
+        clearFilterSelections();
+        applyFilters();
+      });
+      document.getElementById("btnBaselineBest").addEventListener("click", () => {
+        focusOnMethod("baseline");
+        const bestBaseline = state.data.best_baseline_id;
+        if (bestBaseline) {
+          state.selectedRunId = bestBaseline;
         }
+        applyFilters();
+      });
+      document.getElementById("btnBaselineWorst").addEventListener("click", () => {
+        focusOnMethod("baseline");
+        const baselineRuns = getRuns().filter((run) => run.method.toLowerCase().includes("baseline"));
+        baselineRuns.sort((a, b) => worstSort(a, b));
+        state.selectedRunId = baselineRuns[0] ? baselineRuns[0].run_id : state.selectedRunId;
+        applyFilters();
+      });
+      document.getElementById("btnDpSweep").addEventListener("click", () => {
+        const dpMethods = state.data.filter_values.methods.filter((m) => m.toLowerCase().includes("dp"));
+        setFilterSet("methods", dpMethods);
+        applyFilters();
       });
       document.getElementById("prevBtn").addEventListener("click", () => jumpSelection(-1));
       document.getElementById("nextBtn").addEventListener("click", () => jumpSelection(1));
       document.addEventListener("keydown", (ev) => {
         if (ev.key === "ArrowLeft") jumpSelection(-1);
         if (ev.key === "ArrowRight") jumpSelection(1);
-      });
-      document.querySelectorAll(".tab-buttons button").forEach((btn) => {
-        btn.addEventListener("click", () => activateTab(btn.dataset.tab));
       });
       document.getElementById("lightbox").addEventListener("click", () => {
         document.getElementById("lightbox").classList.remove("active");
@@ -1087,10 +930,10 @@
           renderLeaderboards();
         });
       });
-      const autoplayImg = document.getElementById("autoplayImage");
-      if (autoplayImg) {
-        autoplayImg.addEventListener("click", () => {
-          const srcAttr = autoplayImg.getAttribute("src");
+      const selectedImg = document.getElementById("selectedImage");
+      if (selectedImg) {
+        selectedImg.addEventListener("click", () => {
+          const srcAttr = selectedImg.getAttribute("src");
           if (srcAttr && srcAttr.trim()) {
             openLightbox(srcAttr);
           }
@@ -1141,13 +984,11 @@
       state.filteredIds = runs.map((run) => run.run_id);
       if (state.filteredIds.length === 0) {
         state.selectedRunId = null;
-        stopAutoplay();
       } else if (!state.filteredIds.includes(state.selectedRunId)) {
         state.selectedRunId = state.filteredIds[0];
       }
       renderLeaderboards();
       renderSelectedRun();
-      updateAutoplayControls();
     }
 
     function sorterFor(key) {
@@ -1195,8 +1036,7 @@
     function renderLeaderboards() {
       const tbody = document.getElementById("leaderboardBody");
       tbody.innerHTML = "";
-      const filteredCountEl = document.getElementById("filteredCount");
-      if (filteredCountEl) filteredCountEl.innerHTML = `<strong>${state.filteredIds.length}</strong> experiments displayed`;
+      document.getElementById("filteredCount").textContent = `${state.filteredIds.length} runs match filters`;
       const runs = state.filteredIds.map((id) => state.runsById[id]);
       runs.sort((a, b) => {
         const dir = state.tableSort.dir === "asc" ? 1 : -1;
@@ -1226,9 +1066,9 @@
         }
         const thumbSrc = run.image_path || state.placeholderImage || "";
         tr.innerHTML = `
-          <td>${formatGroup(run.group)}</td>
-          <td>${formatMethod(run.method)}</td>
-          <td>${formatClient(run.client)}</td>
+          <td>${run.group}</td>
+          <td>${run.method}</td>
+          <td>${run.client}</td>
           <td>${formatMetric(run.metrics.PSNR)}</td>
           <td>${formatMetric(run.metrics.SSIM)}</td>
           <td>${formatMetric(run.metrics.LPIPS)}</td>
@@ -1254,49 +1094,6 @@
       });
     }
 
-    function formatGroup(group) {
-      const labels = {
-        "ablation": "Ablation Study",
-        "defenses": "Defense Evaluation",
-        "multi_client": "Multi-Client Analysis",
-        "showcase": "Demonstration"
-      };
-      return labels[group] || group.charAt(0).toUpperCase() + group.slice(1).replace(/_/g, ' ');
-    }
-
-    function formatMethod(method) {
-      const labels = {
-        "baseline": "No Defense (Baseline)",
-        "dp_eps01": "DP (ε=0.1)",
-        "dp_eps1": "DP (ε=1.0)",
-        "dp_eps8": "DP (ε=8.0)",
-        "dp_he": "DP + HE Combined",
-        "he": "Homomorphic Encryption",
-        "he_test": "HE (Validation)",
-        "init_fft": "FFT Initialization",
-        "metric_both": "Dual Metric Loss",
-        "metric_cosine": "Cosine Similarity Loss",
-        "metric_sim": "Perceptual Similarity",
-        "tv_1e-4": "TV Reg. (λ=1e-4)",
-        "tv_1e-6": "TV Reg. (λ=1e-6)",
-        "showcase": "Featured Result"
-      };
-      if (labels[method]) return labels[method];
-      // Handle bmk_c* patterns
-      if (method.startsWith("bmk_c")) {
-        return "Client " + method.slice(5);
-      }
-      return method.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    }
-
-    function formatClient(client) {
-      if (client === "global") return "Aggregated";
-      if (client.match(/^c\d+$/)) {
-        return "Client " + client.slice(1);
-      }
-      return client.charAt(0).toUpperCase() + client.slice(1);
-    }
-
     function renderSelectedRun() {
       const run = state.runsById[state.selectedRunId];
       const summaryEl = document.getElementById("runSummary");
@@ -1304,56 +1101,52 @@
       const metricsContainer = document.getElementById("selectedMetrics");
       const metricsBox = document.getElementById("metricsText");
       if (!run) {
-        if (summaryEl) summaryEl.textContent = "Select an experiment to view configuration details";
-        if (pathEl) pathEl.textContent = "—";
+        if (summaryEl) summaryEl.textContent = "No run selected.";
+        if (pathEl) pathEl.textContent = "No run available.";
         if (metricsContainer) metricsContainer.innerHTML = "";
         if (metricsBox) {
-          metricsBox.innerHTML = state.filteredIds.length
-            ? "<p style='color:var(--muted);font-size:11px;margin:8px;'>Click any row from the experiment results table below.</p>"
-            : "<p style='color:var(--muted);font-size:11px;margin:8px;'>No experiments match the current filter criteria.</p>";
+          metricsBox.textContent = state.filteredIds.length
+            ? "Select a run to view metrics."
+            : "No runs match the current filters.";
         }
         updateUrlState();
-        syncAutoplayDisplay();
-        refreshAutoplayTimer();
+        syncSelectedImage();
         return;
       }
       if (summaryEl) {
-        summaryEl.textContent = `${formatGroup(run.group)} · ${formatMethod(run.method)} · ${formatClient(run.client)}`;
+        summaryEl.textContent = `${run.group} | ${run.method} | ${run.client}`;
       }
       if (pathEl) {
-        pathEl.textContent = run.source_dir || "—";
+        pathEl.textContent = run.source_dir || "Path unavailable";
       }
       if (metricsContainer) {
         metricsContainer.innerHTML = "";
-        const metricLabels = {
-          "PSNR": "PSNR (dB)",
-          "SSIM": "SSIM", 
-          "LPIPS": "LPIPS",
-          "MSE": "MSE",
-          "LabelMatch": "Label Acc."
-        };
-        const metricDescriptions = {
-          "PSNR": "Peak Signal-to-Noise Ratio",
-          "SSIM": "Structural Similarity Index",
-          "LPIPS": "Learned Perceptual Similarity",
-          "MSE": "Mean Squared Error",
-          "LabelMatch": "Label Recovery Accuracy"
-        };
-        ["PSNR", "SSIM", "LPIPS", "MSE", "LabelMatch"].forEach((metric) => {
+        METRIC_FIELDS.forEach((metric) => {
           const div = document.createElement("div");
           div.className = "metric-card";
-          div.title = metricDescriptions[metric];
-          div.innerHTML = `<div class="label">${metricLabels[metric]}</div><div class="value">${formatMetric(run.metrics[metric])}</div>`;
+          div.innerHTML = `<div class="label">${metric}</div><div class="value">${formatMetric(run.metrics[metric])}</div>`;
           metricsContainer.appendChild(div);
         });
       }
       if (metricsBox) {
-        metricsBox.textContent = "Loading...";
+        metricsBox.textContent = "Loading metrics...";
       }
       loadMetricsText(run);
       updateUrlState();
-      syncAutoplayDisplay();
-      refreshAutoplayTimer();
+      syncSelectedImage();
+    }
+
+    function syncSelectedImage() {
+      const image = document.getElementById("selectedImage");
+      if (!image) return;
+      const run = state.runsById[state.selectedRunId];
+      const fallback = state.placeholderImage || "";
+      const src = run ? run.image_path || fallback : fallback;
+      image.setAttribute("src", src);
+      image.setAttribute(
+        "alt",
+        run ? `Reconstruction for ${run.group} / ${run.method} / ${run.client}` : "No run selected"
+      );
     }
 
     function updateUrlState() {
@@ -1384,107 +1177,27 @@
     function loadMetricsText(run) {
       const box = document.getElementById("metricsText");
       if (!box) return;
-      
-      // Render as table from run.metrics
-      const metrics = run.metrics || {};
-      const metricNames = {
-        "MSE": "Mean Squared Error",
-        "PSNR": "Peak Signal-to-Noise Ratio (dB)",
-        "SSIM": "Structural Similarity Index",
-        "LPIPS": "Learned Perceptual Similarity",
-        "LabelMatch": "Label Recovery Accuracy"
-      };
-      
-      let html = `<table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>`;
-      ["MSE", "PSNR", "SSIM", "LPIPS", "LabelMatch"].forEach((key) => {
-        const val = metrics[key];
-        const displayVal = val !== null && val !== undefined ? formatMetric(val) : "—";
-        html += `<tr><td class="metric-name" title="${metricNames[key] || key}">${key}</td><td>${displayVal}</td></tr>`;
-      });
-      html += `</tbody></table>`;
-      box.innerHTML = html;
-    }
-
-
-
-
-
-    function startAutoplay() {
-      if (!state.filteredIds.length) return;
-      state.autoplay.playing = true;
-      refreshAutoplayTimer();
-      updateAutoplayControls();
-    }
-
-    function stopAutoplay() {
-      state.autoplay.playing = false;
-      refreshAutoplayTimer();
-      updateAutoplayControls();
-    }
-
-    function refreshAutoplayTimer() {
-      if (state.autoplay.timerId) {
-        clearTimeout(state.autoplay.timerId);
-        state.autoplay.timerId = null;
-      }
-      if (state.autoplay.playing && state.filteredIds.length > 1) {
-        state.autoplay.timerId = window.setTimeout(stepAutoplay, state.autoplay.interval);
-      }
-      updateAutoplayControls();
-    }
-
-    function stepAutoplay() {
-      if (!state.filteredIds.length) {
-        stopAutoplay();
+      if (!run.metrics_path) {
+        box.textContent = "Metrics file not available for this run.";
         return;
       }
-      const currentIdx = state.filteredIds.indexOf(state.selectedRunId);
-      const nextIdx = currentIdx === -1 ? 0 : (currentIdx + 1) % state.filteredIds.length;
-      state.selectedRunId = state.filteredIds[nextIdx];
-      renderSelectedRun();
-      renderLeaderboards();
-    }
-
-    function syncAutoplayDisplay() {
-      const image = document.getElementById("autoplayImage");
-      const status = document.getElementById("autoplayStatus");
-      const run = state.runsById[state.selectedRunId];
-      const fallback = state.placeholderImage || "";
-      if (!run) {
-        if (image) image.setAttribute("src", fallback);
-        if (status) {
-          status.textContent = state.filteredIds.length ? "Slide 0 / " + state.filteredIds.length : "No runs";
-        }
+      if (metricsCache[run.metrics_path]) {
+        box.textContent = metricsCache[run.metrics_path];
         return;
       }
-      const src = run.image_path || fallback;
-      if (image) image.setAttribute("src", src);
-      if (status) {
-        const idx = state.filteredIds.indexOf(run.run_id);
-        const total = state.filteredIds.length || 1;
-        const position = idx >= 0 ? idx + 1 : 1;
-        status.textContent = `Slide ${position} / ${total}`;
-      }
-    }
-
-    function updateAutoplayControls() {
-      const btn = document.getElementById("autoplayToggle");
-      if (btn) {
-        btn.disabled = state.filteredIds.length === 0;
-        btn.classList.toggle("playing", state.autoplay.playing);
-        const label = state.autoplay.playing ? "Pause autoplay" : "Start autoplay";
-        btn.setAttribute("aria-label", label);
-        btn.setAttribute("title", label);
-        btn.setAttribute("aria-pressed", String(state.autoplay.playing));
-        const sr = btn.querySelector(".sr-only");
-        if (sr) {
-          sr.textContent = label;
-        }
-      }
-      const select = document.getElementById("autoplaySpeed");
-      if (select) {
-        select.disabled = state.filteredIds.length === 0;
-      }
+      fetch(run.metrics_path)
+        .then((res) => res.text())
+        .then((text) => {
+          metricsCache[run.metrics_path] = text;
+          if (state.selectedRunId === run.run_id) {
+            box.textContent = text;
+          }
+        })
+        .catch(() => {
+          if (state.selectedRunId === run.run_id) {
+            box.textContent = "Failed to load metrics.";
+          }
+        });
     }
 
     function jumpSelection(delta) {
@@ -1497,67 +1210,64 @@
       renderLeaderboards();
     }
 
-    function activateTab(tabName) {
-      document.querySelectorAll(".tab-buttons button").forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.tab === tabName);
-      });
-      document.querySelectorAll(".tab-panel").forEach((panel) => {
-        panel.classList.toggle("active", panel.id === `tab-${tabName}`);
-      });
+    function setFigureSrc(imgId, path) {
+      const img = document.getElementById(imgId);
+      if (!img) return;
+      const figure = img.closest("figure");
+      if (!path) {
+        if (figure) figure.style.display = "none";
+        return;
+      }
+      img.src = path;
+      img.addEventListener("click", () => openLightbox(path));
     }
 
-    function populateCharts(charts) {
-      const distContainer = document.getElementById("distributionCharts");
-      distContainer.innerHTML = "";
-      const chartLabels = {
-        "defenses_grouped_bars": "Defense Mechanism Comparison",
-        "defenses_scatter_psnr_vs_lpips": "PSNR vs LPIPS Correlation",
-        "multiclient_boxplots": "Multi-Client Performance Distribution"
-      };
-      ["defenses_grouped_bars", "defenses_scatter_psnr_vs_lpips", "multiclient_boxplots"].forEach((key) => {
-        const path = charts[key];
-        const div = document.createElement("div");
-        const title = chartLabels[key] || key.replace(/_/g, " ");
-        if (path) {
-          div.innerHTML = `<div class="chart-title">${title}</div>`;
-          const img = document.createElement("img");
-          img.src = path;
-          img.alt = title;
-          img.addEventListener("click", () => openLightbox(path));
-          div.appendChild(img);
-        } else {
-          div.innerHTML = `<div class="empty-state">Chart unavailable: ${title}</div>`;
-        }
-        distContainer.appendChild(div);
-      });
-      const ablationContainer = document.getElementById("ablationCharts");
-      ablationContainer.innerHTML = "";
-      const ablationPath = charts["ablation_bars"];
-      if (ablationPath) {
-        const div = document.createElement("div");
-        div.innerHTML = `<div class="chart-title">Ablation Study: Component Impact Analysis</div>`;
-        const img = document.createElement("img");
-        img.src = ablationPath;
-        img.alt = "Ablation study chart";
-        img.addEventListener("click", () => openLightbox(ablationPath));
-        div.appendChild(img);
-        ablationContainer.appendChild(div);
+    function populateCharts(charts, figures) {
+      const chartPaths = charts || {};
+      const figurePaths = figures || {};
+      setFigureSrc("chartMulticlientBoxplots", chartPaths.multiclient_boxplots);
+      setFigureSrc("chartDefensesBars", chartPaths.defenses_grouped_bars);
+      setFigureSrc("chartDefensesScatter", chartPaths.defenses_scatter_psnr_vs_lpips);
+      setFigureSrc("dpNoiseScalingFig", figurePaths.dp_noise_scaling);
+
+      const container = document.getElementById("ablationCharts");
+      if (!container) return;
+      container.innerHTML = "";
+      const available = ABLATION_CHARTS.filter(([key]) => chartPaths[key]);
+      if (available.length === 0) {
+        container.innerHTML = '<div class="empty-state">Ablation charts unavailable.</div>';
+        return;
       }
+      available.forEach(([key, caption]) => {
+        const path = chartPaths[key];
+        const figure = document.createElement("figure");
+        const img = document.createElement("img");
+        img.src = path;
+        img.alt = caption;
+        img.addEventListener("click", () => openLightbox(path));
+        const figcaption = document.createElement("figcaption");
+        figcaption.textContent = caption;
+        figure.appendChild(img);
+        figure.appendChild(figcaption);
+        container.appendChild(figure);
+      });
     }
 
     function populateAblations(rows) {
       const container = document.getElementById("ablationTable");
       if (!rows || rows.length === 0) {
-        container.innerHTML = '<div class="empty-state">No ablation study data available.</div>';
+        container.innerHTML = '<div class="empty-state">No ablation data.</div>';
         return;
       }
+      const wrapper = document.createElement("div");
+      wrapper.className = "table-wrapper";
       const table = document.createElement("table");
       table.innerHTML = `
         <thead>
           <tr>
-            <th>Configuration</th>
+            <th>Method</th>
             <th>Client</th>
-            <th>PSNR (dB)</th>
+            <th>PSNR</th>
             <th>SSIM</th>
             <th>LPIPS</th>
           </tr>
@@ -1567,8 +1277,8 @@
       rows.forEach((row) => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td style="font-family:inherit;">${formatMethod(row.method)}</td>
-          <td>${formatClient(row.client)}</td>
+          <td>${row.method}</td>
+          <td>${row.client}</td>
           <td>${formatMetric(row.PSNR)}</td>
           <td>${formatMetric(row.SSIM)}</td>
           <td>${formatMetric(row.LPIPS)}</td>
@@ -1576,8 +1286,9 @@
         tbody.appendChild(tr);
       });
       table.appendChild(tbody);
-      container.innerHTML = "<div class='chart-title' style='margin-top:24px;'>Detailed Ablation Results</div>";
-      container.appendChild(table);
+      wrapper.appendChild(table);
+      container.innerHTML = "";
+      container.appendChild(wrapper);
     }
 
     function populateMontages(montages) {
@@ -1586,21 +1297,16 @@
       if (!montages || montages.length === 0) {
         grid.innerHTML = "";
         empty.style.display = "block";
-        empty.textContent = "No visual comparison images available for this experiment set.";
         return;
       }
       empty.style.display = "none";
       grid.innerHTML = "";
       montages.forEach((item) => {
         const card = document.createElement("div");
-        const prettyName = item.name
-          .replace(/_/g, " ")
-          .replace(/\b\w/g, c => c.toUpperCase())
-          .replace("Montage", "Comparison");
-        card.innerHTML = `<div class="chart-title">${prettyName}</div>`;
+        card.innerHTML = `<div style="margin-bottom:6px;font-size:0.85rem;color:var(--muted);">${item.name}</div>`;
         const img = document.createElement("img");
         img.src = item.path;
-        img.alt = prettyName;
+        img.alt = item.name;
         img.addEventListener("click", () => openLightbox(item.path));
         card.appendChild(img);
         grid.appendChild(card);
