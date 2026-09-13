@@ -368,7 +368,7 @@ class DashboardBuilder:
             augmented_rows.append(row_dict)
 
         if not runs:
-            print("WARNING: No runs found in summary.csv")
+            print("WARNING: summary.csv has no runs")
 
         df_augmented = pd.DataFrame(augmented_rows)
         print(
