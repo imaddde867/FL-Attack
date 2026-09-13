@@ -40,6 +40,12 @@ except ImportError:
     sys.exit(1)
 
 try:
+    import numpy as np
+except ImportError:
+    print("ERROR: numpy is required. Install with: pip install numpy")
+    sys.exit(1)
+
+try:
     from PIL import Image, ImageDraw, ImageFont
 except ImportError:
     print("ERROR: pillow is required. Install with: pip install pillow")
@@ -633,25 +639,99 @@ class DashboardBuilder:
         return figures
 
     # ------------------------------------------------------------------
+    def _extract_original_recon(
+        self, composite_path: Path, bg_thresh: int = 235, min_band: int = 30
+    ) -> Optional[Tuple[Image.Image, Image.Image]]:
+        """Crop the clean Original and Reconstruction face images out of a
+        baseline_attack_result.png composite (Original/Recon/[|Diff|] stacked
+        vertically, each preceded by a matplotlib title on a white band).
+        Detects band boundaries per-image rather than assuming a fixed
+        layout, and returns None if fewer than two bands are found (e.g. a
+        reconstruction-only composite) — callers must not substitute a
+        Recon crop where an Original is expected."""
+        with Image.open(composite_path) as img:
+            img = img.convert("RGB")
+            arr = np.array(img)
+            row_mean = arr.mean(axis=(1, 2))
+            is_content = row_mean < bg_thresh
+            bands: List[Tuple[int, int]] = []
+            start: Optional[int] = None
+            for i, content in enumerate(is_content):
+                if content and start is None:
+                    start = i
+                elif not content and start is not None:
+                    if i - start >= min_band:
+                        bands.append((start, i))
+                    start = None
+            if start is not None and len(is_content) - start >= min_band:
+                bands.append((start, len(is_content)))
+            if len(bands) < 2:
+                return None
+
+            def crop_band(row_range: Tuple[int, int]) -> Image.Image:
+                r0, r1 = row_range
+                col_mean = arr[r0:r1].mean(axis=(0, 2))
+                content_cols = np.where(col_mean < bg_thresh)[0]
+                if len(content_cols) == 0:
+                    c0, c1 = 0, arr.shape[1]
+                else:
+                    c0, c1 = int(content_cols[0]), int(content_cols[-1]) + 1
+                return img.crop((c0, r0, c1, r1)).copy()
+
+            return crop_band(bands[0]), crop_band(bands[1])
+
     def build_montage(self, image_paths: List[Path], dest: Path) -> None:
-        cols = 3
-        thumb_w, thumb_h = 420, 280
-        rows = math.ceil(len(image_paths) / cols)
-        canvas = Image.new(
-            "RGB",
-            (cols * thumb_w, rows * thumb_h),
-            color=(250, 249, 246),  # PALETTE["paper"] — light background
-        )
-        for idx, img_path in enumerate(image_paths):
+        pairs: List[Tuple[Image.Image, Image.Image]] = []
+        for img_path in image_paths:
             try:
-                with Image.open(img_path) as img:
-                    img = img.convert("RGB")
-                    img.thumbnail((thumb_w - 10, thumb_h - 10))
-                    x = (idx % cols) * thumb_w + (thumb_w - img.width) // 2
-                    y = (idx // cols) * thumb_h + (thumb_h - img.height) // 2
-                    canvas.paste(img, (x, y))
+                extracted = self._extract_original_recon(img_path)
             except Exception:
                 continue
+            if extracted is not None:
+                pairs.append(extracted)
+        if not pairs:
+            return
+
+        cols = 3
+        thumb = 160
+        gap = 8
+        label_h = 22
+        cell_w = thumb * 2 + gap
+        cell_h = thumb + label_h
+        rows = math.ceil(len(pairs) / cols)
+        canvas = Image.new(
+            "RGB",
+            (cols * cell_w, rows * cell_h),
+            color=(250, 249, 246),  # PALETTE["paper"] — light background
+        )
+        draw = ImageDraw.Draw(canvas)
+        try:
+            font = ImageFont.truetype("Arial.ttf", 13)
+        except Exception:
+            font = ImageFont.load_default()
+        ink = (26, 26, 26)  # PALETTE["ink"]
+
+        for idx, (original, recon) in enumerate(pairs):
+            col, row = idx % cols, idx // cols
+            cell_x, cell_y = col * cell_w, row * cell_h
+
+            original_thumb = original.copy()
+            original_thumb.thumbnail((thumb, thumb))
+            recon_thumb = recon.copy()
+            recon_thumb.thumbnail((thumb, thumb))
+
+            ox = cell_x + (thumb - original_thumb.width) // 2
+            oy = cell_y + label_h + (thumb - original_thumb.height) // 2
+            rx = cell_x + thumb + gap + (thumb - recon_thumb.width) // 2
+            ry = cell_y + label_h + (thumb - recon_thumb.height) // 2
+            canvas.paste(original_thumb, (ox, oy))
+            canvas.paste(recon_thumb, (rx, ry))
+
+            draw.text((cell_x + thumb // 2, cell_y + 4), "Original", fill=ink, font=font, anchor="mt")
+            draw.text(
+                (cell_x + thumb + gap + thumb // 2, cell_y + 4), "Recon", fill=ink, font=font, anchor="mt"
+            )
+
         ensure_directory(dest.parent)
         canvas.save(dest)
 
