@@ -25,25 +25,25 @@ All numbers below are read directly from `results/report/summary.csv`.
 
 - Baseline attacks reconstruct recognizable faces from a single client's
   raw gradient.
-- **The DP mechanism above is correctly implemented local DP** — it clips
+- **The DP mechanism above is correctly implemented local DP.** It clips
   and noises one client's own gradient before release, which is the right
   mechanism for the threat model tested here (an adversary reading a
   single pre-aggregation update). It is *not* a bug that ε=8/1/0.1 all land
   at roughly the same PSNR: per-coordinate Gaussian noise has L2 norm
   scaling ~σ√d, and at this model's d≈8.76M parameters, even ε=8 already
   injects noise ~1800× the clipped signal bound. The chosen ε range simply
-  couldn't have shown graduated protection at this dimensionality — see
+  couldn't have shown graduated protection at this dimensionality; see
   `results/report/figures/dp_noise_scaling.png` and
   `scripts/dp_noise_scaling_proof.py` for the worked-out proof.
 - **The "HE" row does not test encryption.** The implementation quantizes
   gradients and adds a fixed-scale Laplace noise term; for this model size
   it never executes real Paillier encryption, and even when it does, the
-  code decrypts the result before scoring it — a real HE/secure-aggregation
+  code decrypts the result before scoring it, so a real HE/secure-aggregation
   deployment would never expose a decrypted intermediate to the attacker
   this project simulates. The codebase has an implemented-but-unevaluated
-  path for the honest version of this experiment (`fl_system.py`'s
+  path for the honest version of this experiment: `fl_system.py`'s
   `capture_mode='agg_update'`, paired with `differential_privacy.
-  aggregate_clipped_noisy`'s central-DP mechanism) — attacking only the
+  aggregate_clipped_noisy`'s central-DP mechanism, attacking only the
   FedAvg-averaged update, which is what a curious aggregator actually sees
   under real secure aggregation. No GPU/CelebA compute was available to
   run that experiment this cycle; it's a named limitation, not a filled-in
@@ -120,6 +120,6 @@ See `python run_experiment.py --help` for all options.
   leak, 8.76M-parameter model, CelebA 64×64).
 - DP/HE implementations are research-grade, not production-ready.
 - The DP and "HE" findings above share one root cause: neither evaluates
-  the secure-aggregation / central-DP release point (the mechanisms for it
-  exist in the code but were never run — see Key Findings).
+  the secure-aggregation / central-DP release point. The mechanisms for it
+  exist in the code but were never run; see Key Findings.
 - See the interactive dashboard for detailed visualizations.

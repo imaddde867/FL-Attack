@@ -505,13 +505,13 @@
   <main class="wrap">
     <section id="overview">
       <h2>Overview</h2>
-      <p>Federated learning promises that raw client data never leaves the device — only
-gradients are shared. This project shows that promise is weaker than it looks: an
-honest-but-curious server can reconstruct a recognizable face from a single client's
-gradient update alone, no aggregation required. The benchmark below measures
-reconstruction quality (attack strength) under no defense and under two candidate
-defenses; it does not measure model accuracy, so it cannot speak to the
-privacy/utility tradeoff.</p>
+      <p>Federated learning promises that raw client data never leaves the device; only
+gradients are shared. This project shows that promise is weaker than it looks.
+An honest-but-curious server can reconstruct a recognizable face from a single
+client's gradient update alone, without needing any aggregation. The benchmark
+below measures reconstruction quality (attack strength) under no defense and
+under two candidate defenses. It does not measure model accuracy, so it cannot
+speak to the privacy/utility tradeoff.</p>
       <div class="callout">
         <div class="section-label">Headline result</div>
         <div id="keyFinding"></div>
@@ -522,26 +522,26 @@ privacy/utility tradeoff.</p>
       <h2>Threat Model &amp; Scope</h2>
       <p><strong>Every result below reads one client's raw gradient before any
 aggregation</strong> (<code>attack_source="gradients"</code>). Local differential
-privacy — clip that client's release, add calibrated Gaussian noise — is the correct
-mechanism for exactly this release point, and it is what's evaluated here. It is
+privacy (clip that client's release, add calibrated Gaussian noise) is the correct
+mechanism for exactly this release point, and it is what gets evaluated here. It is
 <em>not</em> a bug that ε=8, 1, and 0.1 all land at roughly the same PSNR: per-coordinate
 Gaussian noise has L2 norm scaling ~σ√d, and at this model's d≈8.76M parameters, even
 ε=8 already injects noise ~1800× the clipped signal bound. See the figure below.</p>
-      <p>The "HE" row does not test encryption: the implementation quantizes gradients and
+      <p>The "HE" row does not test encryption. The implementation quantizes gradients and
 adds fixed-scale Laplace noise; for this model size it never executes real Paillier
-encryption, and even when it does, the code decrypts the result before scoring it — a
+encryption, and even when it does, the code decrypts the result before scoring it, so a
 real secure-aggregation deployment would never expose that decrypted intermediate to
 this attacker. An honest version of this experiment exists in the codebase
-(<code>capture_mode='agg_update'</code> + <code>aggregate_clipped_noisy</code>'s
-central-DP mechanism, attacking only the FedAvg-averaged update) but no GPU/CelebA
-compute was available to run it this cycle — a named limitation, not a filled-in
-result.</p>
+(<code>capture_mode='agg_update'</code> plus <code>aggregate_clipped_noisy</code>'s
+central-DP mechanism, attacking only the FedAvg-averaged update), but no GPU/CelebA
+compute was available to run it this cycle. That is a named limitation, not a
+filled-in result.</p>
     </section>
 
     <section id="attack-effectiveness">
-      <h2>Results — Attack Effectiveness</h2>
+      <h2>Results: Attack Effectiveness</h2>
       <p>Every run in the benchmark, with its reconstruction metrics. Lower LPIPS and
-      higher PSNR/SSIM mean a stronger attack — that is, a worse privacy outcome for the
+      higher PSNR/SSIM mean a stronger attack: a worse privacy outcome for the
       client whose gradient was read. Click any row to load that reconstruction.</p>
 
       <div class="controls">
@@ -643,7 +643,7 @@ result.</p>
 
       <h3>Robustness across clients</h3>
       <p>The attack is not a single lucky reconstruction. Across ten independently
-      sampled clients, reconstruction quality stays in a narrow band — the leak is a
+      sampled clients, reconstruction quality stays in a narrow band. The leak is a
       property of the gradient release, not of one unusually vulnerable participant.</p>
       <div id="distributionCharts">
         <figure class="single-figure">
@@ -654,14 +654,14 @@ result.</p>
     </section>
 
     <section id="defenses">
-      <h2>Results — Defenses</h2>
+      <h2>Results: Defenses</h2>
       <p>Local differential privacy is applied at exactly the release point this attack
       reads: one client's own gradient, clipped and noised before it leaves the device.
-      The epsilon sweep is the centerpiece result, and its flatness is the finding.</p>
+      The epsilon sweep is the centerpiece result.</p>
       <div class="paired-figures">
         <figure>
           <img id="chartDefensesBars" alt="Reconstruction metrics by defense configuration" />
-          <figcaption>The tested ε range (8, 1, 0.1) produces flat PSNR — this is the
+          <figcaption>The tested ε range (8, 1, 0.1) produces flat PSNR. That is the
           finding, not noise in the experiment.</figcaption>
         </figure>
         <figure>
@@ -673,10 +673,10 @@ result.</p>
       </div>
       <div class="callout">
         <div class="section-label">Read the "HE" row with its caveat</div>
-        The "HE" configuration below does not test encryption, and the central-DP /
+        The "HE" configuration below does not test encryption. The central-DP /
         secure-aggregation release point is a named scope limit rather than a measured
-        result — see <a href="#threat-model">Threat Model &amp; Scope</a> before quoting
-        either number.
+        result, so check <a href="#threat-model">Threat Model &amp; Scope</a> before
+        quoting either number.
       </div>
       <figure class="single-figure">
         <img id="chartDefensesScatter" alt="PSNR versus LPIPS for each defense configuration" />
@@ -693,7 +693,7 @@ result.</p>
       <div id="ablationTable"></div>
 
       <h3>Reconstruction montages</h3>
-      <p>Supporting visual evidence — the same runs, side by side, as images rather than
+      <p>Supporting visual evidence: the same runs, side by side, as images rather than
       numbers.</p>
       <div class="montage-grid" id="montageGrid"></div>
       <div class="empty-state" id="montageEmpty" style="display:none;">
