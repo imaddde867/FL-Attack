@@ -659,12 +659,12 @@ result.</p>
       reads: one client's own gradient, clipped and noised before it leaves the device.
       The epsilon sweep is the centerpiece result, and its flatness is the finding.</p>
       <div class="paired-figures">
-        <figure class="paired-figure">
+        <figure>
           <img id="chartDefensesBars" alt="Reconstruction metrics by defense configuration" />
           <figcaption>The tested ε range (8, 1, 0.1) produces flat PSNR — this is the
           finding, not noise in the experiment.</figcaption>
         </figure>
-        <figure class="paired-figure">
+        <figure>
           <img id="dpNoiseScalingFig" alt="DP noise L2 norm vs. clipped signal, by model dimensionality" />
           <figcaption>Why the ε sweep is flat: injected noise scales with √d. At this model's
           8.76M parameters, every tested ε lands in the noise-dominated region. Worked proof:

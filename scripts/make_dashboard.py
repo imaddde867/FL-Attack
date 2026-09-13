@@ -4,8 +4,8 @@ make_dashboard.py
 =================
 
 Generates an interactive dashboard for the Federated Learning Gradient Inversion
-project. The dashboard complements the 4K poster by providing drill-down access
-to every run, reconstruction, and metric recorded in results/report/summary.csv.
+project, providing drill-down access to every run, reconstruction, and metric
+recorded in results/report/summary.csv.
 
 Outputs (all under results/report/dashboard/):
   - index.html: interactive single-page dashboard (vanilla HTML/CSS/JS)
@@ -61,7 +61,7 @@ except ImportError:
 
 METRIC_FIELDS = ["MSE", "PSNR", "SSIM", "LPIPS", "LabelMatch"]
 VALID_GROUPS = ["showcase", "multi_client", "ablation", "defenses"]
-PLACEHOLDER_COLOR = (18, 22, 32)
+PLACEHOLDER_COLOR = (250, 249, 246)  # matches PALETTE["paper"] = "#faf9f6"
 
 
 def safe_float(value: object) -> Optional[float]:
@@ -640,7 +640,7 @@ class DashboardBuilder:
         canvas = Image.new(
             "RGB",
             (cols * thumb_w, rows * thumb_h),
-            color=(12, 16, 24),
+            color=(250, 249, 246),  # PALETTE["paper"] — light background
         )
         for idx, img_path in enumerate(image_paths):
             try:
@@ -829,7 +829,7 @@ class DashboardBuilder:
             title,
             ha="center",
             va="center",
-            color="#fefefe",
+            color=PALETTE["ink"],  # #1a1a1a — dark text
             fontsize=14,
         )
         ax.text(
@@ -838,7 +838,7 @@ class DashboardBuilder:
             message,
             ha="center",
             va="center",
-            color="#d1d5db",
+            color=PALETTE["muted"],  # #5c5a52 — muted text
             fontsize=10,
         )
         fig.savefig(dest, dpi=120)
