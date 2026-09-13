@@ -75,10 +75,6 @@
       margin: 0 auto;
       padding: 0 clamp(1rem, 4vw, 2.5rem);
     }
-    .prose {
-      max-width: 70ch;
-    }
-
     /* ---------- header / footer ---------- */
     .page-header {
       border-bottom: 1px solid var(--border);
@@ -125,11 +121,7 @@
     main section {
       margin: 3.5rem 0;
     }
-    section > p {
-      max-width: 70ch;
-    }
     .callout {
-      max-width: 70ch;
       margin: 1.5rem 0 0;
       padding: 0.85rem 1.1rem;
       background: var(--panel);
@@ -181,6 +173,13 @@
     .single-figure {
       margin-top: 1.25rem;
       max-width: 720px;
+    }
+    .single-figure-wide {
+      max-width: none;
+    }
+    .single-figure-center {
+      margin-left: auto;
+      margin-right: auto;
     }
     .montage-grid {
       display: grid;
@@ -648,7 +647,7 @@ filled-in result.</p>
       sampled clients, reconstruction quality stays in a narrow band. The leak is a
       property of the gradient release, not of one unusually vulnerable participant.</p>
       <div id="distributionCharts">
-        <figure class="single-figure">
+        <figure class="single-figure single-figure-wide">
           <img id="chartMulticlientBoxplots" alt="Distribution of reconstruction metrics across ten clients" />
           <figcaption>Per-metric distribution across the multi-client benchmark.</figcaption>
         </figure>
@@ -680,7 +679,7 @@ filled-in result.</p>
         result, so check <a href="#threat-model">Threat Model &amp; Scope</a> before
         quoting either number.
       </div>
-      <figure class="single-figure">
+      <figure class="single-figure single-figure-center">
         <img id="chartDefensesScatter" alt="PSNR versus LPIPS for each defense configuration" />
         <figcaption>PSNR against LPIPS per defense configuration: the two metrics agree on
         the ordering, so the flat ε sweep is not an artifact of the metric choice.</figcaption>
