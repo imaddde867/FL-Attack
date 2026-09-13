@@ -1,4 +1,4 @@
-# Security in Federated Learning
+# Privacy Leakage in Federated Learning
 
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue?logo=python&logoColor=white)](https://python.org)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org)
@@ -6,13 +6,13 @@
 
 > **[🔗 Live Dashboard](https://imaddde867.github.io/FL-Attack/)**
 
-A research framework for studying **gradient inversion attacks** and **privacy defenses** in federated learning systems.
+A benchmark for gradient inversion attacks in federated learning, and for the defenses that are supposed to stop them.
 
 ![Dashboard preview](results/report/figures/dashboard_hero.png)
 
 ## Key Findings
 
-All numbers below are read directly from `results/report/summary.csv`.
+Every number below comes straight out of `results/report/summary.csv`.
 
 | Configuration | PSNR (dB) | LPIPS ↓ |
 |---|---|---|
@@ -25,7 +25,7 @@ All numbers below are read directly from `results/report/summary.csv`.
 
 - Baseline attacks reconstruct recognizable faces from a single client's
   raw gradient.
-- **The DP mechanism above is correctly implemented local DP.** It clips
+- The DP mechanism above is correctly implemented local DP. It clips
   and noises one client's own gradient before release, which is the right
   mechanism for the threat model tested here (an adversary reading a
   single pre-aggregation update). It is *not* a bug that ε=8/1/0.1 all land
@@ -35,22 +35,22 @@ All numbers below are read directly from `results/report/summary.csv`.
   couldn't have shown graduated protection at this dimensionality; see
   `results/report/figures/dp_noise_scaling.png` and
   `scripts/dp_noise_scaling_proof.py` for the worked-out proof.
-- **The "HE" row does not test encryption.** The implementation quantizes
-  gradients and adds a fixed-scale Laplace noise term; for this model size
+- The "HE" row does not test encryption. The implementation quantizes
+  gradients and adds a fixed-scale Laplace noise term; at this model size
   it never executes real Paillier encryption, and even when it does, the
-  code decrypts the result before scoring it, so a real HE/secure-aggregation
-  deployment would never expose a decrypted intermediate to the attacker
-  this project simulates. The codebase has an implemented-but-unevaluated
-  path for the honest version of this experiment: `fl_system.py`'s
+  code decrypts the result before scoring it. A real HE/secure-aggregation
+  deployment would never hand a decrypted intermediate to the attacker
+  this project simulates. The honest version of that experiment is
+  implemented but unevaluated: `fl_system.py`'s
   `capture_mode='agg_update'`, paired with `differential_privacy.
   aggregate_clipped_noisy`'s central-DP mechanism, attacking only the
   FedAvg-averaged update, which is what a curious aggregator actually sees
-  under real secure aggregation. No GPU/CelebA compute was available to
-  run that experiment this cycle; it's a named limitation, not a filled-in
-  result.
-- This benchmark measures attack quality only. It does not measure model
-  accuracy under each defense, so it cannot speak to the privacy/utility
-  tradeoff.
+  under real secure aggregation. Running it needs GPU/CelebA compute that
+  was unavailable this cycle, so it stays a stated limitation on the scope
+  of these numbers.
+- This benchmark measures attack quality only. It leaves model accuracy
+  under each defense unmeasured, so it says nothing about the
+  privacy/utility tradeoff.
 
 ## Quick Start
 
@@ -116,10 +116,8 @@ See `python run_experiment.py --help` for all options.
 
 ## Notes
 
-- Results are specific to this experimental setup (single-client gradient
+- Results hold for this experimental setup only (single-client gradient
   leak, 8.76M-parameter model, CelebA 64×64).
-- DP/HE implementations are research-grade, not production-ready.
-- The DP and "HE" findings above share one root cause: neither evaluates
-  the secure-aggregation / central-DP release point. The mechanisms for it
-  exist in the code but were never run; see Key Findings.
-- See the interactive dashboard for detailed visualizations.
+- The DP/HE implementations here are research-grade and should stay well
+  away from production.
+- The dashboard carries the detailed visualizations.

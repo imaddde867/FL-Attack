@@ -506,13 +506,13 @@
   <main class="wrap">
     <section id="overview">
       <h2>Overview</h2>
-      <p>Federated learning promises that raw client data never leaves the device; only
-gradients are shared. This project shows that promise is weaker than it looks.
-An honest-but-curious server can reconstruct a recognizable face from a single
-client's gradient update alone, without needing any aggregation. The benchmark
-below measures reconstruction quality (attack strength) under no defense and
-under two candidate defenses. It does not measure model accuracy, so it cannot
-speak to the privacy/utility tradeoff.</p>
+      <p>Federated learning is sold on one promise: raw client data never leaves the
+device, and only gradients get shared. That promise is weaker than it sounds.
+An honest-but-curious server can rebuild a recognizable face from a single
+client's gradient update, with no aggregation involved. The benchmark below
+scores reconstruction quality (how strong the attack is) with no defense and
+with two candidate defenses. It never scores model accuracy, so it has nothing
+to say about the privacy/utility tradeoff.</p>
       <div class="callout">
         <div class="section-label">Headline result</div>
         <div id="keyFinding"></div>
@@ -523,27 +523,29 @@ speak to the privacy/utility tradeoff.</p>
       <h2>Threat Model &amp; Scope</h2>
       <p><strong>Every result below reads one client's raw gradient before any
 aggregation</strong> (<code>attack_source="gradients"</code>). Local differential
-privacy (clip that client's release, add calibrated Gaussian noise) is the correct
-mechanism for exactly this release point, and it is what gets evaluated here. It is
-<em>not</em> a bug that ε=8, 1, and 0.1 all land at roughly the same PSNR: per-coordinate
-Gaussian noise has L2 norm scaling ~σ√d, and at this model's d≈8.76M parameters, even
-ε=8 already injects noise ~1800× the clipped signal bound. See the figure below.</p>
+privacy (clip that client's release, add calibrated Gaussian noise) is the right
+mechanism for exactly this release point, so that is the defense this benchmark
+evaluates. It is <em>not</em> a bug that ε=8, 1, and 0.1 all land at roughly the same
+PSNR: per-coordinate Gaussian noise has L2 norm scaling ~σ√d, and at this model's
+d≈8.76M parameters, even ε=8 already injects noise ~1800× the clipped signal bound.
+The figure below works through it.</p>
       <p>The "HE" row does not test encryption. The implementation quantizes gradients and
-adds fixed-scale Laplace noise; for this model size it never executes real Paillier
-encryption, and even when it does, the code decrypts the result before scoring it, so a
-real secure-aggregation deployment would never expose that decrypted intermediate to
-this attacker. An honest version of this experiment exists in the codebase
-(<code>capture_mode='agg_update'</code> plus <code>aggregate_clipped_noisy</code>'s
-central-DP mechanism, attacking only the FedAvg-averaged update), but no GPU/CelebA
-compute was available to run it this cycle. That is a named limitation, not a
-filled-in result.</p>
+adds fixed-scale Laplace noise; at this model size it never executes real Paillier
+encryption, and even when it does, the code decrypts the result before scoring it. A
+real secure-aggregation deployment would never hand that decrypted intermediate to the
+attacker simulated here. The honest version of the experiment already exists in the
+codebase (<code>capture_mode='agg_update'</code> plus <code>aggregate_clipped_noisy</code>'s
+central-DP mechanism, attacking only the FedAvg-averaged update), but running it needs
+GPU/CelebA compute that was unavailable this cycle. It stays a stated limitation on
+the scope of these numbers.</p>
     </section>
 
     <section id="attack-effectiveness">
       <h2>Results: Attack Effectiveness</h2>
-      <p>Every run in the benchmark, with its reconstruction metrics. Lower LPIPS and
-      higher PSNR/SSIM mean a stronger attack: a worse privacy outcome for the
-      client whose gradient was read. Click any row to load that reconstruction.</p>
+      <p>The table lists every run in the benchmark with its reconstruction metrics.
+      Lower LPIPS and higher PSNR/SSIM mean a stronger attack, which is a worse privacy
+      outcome for the client whose gradient was read. Click any row to load that
+      reconstruction.</p>
 
       <div class="controls">
         <div class="filter-block">
@@ -643,9 +645,9 @@ filled-in result.</p>
       </div>
 
       <h3>Robustness across clients</h3>
-      <p>The attack is not a single lucky reconstruction. Across ten independently
-      sampled clients, reconstruction quality stays in a narrow band. The leak is a
-      property of the gradient release, not of one unusually vulnerable participant.</p>
+      <p>Across ten independently sampled clients, reconstruction quality stays in a
+      narrow band. The leak follows from the gradient release itself, and it shows up
+      on every participant sampled here.</p>
       <div id="distributionCharts">
         <figure class="single-figure single-figure-wide">
           <img id="chartMulticlientBoxplots" alt="Distribution of reconstruction metrics across ten clients" />
@@ -656,14 +658,14 @@ filled-in result.</p>
 
     <section id="defenses">
       <h2>Results: Defenses</h2>
-      <p>Local differential privacy is applied at exactly the release point this attack
-      reads: one client's own gradient, clipped and noised before it leaves the device.
-      The epsilon sweep is the centerpiece result.</p>
+      <p>Local differential privacy acts on exactly the release point this attack reads:
+      one client's own gradient, clipped and noised before it ever leaves the device.
+      The epsilon sweep is the centerpiece here.</p>
       <div class="paired-figures">
         <figure>
           <img id="chartDefensesBars" alt="Reconstruction metrics by defense configuration" />
-          <figcaption>The tested ε range (8, 1, 0.1) produces flat PSNR. That is the
-          finding, not noise in the experiment.</figcaption>
+          <figcaption>The tested ε range (8, 1, 0.1) produces flat PSNR, and that
+          flatness is the finding itself.</figcaption>
         </figure>
         <figure>
           <img id="dpNoiseScalingFig" alt="DP noise L2 norm vs. clipped signal, by model dimensionality" />
@@ -674,28 +676,28 @@ filled-in result.</p>
       </div>
       <div class="callout">
         <div class="section-label">Read the "HE" row with its caveat</div>
-        The "HE" configuration below does not test encryption. The central-DP /
-        secure-aggregation release point is a named scope limit rather than a measured
-        result, so check <a href="#threat-model">Threat Model &amp; Scope</a> before
-        quoting either number.
+        The "HE" configuration below does not test encryption, and the central-DP /
+        secure-aggregation release point went unmeasured. Read
+        <a href="#threat-model">Threat Model &amp; Scope</a> before quoting either
+        number.
       </div>
       <figure class="single-figure single-figure-center">
         <img id="chartDefensesScatter" alt="PSNR versus LPIPS for each defense configuration" />
-        <figcaption>PSNR against LPIPS per defense configuration: the two metrics agree on
-        the ordering, so the flat ε sweep is not an artifact of the metric choice.</figcaption>
+        <figcaption>PSNR against LPIPS per defense configuration. The two metrics agree on
+        the ordering, so the flat ε sweep survives the choice of metric.</figcaption>
       </figure>
     </section>
 
     <section id="ablation">
       <h2>Ablation Study</h2>
-      <p>Which attack hyperparameters actually matter: each chart varies one setting of
-      the inversion optimizer and reports the resulting reconstruction quality.</p>
+      <p>Each chart varies one setting of the inversion optimizer and reports the
+      reconstruction quality that comes out, which shows which hyperparameters actually
+      move the attack.</p>
       <div class="charts-grid" id="ablationCharts"></div>
       <div id="ablationTable"></div>
 
       <h3>Reconstruction montages</h3>
-      <p>Supporting visual evidence: the same runs, side by side, as images rather than
-      numbers.</p>
+      <p>The same runs again, side by side as images instead of numbers.</p>
       <div class="montage-grid" id="montageGrid"></div>
       <div class="empty-state" id="montageEmpty" style="display:none;">
         No montages available. Provide montage PNGs in results/report/montages/.
@@ -704,8 +706,8 @@ filled-in result.</p>
 
     <section id="reproduce">
       <h2>Reproduce It</h2>
-      <p>Everything on this page is generated from <code>results/report/summary.csv</code>
-      by <code>scripts/make_dashboard.py</code>.</p>
+      <p><code>scripts/make_dashboard.py</code> builds everything on this page from
+      <code>results/report/summary.csv</code>.</p>
       <pre class="commands"><code># Install dependencies
 pip install -r requirements.txt
 
