@@ -121,3 +121,5 @@ See `python run_experiment.py --help` for all options.
 - The DP/HE implementations here are research-grade and should stay well
   away from production.
 - The dashboard carries the detailed visualizations.
+
+Built together with my friend [Ritesh Bhandari](https://github.com/Riteshbhandarii).
