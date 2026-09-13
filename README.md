@@ -6,7 +6,7 @@
 
 > **[🔗 Live Dashboard](https://imaddde867.github.io/FL-Attack/)**
 
-A benchmark for gradient inversion attacks in federated learning, and for the defenses that are supposed to stop them.
+A benchmark for gradient inversion attacks in federated learning, and for the defenses that are supposed to stop them. Built together with [Ritesh Bhandari](https://github.com/Riteshbhandarii).
 
 ![Dashboard preview](results/report/figures/dashboard_hero.png)
 
@@ -121,5 +121,3 @@ See `python run_experiment.py --help` for all options.
 - The DP/HE implementations here are research-grade and should stay well
   away from production.
 - The dashboard carries the detailed visualizations.
-
-Built together with my friend [Ritesh Bhandari](https://github.com/Riteshbhandarii).
