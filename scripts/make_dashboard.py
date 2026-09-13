@@ -620,10 +620,19 @@ class DashboardBuilder:
                     {"name": png.stem.replace("_", " ").title(), "path": safe_relative(dest, self.output_dir)}
                 )
         if not montages:
-            # Auto-generate montage from top runs
-            best_runs = sorted(runs, key=lambda r: ranking_tuple(r.metrics))[:6]
+            # Auto-generate a montage from the best-ranked run per distinct
+            # client, not the raw top-N by metric: several methods/settings
+            # are benchmarked against the same client's fixed held-out
+            # image, so a plain top-N pick clusters on whichever 2-3 clients
+            # happen to score best and shows the same face repeated.
+            best_per_client: Dict[str, RunEntry] = {}
+            for run in sorted(runs, key=lambda r: ranking_tuple(r.metrics)):
+                identity = run.client or run.run_id
+                if identity not in best_per_client:
+                    best_per_client[identity] = run
+            diverse_runs = sorted(best_per_client.values(), key=lambda r: ranking_tuple(r.metrics))[:6]
             image_paths = [
-                self._find_composite(self.root / run.source_dir) for run in best_runs if run.source_dir
+                self._find_composite(self.root / run.source_dir) for run in diverse_runs if run.source_dir
             ]
             image_paths = [path for path in image_paths if path is not None]
             if image_paths:
