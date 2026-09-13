@@ -225,6 +225,11 @@
       letter-spacing: 0.08em;
       color: var(--muted);
     }
+    .filter-block-wide {
+      grid-column: 1 / -1;
+      border-top: 1px solid var(--border);
+      padding-top: 1rem;
+    }
     .filter-help {
       margin: 0 0 0.5rem;
       font-size: 0.85rem;
@@ -461,6 +466,46 @@
       font-size: inherit;
     }
 
+    /* ---------- metric legend ---------- */
+    .metric-legend {
+      margin-top: 1.25rem;
+      padding: 0.9rem 1.1rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+    .metric-legend dl {
+      margin: 0.35rem 0 0;
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 0.3rem 1rem;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    .metric-legend dt {
+      font-family: var(--sans);
+      font-weight: 600;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+    .metric-legend dd {
+      margin: 0;
+      color: var(--gray);
+    }
+
+    /* ---------- references ---------- */
+    .references {
+      margin: 0;
+      padding-left: 1.1rem;
+      font-size: 0.9rem;
+      line-height: 1.7;
+      color: var(--gray);
+      max-width: 78ch;
+    }
+    .references li {
+      margin-bottom: 0.3rem;
+    }
+
     /* ---------- lightbox ---------- */
     .lightbox {
       position: fixed;
@@ -487,6 +532,13 @@
     @media (max-width: 820px) {
       .run-viewer {
         grid-template-columns: 1fr;
+      }
+      .metric-legend dl {
+        grid-template-columns: 1fr;
+        gap: 0.1rem;
+      }
+      .metric-legend dd {
+        margin-bottom: 0.55rem;
       }
     }
   </style>
@@ -523,14 +575,16 @@ to say about the privacy/utility tradeoff.</p>
     <section id="threat-model">
       <h2>Threat Model &amp; Scope</h2>
       <p><strong>Every result below reads one client's raw gradient before any
-aggregation</strong> (<code>attack_source="gradients"</code>). Local differential
-privacy (clip that client's release, add calibrated Gaussian noise) is the right
-mechanism for exactly this release point, so that is the defense this benchmark
-evaluates. It is <em>not</em> a bug that ε=8, 1, and 0.1 all land at roughly the same
-PSNR: per-coordinate Gaussian noise has L2 norm scaling ~σ√d, and at this model's
-d≈8.76M parameters, even ε=8 already injects noise ~1800× the clipped signal bound.
-The figure below works through it.</p>
-      <p>The "HE" row does not test encryption. The implementation quantizes gradients and
+aggregation</strong> (<code>attack_source="gradients"</code>). Local differential privacy
+(DP), where the client clips its own update to a fixed L2 norm and adds calibrated
+Gaussian noise before release, is the right mechanism for exactly this release point, so
+that is the defense this benchmark evaluates. The sweep runs at δ=1e-5 with a clipping
+norm of 1.0. It is <em>not</em> a bug that ε=8, 1, and 0.1 all land at roughly the same
+peak signal-to-noise ratio (PSNR): per-coordinate Gaussian noise has L2 norm scaling
+~σ√d, and at this model's d≈8.76M parameters, even ε=8 already injects noise ~1800× the
+clipped signal bound. The figure below works through it.</p>
+      <p>The "HE" row does not test homomorphic encryption (HE), despite the label it
+carries in the table. The implementation quantizes gradients and
 adds fixed-scale Laplace noise; at this model size it never executes real Paillier
 encryption, and even when it does, the code decrypts the result before scoring it. A
 real secure-aggregation deployment would never hand that decrypted intermediate to the
@@ -544,9 +598,31 @@ the scope of these numbers.</p>
     <section id="attack-effectiveness">
       <h2>Results: Attack Effectiveness</h2>
       <p>The table lists every run in the benchmark with its reconstruction metrics.
-      Lower LPIPS and higher PSNR/SSIM mean a stronger attack, which is a worse privacy
-      outcome for the client whose gradient was read. Click any row to load that
-      reconstruction.</p>
+      A stronger attack is a worse privacy outcome for the client whose gradient was
+      read. Click any row to load that reconstruction.</p>
+
+      <div class="metric-legend">
+        <div class="section-label">Reading the metrics</div>
+        <dl>
+          <dt>PSNR (dB)</dt>
+          <dd>Peak signal-to-noise ratio against the true image. Higher is a stronger
+          attack. Runs here span 6.3 to 29.5.</dd>
+          <dt>SSIM</dt>
+          <dd>Structural similarity, where 1.0 is a perfect match. The undefended runs
+          reach 0.95; the DP runs sit at or just below 0, meaning no structural
+          agreement at all.</dd>
+          <dt>LPIPS</dt>
+          <dd>Learned perceptual distance between the reconstruction and the original,
+          so lower is a stronger attack. Around 0.08 is a recognizable face here, and
+          0.82 is noise.</dd>
+          <dt>LabelMatch</dt>
+          <dd>Share of attacked examples whose class label the attack also recovered.
+          Every run reads a single example, so this reads 0 or 1.</dd>
+          <dt>MSE</dt>
+          <dd>Mean squared error in the model's normalized image space, lower being a
+          stronger attack. Shown in the run detail panel rather than the table.</dd>
+        </dl>
+      </div>
 
       <div class="controls">
         <div class="filter-block">
@@ -590,6 +666,21 @@ the scope of these numbers.</p>
             <button id="btnBaselineWorst">Worst baseline</button>
             <button id="btnDpSweep">DP sweep</button>
           </div>
+        </div>
+        <div class="filter-block filter-block-wide">
+          <h4>Reading the labels</h4>
+          <p class="filter-help">Method labels are built from the script that produced the
+          run. <code>dp_eps1</code> is local DP at ε=1, and <code>dp_he</code> combines it
+          with the quantize-and-noise configuration. <code>bmk_c3</code> is the
+          multi-client benchmark on client 3. The ablation labels name the one setting
+          that moved: <code>tv_1e-4</code> sets the attack's total-variation regularizer
+          weight to 1e-4 (the ablation baseline is 1e-5), <code>init_fft</code> seeds the
+          dummy image from a Fourier spectrum instead of Gaussian noise, and
+          <code>metric_cosine</code>, <code>metric_sim</code> and <code>metric_both</code>
+          swap the gradient-matching loss away from the L2 default. The run path shown
+          with each reconstruction is its output directory on disk. The identifier in the
+          URL is derived from a row index at build time, so it is convenient for sharing a
+          view and unsuitable for citation.</p>
         </div>
       </div>
 
@@ -693,7 +784,9 @@ the scope of these numbers.</p>
       <h2>Ablation Study</h2>
       <p>Each chart varies one setting of the inversion optimizer and reports the
       reconstruction quality that comes out, which shows which hyperparameters actually
-      move the attack.</p>
+      move the attack. The reference configuration uses a total-variation weight of 1e-5,
+      an L2 gradient-matching loss and random initialization, run against clients 0, 3
+      and 7. Each chart label names the one setting that changed.</p>
       <div class="charts-grid" id="ablationCharts"></div>
       <div id="ablationTable"></div>
 
@@ -718,6 +811,31 @@ bash scripts/run_showcase.sh
 # Launch local dashboard
 python -m http.server --directory docs 8000</code></pre>
       <p><a href="https://github.com/imaddde867/FL-Attack">View source on GitHub</a></p>
+    </section>
+
+    <section id="references">
+      <h2>References</h2>
+      <ol class="references">
+        <li>Zhu, Liu and Han. Deep Leakage from Gradients. NeurIPS 2019.
+        <a href="https://arxiv.org/abs/1906.08935" target="_blank" rel="noopener">arXiv:1906.08935</a></li>
+        <li>Zhao, Mopuri and Bilen. iDLG: Improved Deep Leakage from Gradients. 2020.
+        <a href="https://arxiv.org/abs/2001.02610" target="_blank" rel="noopener">arXiv:2001.02610</a></li>
+        <li>Geiping, Bauermeister, Dröge and Moeller. Inverting Gradients: How Easy Is It
+        to Break Privacy in Federated Learning? NeurIPS 2020.
+        <a href="https://arxiv.org/abs/2003.14053" target="_blank" rel="noopener">arXiv:2003.14053</a>.
+        Source of the <code>sim</code> matching loss in the ablation.</li>
+        <li>Zhang, Isola, Efros, Shechtman and Wang. The Unreasonable Effectiveness of
+        Deep Features as a Perceptual Metric. CVPR 2018.
+        <a href="https://arxiv.org/abs/1801.03924" target="_blank" rel="noopener">arXiv:1801.03924</a>.
+        Defines LPIPS.</li>
+        <li>McMahan, Moore, Ramage, Hampson and Agüera y Arcas. Communication-Efficient
+        Learning of Deep Networks from Decentralized Data. AISTATS 2017.
+        <a href="https://arxiv.org/abs/1602.05629" target="_blank" rel="noopener">arXiv:1602.05629</a>.
+        Defines FedAvg.</li>
+        <li>Liu, Luo, Wang and Tang. Deep Learning Face Attributes in the Wild. ICCV 2015.
+        <a href="https://arxiv.org/abs/1411.7766" target="_blank" rel="noopener">arXiv:1411.7766</a>.
+        Source of the CelebA dataset.</li>
+      </ol>
     </section>
   </main>
 

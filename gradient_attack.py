@@ -607,7 +607,8 @@ def gradient_matching_loss(dummy_grads, target_grads,
     - 'l2': Standard L2 distance (sum of squared differences)
     - 'cosine': Cosine distance (1 - cosine_similarity)
     - 'both': Weighted combination of L2 and cosine
-    - 'sim': InvertingGradients-style: 1 - cos_sim (normalized per layer, then summed)
+    - 'sim': InvertingGradients-style: 1 - cos_sim (normalized per layer, then summed).
+             Geiping et al., "Inverting Gradients", NeurIPS 2020, arXiv:2003.14053.
     """
     L = len(target_grads)
     idxs = _resolve_layer_indices(L, use_layers, select_by_name, param_names)
