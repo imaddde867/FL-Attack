@@ -148,20 +148,20 @@ def load_metrics_file(path: Path) -> Dict[str, float]:
     return metrics
 
 
-def apply_dark_style() -> None:
-    plt.style.use("dark_background")
-    plt.rcParams["figure.facecolor"] = "#121621"
-    plt.rcParams["axes.facecolor"] = "#1c2331"
-    plt.rcParams["savefig.facecolor"] = "#121621"
-    plt.rcParams["axes.edgecolor"] = "#3b4252"
-    plt.rcParams["axes.labelcolor"] = "#f5f6fa"
-    plt.rcParams["xtick.color"] = "#d8dee9"
-    plt.rcParams["ytick.color"] = "#d8dee9"
-    plt.rcParams["grid.color"] = "#2e3440"
-    plt.rcParams["font.size"] = 11
-
-
-apply_dark_style()
+# Single source of truth for chart/CSS color — mirrored by hand in
+# scripts/templates/dashboard.html's :root block. Update both when changing a color.
+PALETTE = {
+    "paper": "#faf9f6",
+    "panel": "#ffffff",
+    "ink": "#1a1a1a",
+    "muted": "#5c5a52",
+    "border": "#ddd9d0",
+    "navy": "#1d3557",
+    "teal": "#457b9d",
+    "rust": "#bc4b2c",
+    "olive": "#6a7f3f",
+    "gray": "#8d8a80",
+}
 
 
 @dataclass
@@ -207,6 +207,7 @@ class DashboardBuilder:
         aggregates = self.compute_aggregates(df_augmented)
         montages = self.prepare_montages(runs)
         charts = self.generate_charts(df_augmented)
+        figures = self.copy_static_figures()
 
         baseline_index = self.compute_baselines(runs)
         baselines_map = baseline_index.get("by_client", {})
@@ -244,6 +245,7 @@ class DashboardBuilder:
             "filter_values": filter_values,
             "charts": charts,
             "montages": montages,
+            "figures": figures,
             "placeholder_image": safe_relative(self.placeholder_path, self.output_dir),
         }
 
@@ -615,6 +617,22 @@ class DashboardBuilder:
         return montages
 
     # ------------------------------------------------------------------
+    def copy_static_figures(self) -> Dict[str, str]:
+        """Copy pre-generated, non-per-run figures (e.g. the DP noise-scaling proof)
+        into the dashboard's asset tree so the template can reference a stable path."""
+        figures_src = self.report_dir / "figures"
+        figures_dest = self.assets_dir / "figures"
+        ensure_directory(figures_dest)
+        figures: Dict[str, str] = {}
+        for name, filename in [("dp_noise_scaling", "dp_noise_scaling.png")]:
+            src = figures_src / filename
+            if src.exists():
+                dest = figures_dest / filename
+                shutil.copy2(src, dest)
+                figures[name] = safe_relative(dest, self.output_dir)
+        return figures
+
+    # ------------------------------------------------------------------
     def build_montage(self, image_paths: List[Path], dest: Path) -> None:
         cols = 3
         thumb_w, thumb_h = 420, 280
@@ -639,20 +657,21 @@ class DashboardBuilder:
 
     # ------------------------------------------------------------------
     def _setup_chart_style(self):
-        """Configure matplotlib for GitHub-inspired dark theme."""
-        plt.style.use('dark_background')
+        """Configure matplotlib for the light academic PALETTE."""
+        plt.style.use('default')
         plt.rcParams.update({
-            'figure.facecolor': '#0d1117',
-            'axes.facecolor': '#161b22',
-            'axes.edgecolor': '#30363d',
-            'axes.labelcolor': '#8b949e',
-            'text.color': '#e6edf3',
-            'xtick.color': '#8b949e',
-            'ytick.color': '#8b949e',
-            'grid.color': '#30363d',
-            'legend.facecolor': '#161b22',
-            'legend.edgecolor': '#30363d',
-            'figure.edgecolor': '#30363d',
+            'figure.facecolor': PALETTE["paper"],
+            'axes.facecolor': PALETTE["panel"],
+            'axes.edgecolor': PALETTE["border"],
+            'axes.labelcolor': PALETTE["ink"],
+            'text.color': PALETTE["ink"],
+            'xtick.color': PALETTE["muted"],
+            'ytick.color': PALETTE["muted"],
+            'grid.color': PALETTE["border"],
+            'legend.facecolor': PALETTE["panel"],
+            'legend.edgecolor': PALETTE["border"],
+            'figure.edgecolor': PALETTE["border"],
+            'savefig.facecolor': PALETTE["paper"],
         })
 
     # ------------------------------------------------------------------
@@ -663,7 +682,9 @@ class DashboardBuilder:
             "defenses_grouped_bars": self.chart_defenses_grouped_bars,
             "defenses_scatter_psnr_vs_lpips": self.chart_defenses_scatter,
             "multiclient_boxplots": self.chart_multiclient_boxplots,
-            "ablation_bars": self.chart_ablation_bars,
+            "ablation_psnr": self.chart_ablation_psnr,
+            "ablation_ssim": self.chart_ablation_ssim,
+            "ablation_lpips": self.chart_ablation_lpips,
         }
 
         generated = []
@@ -694,31 +715,30 @@ class DashboardBuilder:
         ssim_std = metrics[("SSIM", "std")].fillna(0).tolist()
         lpips_means = metrics[("LPIPS", "mean")].tolist()
         lpips_std = metrics[("LPIPS", "std")].fillna(0).tolist()
-        # GitHub-inspired colors
-        ax.bar([i - width for i in x], psnr_means, width, yerr=psnr_std, label="PSNR", color="#58a6ff", capsize=3)
-        ax.bar(x, ssim_means, width, yerr=ssim_std, label="SSIM", color="#3fb950", capsize=3)
+        ax.bar([i - width for i in x], psnr_means, width, yerr=psnr_std, label="PSNR", color=PALETTE["navy"], capsize=3)
+        ax.bar(x, ssim_means, width, yerr=ssim_std, label="SSIM", color=PALETTE["teal"], capsize=3)
         ax.bar(
             [i + width for i in x],
             lpips_means,
             width,
             yerr=lpips_std,
             label="LPIPS",
-            color="#f85149",
+            color=PALETTE["rust"],
             capsize=3,
         )
         ax.set_xticks(list(x))
         ax.set_xticklabels(methods, rotation=20, ha="right")
         ax.set_ylabel("Score")
         ax.set_title("Defense Mechanisms: Mean Metrics Comparison", fontweight="bold")
-        ax.legend(facecolor='#161b22', edgecolor='#30363d')
+        ax.legend(facecolor=PALETTE["panel"], edgecolor=PALETTE["border"])
         ax.grid(alpha=0.3, axis="y")
 
         ax2 = ax.twinx()
         label_match = metrics[("LabelMatch", "mean")].tolist()
-        ax2.plot(x, label_match, color="#d29922", marker="o", label="LabelMatch", linewidth=2)
+        ax2.plot(x, label_match, color=PALETTE["olive"], marker="o", label="LabelMatch", linewidth=2)
         ax2.set_ylabel("Label Match Rate")
         fig.tight_layout()
-        fig.savefig(dest, dpi=150, facecolor='#0d1117', edgecolor='none')
+        fig.savefig(dest, dpi=150)
         plt.close(fig)
 
     # ------------------------------------------------------------------
@@ -729,16 +749,17 @@ class DashboardBuilder:
             return
         fig, ax = plt.subplots(figsize=(8, 5))
         scatter = ax.scatter(
-            subset["LPIPS"], subset["PSNR"], c=subset["SSIM"], cmap="plasma", s=100, edgecolors='#30363d', linewidths=1
+            subset["LPIPS"], subset["PSNR"], c=subset["SSIM"], cmap="viridis", s=100,
+            edgecolors=PALETTE["border"], linewidths=1
         )
         ax.set_xlabel("LPIPS (lower = better)")
         ax.set_ylabel("PSNR (dB)")
         ax.set_title("Defense Analysis: PSNR vs LPIPS", fontweight="bold")
         ax.grid(alpha=0.3)
         cbar = fig.colorbar(scatter, label="SSIM")
-        cbar.ax.yaxis.set_tick_params(color='#8b949e')
+        cbar.ax.yaxis.set_tick_params(color=PALETTE["muted"])
         fig.tight_layout()
-        fig.savefig(dest, dpi=150, facecolor='#0d1117', edgecolor='none')
+        fig.savefig(dest, dpi=150)
         plt.close(fig)
 
     # ------------------------------------------------------------------
@@ -765,32 +786,38 @@ class DashboardBuilder:
         plt.close(fig)
 
     # ------------------------------------------------------------------
-    def chart_ablation_bars(self, df: pd.DataFrame, dest: Path) -> None:
+    def _chart_ablation_single(
+        self, df: pd.DataFrame, dest: Path, metric: str, title: str, color: str
+    ) -> None:
         subset = df[df["group"] == "ablation"]
         if subset.empty:
-            self.save_empty_chart(dest, "Ablations", "No ablation runs.")
+            self.save_empty_chart(dest, title, "No ablation runs.")
             return
-        summary = subset.groupby("method")[["PSNR", "SSIM", "LPIPS"]].agg(["mean", "std"])
-        summary = summary.sort_values(("LPIPS", "mean"))
+        summary = subset.groupby("method")[[metric]].agg(["mean", "std"])
+        summary = summary.sort_values((metric, "mean"), ascending=(metric == "LPIPS"))
         methods = summary.index.tolist()
-        metrics = ["PSNR", "SSIM", "LPIPS"]
-        titles = ["PSNR (higher better)", "SSIM (higher better)", "LPIPS (lower better)"]
-        colors = ["#5ac8fa", "#a390f0", "#f7b05b"]
-        fig, axes = plt.subplots(1, 3, figsize=(13, 4), sharex=True)
+        means = summary[(metric, "mean")].tolist()
+        std = summary[(metric, "std")].fillna(0).tolist()
+        fig, ax = plt.subplots(figsize=(6, 4))
         x = range(len(methods))
-        for idx, metric in enumerate(metrics):
-            means = summary[(metric, "mean")].tolist()
-            std = summary[(metric, "std")].fillna(0).tolist()
-            axes[idx].bar(x, means, yerr=std, capsize=4, color=colors[idx])
-            axes[idx].set_title(titles[idx])
-            axes[idx].set_xticks(list(x))
-            axes[idx].set_xticklabels(methods, rotation=40, ha="right")
-            axes[idx].grid(alpha=0.3, axis="y")
-        axes[0].set_ylabel("Score")
-        fig.suptitle("Ablation families: mean ± std per metric")
+        ax.bar(x, means, yerr=std, capsize=4, color=color)
+        ax.set_title(title, fontweight="bold")
+        ax.set_xticks(list(x))
+        ax.set_xticklabels(methods, rotation=40, ha="right")
+        ax.set_ylabel(metric)
+        ax.grid(alpha=0.3, axis="y")
         fig.tight_layout()
         fig.savefig(dest, dpi=150)
         plt.close(fig)
+
+    def chart_ablation_psnr(self, df: pd.DataFrame, dest: Path) -> None:
+        self._chart_ablation_single(df, dest, "PSNR", "Ablation: PSNR (higher = better)", PALETTE["navy"])
+
+    def chart_ablation_ssim(self, df: pd.DataFrame, dest: Path) -> None:
+        self._chart_ablation_single(df, dest, "SSIM", "Ablation: SSIM (higher = better)", PALETTE["teal"])
+
+    def chart_ablation_lpips(self, df: pd.DataFrame, dest: Path) -> None:
+        self._chart_ablation_single(df, dest, "LPIPS", "Ablation: LPIPS (lower = better)", PALETTE["rust"])
 
     # ------------------------------------------------------------------
     def save_empty_chart(self, dest: Path, title: str, message: str) -> None:
