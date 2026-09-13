@@ -10,7 +10,7 @@ recorded in results/report/summary.csv.
 Outputs (all under results/report/dashboard/):
   - index.html: interactive single-page dashboard (vanilla HTML/CSS/JS)
   - data.json: precomputed runs + aggregates + metadata
-  - assets/images/: copied recon images (baseline_attack_result.png or placeholder)
+  - assets/images/: cropped Original/Recon/Diff strips (or placeholder)
   - assets/metrics/: copied metrics.txt files when available
   - assets/charts/: pre-rendered matplotlib charts
   - assets/montages/: montage thumbnails (copied or auto-generated)
@@ -378,24 +378,34 @@ class DashboardBuilder:
         return runs, df_augmented
 
     # ------------------------------------------------------------------
-    def copy_image_for_run(self, source_dir: Optional[Path], slug: str) -> Optional[str]:
+    def _find_composite(self, source_dir: Optional[Path]) -> Optional[Path]:
+        """Locate the raw baseline_attack_result.png composite for a run's
+        source directory (newest match if more than one). Used both to build
+        the per-run cropped asset and, separately, by the montage builder,
+        which needs the untouched composite rather than the already-cropped
+        per-run strip."""
         if not source_dir or not source_dir.exists():
             return None
         direct = source_dir / "baseline_attack_result.png"
         if direct.exists():
-            candidates = [direct]
-        else:
-            files = list(source_dir.rglob("baseline_attack_result.png"))
-            files.sort(
-                key=lambda path: path.stat().st_mtime if path.exists() else 0,
-                reverse=True,
-            )
-            candidates = files
-        if not candidates:
+            return direct
+        files = list(source_dir.rglob("baseline_attack_result.png"))
+        files.sort(key=lambda path: path.stat().st_mtime if path.exists() else 0, reverse=True)
+        return files[0] if files else None
+
+    def copy_image_for_run(self, source_dir: Optional[Path], slug: str) -> Optional[str]:
+        src = self._find_composite(source_dir)
+        if src is None:
             return None
-        src = candidates[0]
         dest = self.images_dir / f"{slug}.png"
-        shutil.copy2(src, dest)
+        try:
+            bands = self._detect_bands(src)
+        except Exception:
+            bands = []
+        if len(bands) >= 2:
+            self._save_band_strip(bands[:3], dest)
+        else:
+            shutil.copy2(src, dest)
         return safe_relative(dest, self.output_dir)
 
     # ------------------------------------------------------------------
@@ -612,8 +622,10 @@ class DashboardBuilder:
         if not montages:
             # Auto-generate montage from top runs
             best_runs = sorted(runs, key=lambda r: ranking_tuple(r.metrics))[:6]
-            image_paths = [self.output_dir / run.image_path for run in best_runs if run.image_path]
-            image_paths = [path for path in image_paths if path.exists()]
+            image_paths = [
+                self._find_composite(self.root / run.source_dir) for run in best_runs if run.source_dir
+            ]
+            image_paths = [path for path in image_paths if path is not None]
             if image_paths:
                 auto_path = self.montage_dir / "top_ranked.png"
                 self.build_montage(image_paths, auto_path)
@@ -639,16 +651,14 @@ class DashboardBuilder:
         return figures
 
     # ------------------------------------------------------------------
-    def _extract_original_recon(
+    def _detect_bands(
         self, composite_path: Path, bg_thresh: int = 235, min_band: int = 30
-    ) -> Optional[Tuple[Image.Image, Image.Image]]:
-        """Crop the clean Original and Reconstruction face images out of a
-        baseline_attack_result.png composite (Original/Recon/[|Diff|] stacked
-        vertically, each preceded by a matplotlib title on a white band).
-        Detects band boundaries per-image rather than assuming a fixed
-        layout, and returns None if fewer than two bands are found (e.g. a
-        reconstruction-only composite) — callers must not substitute a
-        Recon crop where an Original is expected."""
+    ) -> List[Image.Image]:
+        """Crop each vertically-stacked panel out of a baseline_attack_result.png
+        composite (Original/Recon/[|Diff|], each preceded by a matplotlib title
+        on a white band). Detects band boundaries per-image via row/column
+        background-brightness thresholding rather than assuming a fixed layout.
+        Returns the cropped panels top-to-bottom (empty list if none detected)."""
         with Image.open(composite_path) as img:
             img = img.convert("RGB")
             arr = np.array(img)
@@ -665,8 +675,6 @@ class DashboardBuilder:
                     start = None
             if start is not None and len(is_content) - start >= min_band:
                 bands.append((start, len(is_content)))
-            if len(bands) < 2:
-                return None
 
             def crop_band(row_range: Tuple[int, int]) -> Image.Image:
                 r0, r1 = row_range
@@ -678,7 +686,50 @@ class DashboardBuilder:
                     c0, c1 = int(content_cols[0]), int(content_cols[-1]) + 1
                 return img.crop((c0, r0, c1, r1)).copy()
 
-            return crop_band(bands[0]), crop_band(bands[1])
+            return [crop_band(b) for b in bands]
+
+    def _extract_original_recon(
+        self, composite_path: Path, bg_thresh: int = 235, min_band: int = 30
+    ) -> Optional[Tuple[Image.Image, Image.Image]]:
+        """Original+Recon pair only (for the montage grid). Returns None if
+        fewer than two bands are found. Callers must not substitute a Recon
+        crop where an Original is expected."""
+        bands = self._detect_bands(composite_path, bg_thresh, min_band)
+        if len(bands) < 2:
+            return None
+        return bands[0], bands[1]
+
+    def _save_band_strip(self, bands: List[Image.Image], dest: Path, thumb: int = 360, gap: int = 12) -> None:
+        """Lay out 2-3 panel crops (Original/Recon/[Diff]) side by side as one
+        landscape strip. Used for the per-run detail image so the run viewer
+        gets a wide-and-short asset instead of the tall stacked composite."""
+        labels = ["Original", "Recon", "Diff"][: len(bands)]
+        thumbs = []
+        for band in bands:
+            t = band.copy()
+            t.thumbnail((thumb, thumb))
+            thumbs.append(t)
+        label_h = 26
+        cell_w = max(t.width for t in thumbs)
+        row_h = max(t.height for t in thumbs)
+        width = cell_w * len(thumbs) + gap * (len(thumbs) - 1)
+        height = label_h + row_h
+        canvas = Image.new("RGB", (width, height), color=(250, 249, 246))  # PALETTE["paper"]
+        draw = ImageDraw.Draw(canvas)
+        try:
+            font = ImageFont.truetype("Arial.ttf", 14)
+        except Exception:
+            font = ImageFont.load_default()
+        ink = (26, 26, 26)  # PALETTE["ink"]
+        x = 0
+        for t, label in zip(thumbs, labels):
+            cx = x + (cell_w - t.width) // 2
+            cy = label_h + (row_h - t.height) // 2
+            canvas.paste(t, (cx, cy))
+            draw.text((x + cell_w // 2, 4), label, fill=ink, font=font, anchor="mt")
+            x += cell_w + gap
+        ensure_directory(dest.parent)
+        canvas.save(dest)
 
     def build_montage(self, image_paths: List[Path], dest: Path) -> None:
         pairs: List[Tuple[Image.Image, Image.Image]] = []
@@ -909,7 +960,7 @@ class DashboardBuilder:
             title,
             ha="center",
             va="center",
-            color=PALETTE["ink"],  # #1a1a1a — dark text
+            color=PALETTE["ink"],  # #1a1a1a, dark text
             fontsize=14,
         )
         ax.text(
@@ -918,7 +969,7 @@ class DashboardBuilder:
             message,
             ha="center",
             va="center",
-            color=PALETTE["muted"],  # #5c5a52 — muted text
+            color=PALETTE["muted"],  # #5c5a52, muted text
             fontsize=10,
         )
         fig.savefig(dest, dpi=120)
