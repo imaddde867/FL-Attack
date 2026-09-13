@@ -26,13 +26,12 @@ import argparse
 import csv
 import json
 import os
-import subprocess
-import sys
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 import shutil
 from datetime import datetime
+from exp_common import build_experiment_command, parse_metrics_file, run_experiment_subprocess
 
 # ============================================================================
 # Configuration
@@ -193,16 +192,12 @@ def run_experiment(
     dry_run: bool = False,
 ) -> Dict[str, Any]:
     """Run a single experiment and return metrics."""
-    
+
     exp_dir = output_dir / config.name
     exp_dir.mkdir(parents=True, exist_ok=True)
-    
-    cmd = [
-        sys.executable, "run_experiment.py",
-        "--out-dir", str(exp_dir),
-        "--save-config",
-    ] + base_flags + config.to_flags()
-    
+
+    cmd = build_experiment_command(config.name, exp_dir, base_flags, config.to_flags())
+
     print(f"\n{'='*70}")
     print(f"EXPERIMENT: {config.name}")
     print(f"{'='*70}")
@@ -211,57 +206,24 @@ def run_experiment(
     print(f"Key settings: TV={config.tv_weight:.0e}, layers={config.layer_weights or 'uniform'}")
     print(f"Command: {' '.join(cmd)}")
     print(f"{'='*70}")
-    
-    if dry_run:
-        print("[DRY RUN] Skipping execution")
+
+    status, error = run_experiment_subprocess(cmd, dry_run)
+    if status == "skipped":
         return {"name": config.name, "category": config.category, "status": "skipped"}
-    
-    try:
-        result = subprocess.run(
-            cmd,
-            check=True,
-            capture_output=False,
-        )
-        metrics = parse_metrics(exp_dir / "metrics.txt")
-        metrics["name"] = config.name
-        metrics["category"] = config.category
-        metrics["status"] = "success"
-        metrics["output_dir"] = str(exp_dir)
-        metrics["tv_weight"] = config.tv_weight
-        metrics["layer_weights"] = config.layer_weights or "uniform"
-        
-        # Save config alongside results
-        with open(exp_dir / "experiment_config.json", "w") as f:
-            json.dump(asdict(config), f, indent=2)
-        
-        return metrics
-        
-    except subprocess.CalledProcessError as e:
-        print(f"[ERROR] Experiment failed: {e}")
-        return {"name": config.name, "category": config.category, "status": "failed", "error": str(e)}
-    except Exception as e:
-        print(f"[ERROR] Unexpected error: {e}")
-        return {"name": config.name, "category": config.category, "status": "error", "error": str(e)}
+    if status != "success":
+        return {"name": config.name, "category": config.category, "status": status, "error": error}
 
+    metrics = parse_metrics_file(exp_dir / "metrics.txt")
+    metrics["name"] = config.name
+    metrics["category"] = config.category
+    metrics["status"] = "success"
+    metrics["output_dir"] = str(exp_dir)
+    metrics["tv_weight"] = config.tv_weight
+    metrics["layer_weights"] = config.layer_weights or "uniform"
 
-def parse_metrics(metrics_path: Path) -> Dict[str, Any]:
-    """Parse metrics.txt into a dictionary."""
-    metrics = {}
-    if not metrics_path.exists():
-        return metrics
-    with open(metrics_path) as f:
-        for line in f:
-            if ":" in line:
-                key, val = line.split(":", 1)
-                key = key.strip()
-                val = val.strip()
-                try:
-                    if "." in val:
-                        metrics[key] = float(val)
-                    else:
-                        metrics[key] = int(val)
-                except ValueError:
-                    metrics[key] = val
+    with open(exp_dir / "experiment_config.json", "w") as f:
+        json.dump(asdict(config), f, indent=2)
+
     return metrics
 
 
